@@ -1,9 +1,4 @@
 export const bento = {
-  /**
-   * A heading for screen readers while the bento stands on its own; inside the
-   * structure section that section's own heading leads into the panels instead.
-   */
-  heading: "What the structure gives you",
   duo: {
     title: "Uno map, duo users",
     body: "People work on the canvas. Agents work on the same blueprint as structured data. One map, two ways in.",

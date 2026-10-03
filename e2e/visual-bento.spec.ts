@@ -27,9 +27,10 @@ for (const width of widths) {
 
       test("bento", async ({ page }) => {
         const duo = page.getByRole("group", { name: "Uno map, duo users" });
-        const section = page.locator("section").filter({ has: duo });
+        // The bento follows the walkthrough in the structure section; the shot is its grid alone.
+        const grid = duo.locator("xpath=..");
         await showOnly(duo);
-        await expect(section).toHaveScreenshot(`bento-${width}-${colorScheme}.png`);
+        await expect(grid).toHaveScreenshot(`bento-${width}-${colorScheme}.png`);
       });
     });
   }
