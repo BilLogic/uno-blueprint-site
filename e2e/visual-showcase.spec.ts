@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { showOnly } from "./isolate";
 
 // Baselines are rendered on Linux (CI, or the Playwright image locally): font
 // rasterisation differs by platform, so other platforms skip unless asked.
@@ -33,6 +34,7 @@ for (const width of widths) {
           const section = page.locator("section", {
             has: page.getByRole("heading", { name: showcase.headline }),
           });
+          await showOnly(section);
           await section.getByRole("tab", { name: showcase.tab }).click();
           // A section taller than the screen would have the sticky nav drawn over its top.
           await page.locator("header").evaluate((nav) => (nav.style.visibility = "hidden"));

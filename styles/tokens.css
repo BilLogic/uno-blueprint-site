@@ -222,9 +222,7 @@
   --color-lane-front: #d9902f;
   --color-lane-back: #d0648f;
   --color-lane-support: #7b74c9;
-  /* Terminal text on the always-dark terminal. */
-  --color-term-green: #7fe3cc;
-  --color-term-muted: #8b99a3;
+  /* A warning on the always-dark terminal; its command and progress lines use term-key and term-faint. */
   --color-term-amber: #fbbf6a;
 
   --animate-menu-in: menu-in var(--duration-t-1) var(--ease-out);

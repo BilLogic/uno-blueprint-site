@@ -27,8 +27,8 @@ export function AppMock() {
 }
 
 const tones: Record<TerminalTone, string> = {
-  command: "text-term-green",
-  muted: "text-term-muted",
+  command: "text-term-key",
+  muted: "text-term-faint",
   plain: "",
   warn: "text-term-amber",
 };
