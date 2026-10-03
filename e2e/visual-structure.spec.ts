@@ -31,7 +31,9 @@ for (const width of widths) {
         // The section is taller than the viewport, so the sticky nav would land on it mid-capture.
         await page.addStyleTag({ content: "header { visibility: hidden; }" });
         await showOnly(section);
-        await expect(section).toHaveScreenshot(`structure-${width}-${colorScheme}.png`);
+        // The walkthrough alone: the bento after it in the section has its own snapshots.
+        const walkthrough = section.locator(":scope > div > :first-child");
+        await expect(walkthrough).toHaveScreenshot(`structure-${width}-${colorScheme}.png`);
       });
 
       test("structure walkthrough pinned on the flat blueprint", async ({ page }) => {

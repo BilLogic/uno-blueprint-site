@@ -1,8 +1,10 @@
 import { AgentView } from "@/components/agent/AgentView";
+import { Bento } from "@/components/bento/Bento";
 import { CanvasSection } from "@/components/canvas/CanvasSection";
 import { ClosingBand } from "@/components/closing/ClosingBand";
 import { Footer } from "@/components/footer/Footer";
 import { GetStarted } from "@/components/get-started/GetStarted";
+import { Harness } from "@/components/harness/Harness";
 import { Hero } from "@/components/hero/Hero";
 import { IdeasSection } from "@/components/ideas/IdeasSection";
 import { Nav } from "@/components/nav/Nav";
@@ -17,8 +19,11 @@ export default function Home() {
       <Nav />
       <main id="human">
         <Hero />
-        <StructureSection />
+        <StructureSection>
+          <Bento />
+        </StructureSection>
         <CanvasSection />
+        <Harness />
         <TouchPointsSection />
         <ProofSection />
         <IdeasSection />
