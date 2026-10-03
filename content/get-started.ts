@@ -1,4 +1,4 @@
-import { INSTALL_COMMANDS } from "@/lib/install-commands";
+import { INSTALL_COMMANDS, WORKSPACE_FOLDER } from "@/lib/install-commands";
 import { links } from "./links";
 
 /** A box of commands, one per line, or a sentence to hand to an agent. */
@@ -7,7 +7,9 @@ export type CodeContent = { kind: "commands"; lines: readonly string[] } | { kin
 const commands = (lines: readonly string[]): CodeContent => ({ kind: "commands", lines });
 
 export const getStarted = {
-  id: "start",
+  // The section is where "Get the template" lands.
+  id: links.getStarted.href.slice(1),
+  titleId: "start-title",
   title: { lead: "Free and open source.", rest: "Uno command to start." },
   sub: "MIT licensed. Run it locally with no database, then host it on your own database.",
   copy: { label: "Copy", done: "Copied" },
@@ -22,7 +24,7 @@ export const getStarted = {
         label: "agent",
         code: {
           kind: "prose",
-          text: "Set up Uno Blueprint for me. Clone https://github.com/BilLogic/uno-blueprint and read its README.md and AGENTS.md first. Then run npm install and npm run dev, and tell me the local address. It needs Node 22 or later, and no database to start.",
+          text: `Set up Uno Blueprint for me. Clone ${links.github.href} and read its README.md and AGENTS.md first. Then run npm install and npm run dev, and tell me the local address. It needs Node 22 or later, and no database to start.`,
         },
       },
       { value: "pnpm", label: "pnpm", code: commands(INSTALL_COMMANDS.pnpm) },
@@ -49,14 +51,14 @@ export const getStarted = {
       {
         value: "cursor",
         label: "Cursor",
-        code: commands(["cd uno-blueprint", "cursor ."]),
+        code: commands([`cd ${WORKSPACE_FOLDER}`, "cursor ."]),
         note: "Cursor reads AGENTS.md in the workspace, which routes each skill name to its instructions. Ask for a skill by name.",
         prefix: "",
       },
       {
         value: "codex",
         label: "Codex",
-        code: commands(["cd uno-blueprint", "codex"]),
+        code: commands([`cd ${WORKSPACE_FOLDER}`, "codex"]),
         note: "Codex reads AGENTS.md in the workspace, which routes each skill name to its instructions. Ask for a skill by name.",
         prefix: "",
       },

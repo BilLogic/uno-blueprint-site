@@ -15,10 +15,10 @@ export function CodeBlock({ code, className = "", ...props }: CodeBlockProps) {
   return (
     <div
       {...props}
-      className={`relative rounded-12 bg-term py-4 pr-14 pl-4.5 font-mono text-13 leading-command whitespace-pre-wrap text-term-ink wrap-anywhere ${className}`}
+      className={`relative rounded-12 bg-term py-4 pr-14 pl-4.5 font-mono text-13 leading-command text-term-ink wrap-anywhere ${className}`}
     >
       {code.kind === "commands" ? (
-        <code className="block whitespace-normal">
+        <code className="block">
           {code.lines.map((line) => (
             <span key={line} className="block -indent-hang pl-hang whitespace-pre-wrap wrap-break-word">
               {line}
@@ -26,7 +26,7 @@ export function CodeBlock({ code, className = "", ...props }: CodeBlockProps) {
           ))}
         </code>
       ) : (
-        <p>{code.text}</p>
+        <p className="whitespace-pre-wrap">{code.text}</p>
       )}
       <CopyButton text={text} tone="term" className="top-2.5 right-2.5" />
     </div>

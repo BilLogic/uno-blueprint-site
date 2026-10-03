@@ -10,11 +10,11 @@ const { title, sub, prompts } = getStarted;
 /** Install, the skills and a few prompts to start with, beside the section's heading. */
 export function GetStarted() {
   return (
-    <section id={getStarted.id} className="scroll-mt-16 border-t border-line py-section">
+    <section id={getStarted.id} aria-labelledby={getStarted.titleId} className="scroll-mt-16 border-t border-line py-section">
       <Container>
         <div className="grid grid-cols-[var(--spacing-aside)_minmax(0,1fr)] gap-16 max-lg:grid-cols-1 max-lg:gap-6">
           <div className="grid min-w-0 content-start gap-4">
-            <h2 className="max-w-heading text-title text-balance">
+            <h2 id={getStarted.titleId} className="max-w-heading text-title text-balance">
               <span className="block text-muted">{title.lead}</span>
               {title.rest}
             </h2>
