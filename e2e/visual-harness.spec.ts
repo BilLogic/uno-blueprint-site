@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { showOnly } from "./isolate";
 
 // Baselines are rendered on Linux (CI, or the Playwright image locally): font
 // rasterisation differs by platform, so other platforms skip unless asked.
@@ -21,13 +22,14 @@ for (const width of widths) {
         await page.emulateMedia({ reducedMotion: "reduce" });
         await page.goto("/");
         await page.evaluate(() => document.fonts.ready);
+        // The sticky nav would otherwise sit over the section.
+        await page.addStyleTag({ content: "header { visibility: hidden !important; }" });
       });
 
       for (const skill of skills) {
         test(`harness, ${skill}`, async ({ page }) => {
-          const section = page.locator("section", {
-            has: page.getByRole("heading", { name: "Harness for your agents." }),
-          });
+          const section = page.getByRole("region", { name: "Harness for your agents." });
+          await showOnly(section);
           await section.getByRole("tab", { name: skill }).click();
           const name = skill.toLowerCase().replace("-", "");
           await expect(section).toHaveScreenshot(`harness-${name}-${width}-${colorScheme}.png`);
