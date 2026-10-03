@@ -131,7 +131,9 @@ function LaneRow({ lane, r, state }: { lane: string; r: number; state: RowState 
   return (
     <div
       className={cx(s.row, state.current && s.current, state.dim && s.dim, state.named && s.named)}
-      data-row style={{ "--lane": LANE_COLOURS[r] } as CSSProperties}>
+      data-row
+      style={{ "--lane": LANE_COLOURS[r] } as CSSProperties}
+    >
       <em>
         <Word>{lane}</Word>
       </em>

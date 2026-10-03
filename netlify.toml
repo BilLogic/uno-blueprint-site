@@ -23,3 +23,10 @@
   for = "/_next/static/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+# The agent guide is read as markdown, by agents and by browsers alike.
+# scripts/serve.mjs sends the same type by extension, so the end-to-end tests see it too.
+[[headers]]
+  for = "/uno-blueprint.md"
+  [headers.values]
+    Content-Type = "text/markdown; charset=utf-8"
