@@ -1,7 +1,32 @@
+import type { Marks } from "./repair-board";
+
 export type TouchPointTab = "app" | "agent" | "chat";
 
 /** How a terminal line is coloured: the command, a progress note, a result, a warning. */
 export type TerminalTone = "command" | "muted" | "plain" | "warn";
+
+type TouchPoints = {
+  headlineLead: string;
+  headline: string;
+  subheadline: string;
+  tabsLabel: string;
+  tabs: readonly { value: TouchPointTab; label: string; caption: string }[];
+  app: {
+    question: string;
+    answer: readonly { text: string; cite?: string }[];
+    gap: string;
+    marks: Marks;
+  };
+  agent: { marks: Marks; lines: readonly { text: string; tone: TerminalTone }[] };
+  chat: {
+    channel: string;
+    messages: readonly (
+      | { kind: "person"; author: string; text: string }
+      | { kind: "bot"; author: string; text: string; link: string }
+    )[];
+    step: string;
+  };
+};
 
 export const touchPoints = {
   headlineLead: "One blueprint.",
@@ -35,8 +60,17 @@ export const touchPoints = {
       { text: "." },
     ],
     gap: "Approval by text isn't mapped",
+    /** The two steps the answer cites, lit on the board. */
+    marks: { "Technician diagnoses": "hi", "Quote approved": "hi" },
   },
   agent: {
+    /** The step the what-if adds, and the steps it changes. */
+    marks: {
+      "Books a slot": "hi",
+      "Drops off the device": "warn",
+      "Technician diagnoses": "warn",
+      "Front desk logs it": "warn",
+    },
     lines: [
       { text: "› /ub:whatif users book online", tone: "command" },
       { text: "Reading the blueprint…", tone: "muted" },
@@ -47,20 +81,16 @@ export const touchPoints = {
   chat: {
     channel: "# repair-desk",
     messages: [
-      { author: "Dana", text: "who owns pick-up after a repair?" },
+      { kind: "person", author: "Dana", text: "who owns pick-up after a repair?" },
       {
+        kind: "bot",
         author: "Blueprint bot",
         text: "Nobody yet. “Picks up” has no owner on the map.",
         link: "Open the step",
-        bot: true,
       },
-      { author: "Dana", text: "thanks, adding it to Thursday's agenda." },
+      { kind: "person", author: "Dana", text: "thanks, adding it to Thursday's agenda." },
     ],
     /** The step the bot's link opens. */
     step: "Picks up",
   },
-} as const satisfies {
-  tabs: readonly { value: TouchPointTab; label: string; caption: string }[];
-  agent: { lines: readonly { text: string; tone: TerminalTone }[] };
-  [key: string]: unknown;
-};
+} as const satisfies TouchPoints;

@@ -7,13 +7,13 @@ export function AppMock() {
   const { question, answer, gap } = touchPoints.app;
   return (
     <MockWindow
-      board={<Board marks={{ user: { 2: "hi", 3: "hi" } }} />}
+      board={<Board marks={touchPoints.app.marks} />}
       panel={
         <>
           <div className="rounded-8 bg-card px-(--spacing-bubble-x) py-(--spacing-bubble-y) text-ink">{question}</div>
           <div>
-            {answer.map((part) => (
-              <Fragment key={part.text}>
+            {answer.map((part, index) => (
+              <Fragment key={index}>
                 {part.text}
                 {"cite" in part && <Tag>{part.cite}</Tag>}
               </Fragment>
@@ -37,11 +37,11 @@ const tones: Record<TerminalTone, string> = {
 export function AgentMock() {
   return (
     <MockWindow
-      board={<Board marks={{ user: { 0: "hi", 1: "warn", 2: "warn" }, front: { 0: "warn" } }} />}
+      board={<Board marks={touchPoints.agent.marks} />}
       panel={
-        <div className="grid gap-0.75 rounded-8 bg-term p-3 font-mono leading-normal text-term-ink">
-          {touchPoints.agent.lines.map((line) => (
-            <span key={line.text} className={tones[line.tone]}>
+        <div className="grid gap-(--spacing-term-gap) rounded-8 bg-term p-3 font-mono leading-normal text-term-ink">
+          {touchPoints.agent.lines.map((line, index) => (
+            <span key={index} className={tones[line.tone]}>
               {line.text}
             </span>
           ))}
@@ -60,15 +60,15 @@ export function ChatMock() {
         <>
           <b>{channel}</b>
           <div className="mt-1.5 grid gap-2.5">
-            {messages.map((message) =>
-              "bot" in message ? (
-                <div key={message.text} className="border-l-2 border-primary pl-2.5">
+            {messages.map((message, index) =>
+              message.kind === "bot" ? (
+                <div key={index} className="border-l-2 border-primary pl-2.5">
                   <b>{message.author}</b> · {message.text}
                   <br />
                   <Tag>{message.link}</Tag>
                 </div>
               ) : (
-                <div key={message.text}>
+                <div key={index}>
                   <b>{message.author}</b> · {message.text}
                 </div>
               ),

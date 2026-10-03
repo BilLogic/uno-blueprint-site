@@ -2,7 +2,16 @@
 
 export type LaneKey = "user" | "front" | "back" | "support";
 
-export type Lane = { key: LaneKey; name: string; steps: readonly string[] };
+/** How a cell stands out: lit by an answer, changed by a what-if, or missing its owner. */
+export type CellMark = "hi" | "warn" | "gap";
+
+/** Marked cells, by step name; every step on the board has a distinct name. */
+export type Marks = Readonly<Partial<Record<string, CellMark>>>;
+
+/** A lane's steps: six on the full board, four on a view cut down for one audience. */
+export type Steps = readonly [string, string, string, string] | readonly [string, string, string, string, string, string];
+
+export type Lane = { key: LaneKey; name: string; steps: Steps };
 
 export const repairBoard = {
   title: "Repair intake, walk-in path",
@@ -66,4 +75,9 @@ export const repairBoard = {
       ],
     },
   ],
-} as const satisfies { title: string; gapLabel: string; detail: object; lanes: readonly Lane[] };
+} as const satisfies {
+  title: string;
+  gapLabel: string;
+  detail: { owner: string; missing: string; status: string; sourcesTitle: string; source: string };
+  lanes: readonly Lane[];
+};

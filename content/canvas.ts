@@ -1,6 +1,25 @@
-import { links } from "./links";
+import { links, type SiteLink } from "./links";
+import type { Marks } from "./repair-board";
 
 export type CanvasTab = "understand" | "check" | "present";
+
+type Canvas = {
+  headline: string;
+  subheadline: string;
+  more: { label: string; link: SiteLink };
+  tabsLabel: string;
+  tabs: readonly { value: CanvasTab; label: string; caption: string }[];
+  understand: { phasesTitle: string; phases: readonly string[]; pathsTitle: string; paths: readonly string[] };
+  check: { step: string; marks: Marks; draft: string };
+  present: {
+    title: string;
+    steps: readonly [string, string, string, string];
+    marks: Marks;
+    notes: readonly string[];
+    slicesTitle: string;
+    slices: readonly string[];
+  };
+};
 
 export const canvas = {
   headline: "Canvas for your team.",
@@ -35,20 +54,19 @@ export const canvas = {
   check: {
     /** The step opened in the side panel, which has no owner yet. */
     step: "Repair done",
+    marks: { "Repair done": "gap" },
     /** What the reader is typing into the empty owner field, caret and all. */
     draft: "Lead technician ▍",
   },
   present: {
     title: "Repair intake, for the exec",
-    /** The user lane cut down to the steps an exec cares about; the third is the one being presented. */
+    /** The user lane cut down to the steps an exec cares about. */
     steps: ["Books a slot", "Technician diagnoses", "Quote approved", "Picks up"],
-    current: 2,
+    /** The step being presented. */
+    marks: { "Quote approved": "hi" },
     notes: ["Most repairs wait on quote approval, a phone call today", "Pick-up has no owner yet"],
     slicesTitle: "Slices",
     /** The first slice is the one open. */
     slices: ["For the exec", "For a new hire", "For the client"],
   },
-} as const satisfies {
-  tabs: readonly { value: CanvasTab; label: string; caption: string }[];
-  [key: string]: unknown;
-};
+} as const satisfies Canvas;

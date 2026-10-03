@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { repairBoard, type LaneKey } from "@/content/repair-board";
+import { repairBoard, type CellMark, type LaneKey, type Marks, type Steps } from "@/content/repair-board";
 
 /**
  * The pieces a product mock is drawn with: a window with the board on the
@@ -17,18 +17,13 @@ export function MockWindow({ board, panel }: { board: ReactNode; panel: ReactNod
   return (
     <div
       aria-hidden="true"
-      className="absolute inset-x-14 top-12 bottom-0 grid grid-cols-[1fr_--spacing(70)] overflow-hidden rounded-t-12 border border-b-0 border-line bg-panel text-mock shadow-mock max-lg:inset-x-3 max-lg:top-10 max-lg:grid-cols-1"
+      className="absolute inset-x-14 top-12 bottom-0 grid grid-cols-[1fr_var(--spacing-mock-panel)] overflow-hidden rounded-t-12 border border-b-0 border-line bg-panel text-mock shadow-mock max-lg:inset-x-3 max-lg:top-10 max-lg:grid-cols-1"
     >
       <div className="grid content-start gap-2 p-5">{board}</div>
       <div className="grid content-start gap-2.5 border-l border-line p-5 max-lg:hidden">{panel}</div>
     </div>
   );
 }
-
-/** How a cell stands out: lit by an answer, changed by a what-if, or missing its owner. */
-export type CellMark = "hi" | "warn" | "gap";
-
-export type Marks = Partial<Record<LaneKey, Partial<Record<number, CellMark>>>>;
 
 const laneDot: Record<LaneKey, string> = {
   user: "before:bg-lane-user",
@@ -37,7 +32,7 @@ const laneDot: Record<LaneKey, string> = {
   support: "before:bg-lane-support",
 };
 
-const columns = { 4: "grid-cols-4", 6: "grid-cols-6" } as const;
+const columns: Record<Steps["length"], string> = { 4: "grid-cols-4", 6: "grid-cols-6" };
 
 const cellMarks: Record<CellMark | "none", string> = {
   none: "bg-panel",
@@ -53,7 +48,7 @@ const cellMarks: Record<CellMark | "none", string> = {
 function Cell({ mark, children }: { mark: CellMark | undefined; children: string }) {
   return (
     <span
-      className={`min-h-8.5 rounded-6 border border-line-2 p-1.5 text-11 leading-tight max-md:grid max-md:min-h-7.5 max-md:content-start max-md:gap-1 max-md:px-1.5 max-md:py-2 max-md:text-0 max-md:before:block max-md:before:h-1 max-md:before:w-(--spacing-bar-long) max-md:before:rounded-2 max-md:before:bg-bar max-md:before:content-[''] max-md:after:block max-md:after:h-1 max-md:after:w-(--spacing-bar-short) max-md:after:rounded-2 max-md:after:bg-line-2 max-md:after:content-[''] ${cellMarks[mark ?? "none"]}`}
+      className={`min-h-(--spacing-cell) rounded-6 border border-line-2 p-1.5 text-11 leading-tight max-md:grid max-md:min-h-(--spacing-cell-bars) max-md:content-start max-md:gap-1 max-md:px-1.5 max-md:py-2 max-md:text-0 max-md:before:block max-md:before:h-1 max-md:before:w-(--spacing-bar-long) max-md:before:rounded-2 max-md:before:bg-bar max-md:before:content-[''] max-md:after:block max-md:after:h-1 max-md:after:w-(--spacing-bar-short) max-md:after:rounded-2 max-md:after:bg-line-2 max-md:after:content-[''] ${cellMarks[mark ?? "none"]}`}
     >
       {mark === "gap" ? repairBoard.gapLabel : children}
     </span>
@@ -63,8 +58,8 @@ function Cell({ mark, children }: { mark: CellMark | undefined; children: string
 type LaneProps = {
   lane: LaneKey;
   name: string;
-  steps: readonly string[];
-  marks?: Partial<Record<number, CellMark>> | undefined;
+  steps: Steps;
+  marks?: Marks;
 };
 
 /** A swimlane: its name with a dot in the lane's colour, then one cell per step. */
@@ -76,9 +71,9 @@ export function Lane({ lane, name, steps, marks = {} }: LaneProps) {
       >
         {name}
       </span>
-      <div className={`grid gap-1.5 ${columns[steps.length as keyof typeof columns] ?? columns[6]}`}>
+      <div className={`grid gap-1.5 ${columns[steps.length]}`}>
         {steps.map((step, index) => (
-          <Cell key={step} mark={marks[index]}>
+          <Cell key={index} mark={marks[step]}>
             {step}
           </Cell>
         ))}
@@ -87,13 +82,13 @@ export function Lane({ lane, name, steps, marks = {} }: LaneProps) {
   );
 }
 
-/** The repair intake board, every lane and step, with some cells marked. */
+/** The repair intake board, every lane and step, with the cells named in `marks` marked. */
 export function Board({ marks = {} }: { marks?: Marks }) {
   return (
     <>
       <b>{repairBoard.title}</b>
       {repairBoard.lanes.map((lane) => (
-        <Lane key={lane.key} lane={lane.key} name={lane.name} steps={lane.steps} marks={marks[lane.key]} />
+        <Lane key={lane.key} lane={lane.key} name={lane.name} steps={lane.steps} marks={marks} />
       ))}
     </>
   );
@@ -103,7 +98,7 @@ export function Board({ marks = {} }: { marks?: Marks }) {
 export function Tag({ amber = false, children }: { amber?: boolean; children: string }) {
   return (
     <span
-      className={`justify-self-start rounded-pill px-2.25 py-0.5 text-11 leading-normal font-medium ${amber ? "bg-amber-bg text-amber" : "bg-hi text-link"}`}
+      className={`justify-self-start rounded-pill px-(--spacing-tag-x) py-0.5 text-11 leading-normal font-medium ${amber ? "bg-amber-bg text-amber" : "bg-hi text-link"}`}
     >
       {children}
     </span>
@@ -114,7 +109,7 @@ export function Tag({ amber = false, children }: { amber?: boolean; children: st
 export function Note({ children }: { children: string }) {
   return (
     <div className="flex gap-2">
-      <i className="mt-1.25 size-1.75 flex-none rounded-full bg-amber" />
+      <span className="mt-(--spacing-note-dot-y) size-(--spacing-note-dot) flex-none rounded-full bg-amber" />
       <span>{children}</span>
     </div>
   );
@@ -125,16 +120,16 @@ type OptionListProps = {
   options: readonly string[];
   /** The first option is the open one, drawn as a tag. */
   firstOpen?: boolean;
-  className?: string;
+  titleClassName?: string;
 };
 
 /** A titled group of options in the side panel. */
-export function OptionList({ title, options, firstOpen = false, className = "" }: OptionListProps) {
+export function OptionList({ title, options, firstOpen = false, titleClassName = "" }: OptionListProps) {
   return (
     <>
-      <b className={className}>{title}</b>
+      <b className={titleClassName}>{title}</b>
       {options.map((option, index) =>
-        firstOpen && index === 0 ? <Tag key={option}>{option}</Tag> : <span key={option}>{option}</span>,
+        firstOpen && index === 0 ? <Tag key={index}>{option}</Tag> : <span key={index}>{option}</span>,
       )}
     </>
   );

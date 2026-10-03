@@ -171,6 +171,13 @@
   --text-lane--line-height: 1.5;
   --shadow-mock: 0 20px 50px rgba(0, 0, 0, 0.1);
   --spacing-dots: 18px; /* the stage's dot grid */
+  --spacing-mock-panel: 280px; /* the mock's side panel */
+  --spacing-cell: 34px; /* a cell's least height */
+  --spacing-cell-bars: 30px; /* the same, drawn as bars on a phone */
+  --spacing-tag-x: 9px;
+  --spacing-note-dot: 7px;
+  --spacing-note-dot-y: 5px; /* drops the dot to the first line's middle */
+  --spacing-term-gap: 3px;
   --spacing-lane-label: 6.4em;
   --spacing-lane-gap: 0.5em;
   --spacing-lane-y: 0.45em;

@@ -13,7 +13,7 @@ export function UnderstandMock() {
       panel={
         <>
           <OptionList title={phasesTitle} options={phases} firstOpen />
-          <OptionList title={pathsTitle} options={paths} className="mt-2" />
+          <OptionList title={pathsTitle} options={paths} titleClassName="mt-2" />
         </>
       }
     />
@@ -24,7 +24,7 @@ export function UnderstandMock() {
 export function CheckMock() {
   return (
     <MockWindow
-      board={<Board marks={{ user: { 4: "gap" } }} />}
+      board={<Board marks={canvas.check.marks} />}
       panel={
         <>
           <StepDetail step={canvas.check.step} />
@@ -37,15 +37,15 @@ export function CheckMock() {
 
 /** The board cut down for one audience, with the findings to walk them through. */
 export function PresentMock() {
-  const { title, steps, current, notes, slicesTitle, slices } = canvas.present;
+  const { title, steps, marks, notes, slicesTitle, slices } = canvas.present;
   return (
     <MockWindow
       board={
         <>
           <b>{title}</b>
-          <Lane lane={userLane.key} name={userLane.name} steps={steps} marks={{ [current]: "hi" }} />
-          {notes.map((note) => (
-            <Note key={note}>{note}</Note>
+          <Lane lane={userLane.key} name={userLane.name} steps={steps} marks={marks} />
+          {notes.map((note, index) => (
+            <Note key={index}>{note}</Note>
           ))}
         </>
       }

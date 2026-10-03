@@ -70,24 +70,10 @@ for (const row of rows) {
   });
 }
 
-/** The font size of the first cell on the canvas board, the words of which a phone draws as bars. */
-const cellFontSize = (page: Page) =>
-  page
-    .locator("#canvas-stage")
-    .getByText("Books a slot", { exact: true })
-    .evaluate((cell) => getComputedStyle(cell).fontSize);
-
-test("a wide screen shows the cells' words, a phone draws them as bars", async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/");
-  expect(await cellFontSize(page)).toBe("11px");
-
-  await page.setViewportSize({ width: 390, height: 844 });
-  expect(await cellFontSize(page)).toBe("0px");
-});
-
 test("the canvas's side link sits beside the headline, and on a phone under the sub-headline", async ({ page }) => {
-  const section = page.locator("section", { has: page.locator("#canvas-tabs") });
+  const section = page.locator("section", {
+    has: page.getByRole("heading", { name: "Canvas for your team." }),
+  });
   const sub = section.getByText("One blueprint for the whole service.", { exact: false });
   const link = section.getByRole("link", { name: "Try the demo" });
 

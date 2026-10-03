@@ -10,7 +10,6 @@ export const tabId = (idBase: string, value: string) => `${idBase}-tab-${value}`
 export const tabPanelId = (idBase: string, value: string) => `${idBase}-panel-${value}`;
 
 type TabListProps<T extends string> = {
-  id?: string;
   label: string;
   /** Prefix for the tab and panel ids; the caller renders the selected tab's panel with `tabPanelId`. */
   idBase: string;
@@ -28,7 +27,6 @@ type TabListProps<T extends string> = {
  * selected tab carries `aria-selected="true"` to style against.
  */
 export function TabList<T extends string>({
-  id,
   label,
   idBase,
   tabs,
@@ -53,7 +51,7 @@ export function TabList<T extends string>({
   }
 
   return (
-    <div id={id} role="tablist" aria-label={label} className={className} onKeyDown={onKeyDown}>
+    <div role="tablist" aria-label={label} className={className} onKeyDown={onKeyDown}>
       {tabs.map((tab, index) => {
         const selected = index === current;
         return (

@@ -14,7 +14,7 @@ export type ShowcaseItem<T extends string> = {
 };
 
 type ShowcaseProps<T extends string> = {
-  /** Prefix for the ids: `<idBase>-tabs`, `<idBase>-stage`, `<idBase>-cap`, and the tabs' own. */
+  /** Prefix for the ids of the tabs and their panels. */
   idBase: string;
   /** Names the tab row for assistive technology. */
   label: string;
@@ -34,7 +34,6 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
   return (
     <>
       <TabList
-        id={`${idBase}-tabs`}
         label={label}
         idBase={idBase}
         tabs={items}
@@ -43,14 +42,17 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
         className="mb-4 flex flex-wrap gap-2"
         tabClassName="inline-flex cursor-pointer items-center gap-2 rounded-pill border border-line bg-panel px-3.5 py-2.5 text-14 leading-none font-medium text-muted aria-selected:border-ink aria-selected:text-ink"
       />
-      <div role="tabpanel" id={tabPanelId(idBase, item.value)} aria-labelledby={tabId(idBase, item.value)}>
-        <div
-          id={`${idBase}-stage`}
-          className="relative aspect-video max-w-full overflow-hidden rounded-16 border border-line bg-card bg-dots"
-        >
+      <div
+        role="tabpanel"
+        id={tabPanelId(idBase, item.value)}
+        aria-labelledby={tabId(idBase, item.value)}
+        // The picture is hidden from assistive technology, so the panel itself takes focus.
+        tabIndex={0}
+      >
+        <div className="relative aspect-video max-w-full overflow-hidden rounded-16 border border-line bg-card bg-dots">
           {item.picture}
         </div>
-        <p id={`${idBase}-cap`} className="mt-4 max-w-caption text-14 text-muted">
+        <p className="mt-4 max-w-caption text-14 text-muted">
           <b className="font-medium text-ink">{item.label}.</b> {item.caption}
         </p>
       </div>
