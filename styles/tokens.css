@@ -159,8 +159,6 @@
   --spacing-mark: 22px; /* the logo mark */
   --spacing-icon: 20px; /* footer and nav icons */
   --spacing-icon-sm: 15px; /* icons inside the view switch */
-  /* The hero picture's height, matched to the prototype's render; grows with the viewport above md. */
-  --spacing-hero-picture: 597px;
   --container-page: 1280px;
   --container-hero: 760px;
   --container-lead: 540px;
@@ -266,6 +264,47 @@
   /* A warning on the always-dark terminal; its command and progress lines use term-key and term-faint. */
   --color-term-amber: #fbbf6a;
 
+  /* Hero picture (it shares the lane accents above) */
+  --color-cell: color-mix(in oklab, var(--color-card) 60%, var(--color-panel)); /* a filled cell */
+  --color-sketch: color-mix(in oklab, var(--color-ink) 32%, transparent); /* the first line of sketched text */
+  --spacing-hero-stage-x: clamp(16px, 2vw, 28px);
+  --spacing-hero-stage-y: clamp(44px, 6vw, 88px);
+  --spacing-hero-stage-gap: clamp(16px, 2.4vw, 36px);
+  --spacing-hero-feed-gap: clamp(14px, 2.2vw, 34px);
+  --spacing-hero-panel: min(100%, 250px);
+  /* The panel's content width below which its tab row holds only two tabs, then one. */
+  --container-hero-tabs-3: 191px;
+  --container-hero-tabs-2: 131px;
+  --spacing-hero-feed-inset: max(0px, calc(100% - 250px)); /* the tools and node end where the panel's column would */
+  --shadow-hero-panel: var(--shadow-card), 0 24px 50px -24px rgba(0, 0, 0, 0.35);
+  --shadow-walker: 0 0 0 2px var(--color-panel), 0 4px 10px -2px rgba(0, 0, 0, 0.35);
+  --shadow-lit: 0 0 0 4px var(--color-brand-soft); /* a tool sending a document */
+  --shadow-focus: 0 0 0 3px var(--color-brand-soft); /* the cell in the panel */
+  --shadow-tab: 0 1.5px 0 var(--color-ink); /* the selected tab's underline */
+  --ease-walk: cubic-bezier(0.5, 0, 0.2, 1);
+  --ease-sketch: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-cap-in: cap-in 0.4s both;
+  --animate-source-pop: source-pop 0.35s both;
+  @keyframes cap-in {
+    from {
+      opacity: 0;
+      transform: translateY(5px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes source-pop {
+    from {
+      opacity: 0;
+      transform: scale(0.4);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
   /*
    * Proof chart, ideas timeline and the PLUS card. The chart's bars, the
    * timeline's column and nodes, and the card's frame are sized in px by the
@@ -390,12 +429,6 @@
 }
 
 :root {
-  @variant md {
-    --spacing-hero-picture: calc(372px + 12vw);
-  }
-  @variant 2xl {
-    --spacing-hero-picture: min(calc(470px + 12vw), 647px);
-  }
   @variant max-2xl {
     --spacing-gutter: 40px;
     --spacing-section: 72px;
@@ -436,6 +469,43 @@
   &:where(:root[data-theme="dark"] *) {
     @slot;
   }
+}
+
+/* Hero picture */
+:root {
+  --hero-stage-columns: minmax(150px, 1fr) minmax(0, 500px) minmax(150px, 1fr);
+  --hero-tool-columns: repeat(2, 42px);
+  --hero-lane-columns: 10px repeat(6, minmax(0, 1fr));
+  @variant max-md {
+    --hero-tool-columns: repeat(8, 30px);
+    --hero-lane-columns: 6px repeat(6, minmax(0, 1fr));
+  }
+}
+
+/* A walker steps along a curve and fades in once placed. */
+@utility transition-walk {
+  transition:
+    transform 0.65s var(--ease-walk),
+    opacity 0.4s;
+}
+
+/* A panel's rim, lit where the pointer is (hooks/use-pointer-light.ts sets --mx and --my). */
+@utility rim-light {
+  background:
+    radial-gradient(420px circle at var(--mx, -999px) var(--my, -999px), var(--color-line-hot), transparent 62%),
+    linear-gradient(to bottom, var(--color-line-2), var(--color-line));
+}
+
+/* The dot grid behind the hero picture, fading out towards its edges. */
+@utility hero-dots {
+  background-image: radial-gradient(var(--color-line-2) 1px, transparent 1px);
+  background-size: 20px 20px;
+  mask-image: radial-gradient(ellipse 62% 72% at 50% 50%, #000 15%, transparent 78%);
+}
+
+/* The glow behind the hero picture; dark mode only. */
+@utility hero-glow {
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--color-brand) 14%, transparent), transparent);
 }
 
 /*

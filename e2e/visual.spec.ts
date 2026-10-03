@@ -23,6 +23,8 @@ for (const width of widths) {
       });
 
       test("nav and hero", async ({ page }) => {
+        // The hero picture draws its beams and projection once it has measured itself.
+        await page.waitForFunction(() => document.querySelector("[role=img] polygon")?.hasAttribute("points"));
         await expect(page).toHaveScreenshot(`top-${width}-${colorScheme}.png`);
       });
 
