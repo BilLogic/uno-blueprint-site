@@ -48,7 +48,7 @@ export const map = {
     { lane: 1, step: 2, text: "Calls with a quote" },
     { lane: 1, step: 0, text: "Logs the device" },
     { lane: 2, step: 0, text: "Tags the device" },
-    { lane: 2, step: 1, text: "Diagnoses the fault" },
+    { lane: 2, step: 1, text: "Diag\u00adnoses the fault" },
     { lane: 3, step: 1, text: "Parts inventory" },
   ],
   /**

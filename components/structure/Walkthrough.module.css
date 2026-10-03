@@ -710,8 +710,18 @@
 }
 
 .tabs span:first-child {
+  position: relative;
   color: var(--color-ink);
-  box-shadow: 0 1.5px 0 var(--color-ink);
+}
+
+/* The underline is its own box: an outer shadow on a scaled panel leaks a hairline up the tab's sides. */
+.tabs span:first-child::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1.5px;
+  height: 1.5px;
+  background: var(--color-ink);
 }
 
 .evidence {
@@ -877,6 +887,10 @@
 
   .stage .tabs span:first-child {
     background: var(--color-muted);
+  }
+
+  .stage .tabs span:first-child::after {
+    display: none;
   }
 
   .stage .pill {

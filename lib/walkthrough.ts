@@ -118,8 +118,12 @@ export function fitStage(frameWidth: number, availableHeight: number): StageFit 
   return { narrow: false, height: STAGE_HEIGHT * k, scales: [k, k, k] };
 }
 
-/** The vertical middle and horizontal centre of what each pose shows, in stage px. */
-const POSE_MIDDLE = [292, 319, 258] as const;
+/**
+ * The vertical middle and horizontal centre of what each pose shows, in stage px.
+ * The middles are measured from the drawn board, not the prototype's figures,
+ * which left the flat board 35 px high in its frame on a phone.
+ */
+const POSE_MIDDLE = [260, 250, 229] as const;
 const POSE_CENTRE = [505, 516, 494] as const;
 
 /**
