@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { showOnly } from "./isolate";
 
 // Baselines are rendered on Linux (CI, or the Playwright image locally): font
 // rasterisation differs by platform, so other platforms skip unless asked.
@@ -25,9 +26,9 @@ for (const width of widths) {
       });
 
       test("bento", async ({ page }) => {
-        const section = page
-          .locator("section")
-          .filter({ has: page.getByRole("heading", { name: "What the structure gives you" }) });
+        const duo = page.getByRole("group", { name: "Uno map, duo users" });
+        const section = page.locator("section").filter({ has: duo });
+        await showOnly(duo);
         await expect(section).toHaveScreenshot(`bento-${width}-${colorScheme}.png`);
       });
     });
