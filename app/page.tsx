@@ -1,8 +1,11 @@
 import { AgentView } from "@/components/agent/AgentView";
 import { Bento } from "@/components/bento/Bento";
+import { ClosingBand } from "@/components/closing/ClosingBand";
 import { Footer } from "@/components/footer/Footer";
+import { GetStarted } from "@/components/get-started/GetStarted";
 import { Hero } from "@/components/hero/Hero";
 import { Nav } from "@/components/nav/Nav";
+import { Questions } from "@/components/questions/Questions";
 import { Container } from "@/components/ui/Container";
 import { bento } from "@/content/bento";
 
@@ -23,6 +26,9 @@ export default function Home() {
             <Bento />
           </Container>
         </section>
+        <GetStarted />
+        <Questions />
+        <ClosingBand />
       </main>
       <AgentView />
       <Footer />

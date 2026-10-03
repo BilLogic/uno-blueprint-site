@@ -62,7 +62,8 @@ test.describe("bento", () => {
 
   test("a panel reached with the keyboard plays as it does under the pointer", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("link", { name: "Try the demo" }).focus();
+    // The hero's link, the last stop before the bento.
+    await page.getByRole("link", { name: "Try the demo" }).first().focus();
     for (const title of titles.slice(0, 4)) {
       await page.keyboard.press("Tab");
       await expect(panel(page, title)).toBeFocused();
