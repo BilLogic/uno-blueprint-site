@@ -1,6 +1,6 @@
-import type { CSSProperties } from "react";
 import type { Voice } from "@/content/ideas";
 import { anchorProps } from "@/components/ui/anchor-props";
+import { dataFlag } from "@/components/ui/data-flag";
 import { initials } from "@/lib/ideas-timeline";
 
 type VoiceCardProps = {
@@ -12,9 +12,10 @@ type VoiceCardProps = {
   on: boolean;
 };
 
+/** A card slides in from the line's side until the line reaches it. */
 const sides = {
-  left: "col-start-1 translate-x-4.5",
-  right: "col-start-3 -translate-x-4.5",
+  left: "col-start-1 motion-safe:scripted:translate-x-4.5",
+  right: "col-start-3 motion-safe:scripted:-translate-x-4.5",
 } as const;
 
 /** Only a portrait with a recorded permission is shown; everyone else gets initials. */
@@ -25,7 +26,13 @@ function Avatar({ voice }: { voice: Voice }) {
       className="grid size-avatar flex-none place-items-center overflow-hidden rounded-full border border-line bg-card-2 text-13 font-medium text-muted"
     >
       {voice.portrait.status === "cleared" ? (
-        <img src={voice.portrait.src} alt="" className="block size-full object-cover" />
+        <img
+          src={voice.portrait.src.src}
+          width={voice.portrait.src.width}
+          height={voice.portrait.src.height}
+          alt=""
+          className="block size-full object-cover"
+        />
       ) : (
         initials(voice.name)
       )}
@@ -40,10 +47,10 @@ export function VoiceCard({ voice, side, row, on }: VoiceCardProps) {
       {...anchorProps(voice.link)}
       title={voice.source}
       data-voice
-      data-on={on ? "" : undefined}
+      data-on={dataFlag(on)}
       // Each card spans two rows so the two columns interleave down the line.
-      style={{ gridRow: `${row} / span 2` } as CSSProperties}
-      className={`mb-6.5 block self-start rounded-16 border border-line-2 bg-panel p-5 text-ink opacity-0 [transition:opacity_var(--duration-t-3)_var(--ease-out),translate_var(--duration-t-4)_var(--ease-out),border-color_var(--duration-t-rail)] hover:border-muted data-on:translate-x-0 data-on:opacity-100 motion-reduce:translate-x-0 motion-reduce:opacity-100 motion-reduce:transition-none max-md:hidden ${sides[side]}`}
+      style={{ gridRow: `${row} / span 2` }}
+      className={`mb-6.5 block self-start rounded-16 border border-line-2 bg-panel p-5 text-ink [transition:opacity_var(--duration-t-3)_var(--ease-out),translate_var(--duration-t-4)_var(--ease-out),border-color_var(--duration-t-rail)] hover:border-muted motion-safe:scripted:opacity-0 data-on:translate-x-0 data-on:opacity-100 motion-reduce:transition-none max-md:hidden ${sides[side]}`}
     >
       <span className="mb-3 flex gap-2.5 text-12 leading-caption font-medium text-muted">
         <b className="font-medium text-ink">{voice.date}</b>

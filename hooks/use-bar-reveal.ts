@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { barProgress, isBarFull, phoneReveal, phoneRevealDue } from "@/lib/proof-chart";
-import { useMediaQuery, useReducedMotion } from "./use-media-query";
+import { useReducedMotion, useWide } from "./use-media-query";
 
 const sameFlags = (a: readonly boolean[], b: readonly boolean[]) =>
   a.length === b.length && a.every((flag, i) => flag === b[i]);
@@ -21,7 +21,7 @@ export function useBarReveal<T extends HTMLElement>(
   const [chart, setChart] = useState<T | null>(null);
   const [full, setFull] = useState<readonly boolean[]>(() => Array<boolean>(pairs).fill(false));
   const reduced = useReducedMotion();
-  const phone = useMediaQuery("(max-width: 760px)");
+  const phone = !useWide();
 
   useEffect(() => {
     if (!chart) return;
@@ -30,12 +30,11 @@ export function useBarReveal<T extends HTMLElement>(
     const baselines = groups.map((group) => group.querySelector<HTMLElement>("[data-baseline]"));
     const timers: number[] = [];
     let frame = 0;
-    let revealed = false;
 
     function revealOnce() {
-      if (revealed) return;
       if (!reduced && !phoneRevealDue(root.getBoundingClientRect().top, innerHeight)) return;
-      revealed = true;
+      // Revealed for good: nothing left to follow.
+      stopListening();
       groups.forEach((group, i) => {
         const { growDelayMs, valuesAtMs } = reduced ? { growDelayMs: 0, valuesAtMs: 0 } : phoneReveal(i);
         group.style.setProperty("--d", `${growDelayMs}ms`);
@@ -66,12 +65,16 @@ export function useBarReveal<T extends HTMLElement>(
       if (!frame) frame = requestAnimationFrame(update);
     };
 
+    function stopListening() {
+      removeEventListener("scroll", schedule);
+      removeEventListener("resize", schedule);
+    }
+
     addEventListener("scroll", schedule, { passive: true });
     addEventListener("resize", schedule);
     schedule();
     return () => {
-      removeEventListener("scroll", schedule);
-      removeEventListener("resize", schedule);
+      stopListening();
       cancelAnimationFrame(frame);
       for (const timer of timers) clearTimeout(timer);
     };

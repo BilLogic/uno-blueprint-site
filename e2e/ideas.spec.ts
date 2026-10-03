@@ -94,7 +94,7 @@ test.describe("on a phone", () => {
 
     const results = await page.locator("#proof").boundingBox();
     const card = await page.locator("#ideas [data-end]").boundingBox();
-    // Only the results section's short foot lies between them, and no rule.
+    // The card starts where the results section ends: no heading, no rule.
     expect(card!.y - (results!.y + results!.height)).toBe(0);
     await expect(section(page)).toHaveCSS("border-top-width", "0px");
     await expect(page.locator("#ideas [data-end]")).toHaveCSS("opacity", "1");

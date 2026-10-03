@@ -1,16 +1,17 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { ideas } from "@/content/ideas";
+import { dataFlag } from "@/components/ui/data-flag";
 import { useTimeline } from "@/hooks/use-timeline";
 import { VoiceCard } from "./VoiceCard";
 
 const nodeClass =
-  "absolute block size-timeline-node -translate-1/2 scale-0 rounded-full border-[1.5px] border-line-hot bg-bg [transition:scale_var(--duration-t-2)_var(--ease-spring),border-color_var(--duration-t-2),background-color_var(--duration-t-2),box-shadow_var(--duration-t-2)] data-on:scale-100 data-on:border-brand data-on:bg-brand data-on:shadow-node motion-reduce:scale-100 motion-reduce:transition-none";
-const railClass = "fill-none [stroke-width:1.25] transition-[stroke-dashoffset] duration-t-rail ease-linear";
+  "absolute block size-timeline-node -translate-1/2 scale-0 rounded-full border-(length:--spacing-chart-stroke) border-line-hot bg-bg [transition:scale_var(--duration-t-2)_var(--ease-spring),border-color_var(--duration-t-2),background-color_var(--duration-t-2),box-shadow_var(--duration-t-2)] data-on:scale-100 data-on:border-brand data-on:bg-brand data-on:shadow-node motion-reduce:scale-100 motion-reduce:transition-none";
+const railClass =
+  "fill-none [stroke-width:var(--spacing-timeline-stroke)] transition-[stroke-dashoffset] duration-t-rail ease-linear";
 
-const at = (x: number, y: number) => ({ left: x, top: y }) as CSSProperties;
-const flag = (on: boolean) => (on ? "" : undefined);
+const at = (x: number, y: number) => ({ left: x, top: y });
 
 /**
  * The nine voices down a winding line that ends in `end`. Nothing is drawn up
@@ -41,8 +42,8 @@ export function Timeline({ end }: { end: ReactNode }) {
               y1={y}
               x2={armTo}
               y2={y}
-              data-on={flag(i < progress.nodes)}
-              className="stroke-line-2 opacity-0 transition-[opacity,stroke] duration-t-2 data-on:stroke-brand data-on:opacity-100 motion-reduce:opacity-100 motion-reduce:transition-none"
+              data-on={dataFlag(i < progress.nodes)}
+              className="stroke-line-2 opacity-0 transition-[opacity,stroke] duration-t-2 ease-plain data-on:stroke-brand data-on:opacity-100 motion-reduce:opacity-100 motion-reduce:transition-none"
             />
           ))}
         </g>
@@ -57,16 +58,17 @@ export function Timeline({ end }: { end: ReactNode }) {
         />
       ))}
       {layout?.points.map(({ x, y }, i) => (
-        <i key={i} aria-hidden data-on={flag(i < progress.nodes)} style={at(x, y)} className={nodeClass} />
+        <i key={i} aria-hidden data-on={dataFlag(i < progress.nodes)} style={at(x, y)} className={nodeClass} />
       ))}
       {layout && (
-        <i aria-hidden data-on={flag(progress.end)} style={at(layout.middle, layout.endY)} className={nodeClass} />
+        <i aria-hidden data-on={dataFlag(progress.endNode)} style={at(layout.middle, layout.endY)} className={nodeClass} />
       )}
       <div
         data-end
-        data-on={flag(progress.end)}
-        style={{ gridRow: voices.length + 2 } as CSSProperties}
-        className="col-span-full mt-19 origin-top translate-y-4.5 scale-96.5 opacity-0 [transition:opacity_var(--duration-t-3)_var(--ease-out),translate_var(--duration-t-4)_var(--ease-spring),scale_var(--duration-t-4)_var(--ease-spring)] data-on:translate-y-0 data-on:scale-100 data-on:opacity-100 motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:opacity-100 motion-reduce:transition-none max-md:mt-0 max-md:translate-y-0 max-md:scale-100 max-md:opacity-100"
+        data-on={dataFlag(progress.end)}
+        style={{ gridRow: voices.length + 2 }}
+        // Waits for the line on a wide screen; a phone has no line and shows it at once.
+        className="col-span-full mt-19 origin-top [transition:opacity_var(--duration-t-3)_var(--ease-out),translate_var(--duration-t-4)_var(--ease-spring),scale_var(--duration-t-4)_var(--ease-spring)] data-on:translate-y-0 data-on:scale-100 data-on:opacity-100 motion-reduce:transition-none max-md:mt-0 md:motion-safe:scripted:translate-y-4.5 md:motion-safe:scripted:scale-96.5 md:motion-safe:scripted:opacity-0"
       >
         {end}
       </div>

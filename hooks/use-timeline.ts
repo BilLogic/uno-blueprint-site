@@ -10,7 +10,7 @@ import {
   type LengthSample,
   type NodePoint,
 } from "@/lib/ideas-timeline";
-import { useMediaQuery, useReducedMotion } from "./use-media-query";
+import { useReducedMotion, useWide } from "./use-media-query";
 
 export type TimelineLayout = {
   width: number;
@@ -25,16 +25,19 @@ export type TimelineLayout = {
 export type TimelineProgress = {
   /** How many nodes, top first, the green line has reached. */
   nodes: number;
-  /** The line has reached its end. */
+  /** The line has reached its end node. */
+  endNode: boolean;
+  /** The end card is due: a hair before the line touches it, so the two land together. */
   end: boolean;
 };
 
 /** Samples taken along the line to find how much of it is drawn at a height. */
 const SAMPLES = 200;
-/** The end card arrives a hair before the line touches it, so the two land together. */
+/** How far ahead of the line the end card arrives. */
 const END_LEAD = 2;
 
-const sameProgress = (a: TimelineProgress, b: TimelineProgress) => a.nodes === b.nodes && a.end === b.end;
+const sameProgress = (a: TimelineProgress, b: TimelineProgress) =>
+  a.nodes === b.nodes && a.endNode === b.endNode && a.end === b.end;
 
 /**
  * Draws the ideas timeline as the reader scrolls. The line is laid out from
@@ -45,10 +48,10 @@ const sameProgress = (a: TimelineProgress, b: TimelineProgress) => a.nodes === b
 export function useTimeline<T extends HTMLElement>() {
   const [element, setElement] = useState<T | null>(null);
   const [layout, setLayout] = useState<TimelineLayout | null>(null);
-  const [progress, setProgress] = useState<TimelineProgress>({ nodes: 0, end: false });
+  const [progress, setProgress] = useState<TimelineProgress>({ nodes: 0, endNode: false, end: false });
   const track = useRef<SVGPathElement>(null);
   const line = useRef<SVGPathElement>(null);
-  const wide = useMediaQuery("(min-width: 761px)");
+  const wide = useWide();
   const reduced = useReducedMotion();
 
   // Lay the line out from where the cards sit, again whenever the timeline changes size.
@@ -100,7 +103,11 @@ export function useTimeline<T extends HTMLElement>() {
       const { track: ahead, reached } = drawHeights(innerHeight, root.getBoundingClientRect().top, reduced);
       trackPath.style.strokeDashoffset = `${length - lengthAtHeight(samples, ahead)}`;
       linePath.style.strokeDashoffset = `${length - lengthAtHeight(samples, reached)}`;
-      const next = { nodes: reachedCount(heights, reached), end: endY <= reached + END_LEAD };
+      const next = {
+        nodes: reachedCount(heights, reached),
+        endNode: endY <= reached,
+        end: endY <= reached + END_LEAD,
+      };
       setProgress((was) => (sameProgress(was, next) ? was : next));
     };
     const schedule = () => {
@@ -109,10 +116,13 @@ export function useTimeline<T extends HTMLElement>() {
     // Hidden until the first frame places it, so the line never flashes in whole.
     trackPath.style.strokeDashoffset = `${length}`;
     linePath.style.strokeDashoffset = `${length}`;
+    // A taller or shorter screen moves the heights the line is drawn to.
     addEventListener("scroll", schedule, { passive: true });
+    addEventListener("resize", schedule);
     schedule();
     return () => {
       removeEventListener("scroll", schedule);
+      removeEventListener("resize", schedule);
       cancelAnimationFrame(frame);
     };
   }, [element, layout, wide, reduced]);

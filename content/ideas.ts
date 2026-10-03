@@ -1,3 +1,4 @@
+import type { StaticImageData } from "next/image";
 import { links, type SiteLink } from "./links";
 import plusMark from "@/public/images/plus-mark.png";
 import plusBlueprint from "@/public/images/plus-blueprint.jpg";
@@ -8,7 +9,7 @@ import plusBlueprint from "@/public/images/plus-blueprint.jpg";
  */
 export type Portrait =
   | { status: "not cleared" }
-  | { status: "cleared"; src: string; basis: string };
+  | { status: "cleared"; src: StaticImageData; basis: string };
 
 /** A quote as runs of text; the marked runs are the words that carry it. */
 export type Quote = readonly (string | { mark: string })[];
