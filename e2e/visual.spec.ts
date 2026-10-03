@@ -29,7 +29,15 @@ for (const width of widths) {
         const footer = page.locator("footer");
         await footer.scrollIntoViewIfNeeded();
         await page.getByRole("button", { name: "Toggle theme" }).click();
-        await expect(page).toHaveScreenshot(`footer-${width}-${colorScheme}.png`);
+        // Clipped to the footer and its open menu, so a section added above
+        // the footer never changes this baseline.
+        const menu = page.getByRole("menu");
+        const boxes = [await footer.boundingBox(), await menu.boundingBox()];
+        const top = Math.min(...boxes.map((b) => b!.y));
+        const bottom = Math.max(...boxes.map((b) => b!.y + b!.height));
+        await expect(page).toHaveScreenshot(`footer-${width}-${colorScheme}.png`, {
+          clip: { x: 0, y: top, width, height: bottom - top },
+        });
       });
     });
   }
