@@ -96,8 +96,8 @@ const Cell = memo(function Cell({ sources, focused, cellRef }: CellProps) {
       ref={cellRef}
       className={`relative grid h-13 content-start gap-1.25 rounded-8 border p-2.25 transition-[border-color,background-color,opacity,box-shadow] duration-400 max-md:h-7.5 max-md:gap-0.75 max-md:rounded-6 max-md:p-1.5 ${state} ${filled ? "bg-cell" : ""}`}
     >
-      <u className={`${sketch} ${filled ? "w-sketch-long bg-sketch" : "w-0 bg-line-2"}`} />
-      <u className={`${sketch} bg-line-2 ${filled ? "w-sketch-short" : "w-0"}`} />
+      <u className={`${sketch} ${filled ? "w-bar-long bg-sketch" : "w-0 bg-line-2"}`} />
+      <u className={`${sketch} bg-line-2 ${filled ? "w-bar-short" : "w-0"}`} />
       <span className="absolute right-1.5 bottom-1.25 flex max-md:hidden">
         {sources.map((tool, i) => (
           <i
