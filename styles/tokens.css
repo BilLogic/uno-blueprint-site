@@ -267,8 +267,6 @@
   /* Hero picture (it shares the lane accents above) */
   --color-cell: color-mix(in oklab, var(--color-card) 60%, var(--color-panel)); /* a filled cell */
   --color-sketch: color-mix(in oklab, var(--color-ink) 32%, transparent); /* the first line of sketched text */
-  --text-11-5: 11.5px;
-  --text-11-5--line-height: 1.5;
   --spacing-hero-stage-x: clamp(16px, 2vw, 28px);
   --spacing-hero-stage-y: clamp(44px, 6vw, 88px);
   --spacing-hero-stage-gap: clamp(16px, 2.4vw, 36px);
