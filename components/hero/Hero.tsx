@@ -1,7 +1,7 @@
 import { hero } from "@/content/hero";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { Container } from "@/components/ui/Container";
-import { HeroPicturePlaceholder } from "./HeroPicturePlaceholder";
+import { HeroPicture } from "./HeroPicture";
 
 export function Hero() {
   return (
@@ -19,7 +19,7 @@ export function Hero() {
             </ButtonLink>
           </div>
         </div>
-        <HeroPicturePlaceholder />
+        <HeroPicture />
       </Container>
     </section>
   );
