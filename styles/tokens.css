@@ -200,7 +200,6 @@
   --spacing-hero-feed-inset: max(0px, calc(100% - 250px)); /* the tools and node end where the panel's column would */
   --spacing-sketch-long: 78%; /* the lines sketched in a filled cell */
   --spacing-sketch-short: 48%;
-  --leading-label: 1.2;
   --shadow-hero-panel: var(--shadow-card), 0 24px 50px -24px rgba(0, 0, 0, 0.35);
   --shadow-walker: 0 0 0 2px var(--color-panel), 0 4px 10px -2px rgba(0, 0, 0, 0.35);
   --shadow-lit: 0 0 0 4px var(--color-brand-soft); /* a tool sending a document */

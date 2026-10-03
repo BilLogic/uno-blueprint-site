@@ -2,6 +2,7 @@ import { hero } from "@/content/hero";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { Container } from "@/components/ui/Container";
 import { HeroPicture } from "./HeroPicture";
+import { HeroSprite } from "./HeroSprite";
 
 export function Hero() {
   return (
@@ -19,6 +20,7 @@ export function Hero() {
             </ButtonLink>
           </div>
         </div>
+        <HeroSprite />
         <HeroPicture />
       </Container>
     </section>

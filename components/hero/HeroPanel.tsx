@@ -1,7 +1,8 @@
-import { ImageIcon, X } from "lucide-react";
+import { memo } from "react";
 import { hero } from "@/content/hero";
 import { panelFill, type Board } from "@/lib/hero-picture";
 import { LANE_COLORS } from "./lanes";
+import { Glyph } from "./Glyph";
 import { ToolIcon } from "./ToolIcon";
 
 const { panel: words, tools } = hero.picture;
@@ -17,10 +18,17 @@ const chip = "inline-flex min-w-0 items-center gap-2 rounded-8 border border-lin
  * screens drop the rows the prototype drops: the follow-on links below 1100 px,
  * and the image and tabs on a phone.
  */
-export function HeroPanel({ board, panelRef }: { board: Board; panelRef: (element: HTMLElement | null) => void }) {
-  const cell = board.shown ?? 0;
-  const fill = panelFill(cell, board.sources[cell] ?? [], words.statuses.length);
-  const row = `min-w-0 ${board.panel === "shown" ? "motion-safe:animate-cap-in" : "opacity-0 transition-opacity duration-140"}`;
+type HeroPanelProps = {
+  cell: number;
+  sources: readonly number[];
+  phase: Board["panel"];
+  panelRef: (element: HTMLElement | null) => void;
+};
+
+// Memoised: the board changes several times a second, the panel only when its cell or phase does.
+export const HeroPanel = memo(function HeroPanel({ cell, sources, phase, panelRef }: HeroPanelProps) {
+  const fill = panelFill(cell, sources, words.statuses.length);
+  const row = `min-w-0 ${phase === "shown" ? "motion-safe:animate-cap-in" : "opacity-0 transition-opacity duration-140"}`;
 
   return (
     <div
@@ -29,10 +37,10 @@ export function HeroPanel({ board, panelRef }: { board: Board; panelRef: (elemen
     >
       <div className={`${row} flex items-center gap-1.5 text-faint`}>
         <span className={`${sketch} w-8.5 bg-line-2`} />›<span className={`${sketch} w-8.5 bg-line-2`} />
-        <X aria-hidden strokeWidth={1.75} className="ml-auto size-3.5" />
+        <Glyph name="close" className="ml-auto size-3.5" />
       </div>
       <div className={`${row} grid h-26 place-items-center rounded-10 border border-line bg-card text-faint max-md:hidden`}>
-        <ImageIcon aria-hidden strokeWidth={1.75} className="size-5.5" />
+        <Glyph name="image" className="size-5.5" />
       </div>
       <div className={`${row} ${field}`}>
         <span className={label}>{words.summary}</span>
@@ -97,4 +105,4 @@ export function HeroPanel({ board, panelRef }: { board: Board; panelRef: (elemen
       </div>
     </div>
   );
-}
+});

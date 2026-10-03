@@ -33,7 +33,8 @@ export const WALKERS: readonly Walker[] = ["person", "agent", "person", "agent"]
 
 /** Milliseconds, as the prototype times them. */
 export const TIMING = {
-  firstTick: 1100,
+  /** The finished board shows this long before the first round starts. */
+  firstRound: 1100,
   tick: 1500,
   tickJitter: 400,
   /** How often a picture that is off screen checks again. */
@@ -51,8 +52,9 @@ export const TIMING = {
   close: 260,
   reveal: 340,
   relayout: 120,
-  /** The picture starts once the page is idle, and no later than this after it loads. */
-  startBy: 2000,
+  /** The picture measures itself this long after the page loads, at the next idle moment (or `startBy` later at most). */
+  afterLoad: 1000,
+  startBy: 1000,
   hit: 900,
   ping: 700,
 } as const;

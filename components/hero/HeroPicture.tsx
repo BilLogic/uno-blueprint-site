@@ -1,8 +1,9 @@
 "use client";
 
+import { memo } from "react";
 import markDark from "@/public/images/uno-mark-dark.png";
 import markLight from "@/public/images/uno-mark-light.png";
-import { hero } from "@/content/hero";
+import { hero, type HeroTool } from "@/content/hero";
 import { useHeroPicture } from "@/hooks/use-hero-picture";
 import { usePointerLight } from "@/hooks/use-pointer-light";
 import { HeroBoard } from "./HeroBoard";
@@ -62,23 +63,9 @@ export function HeroPicture() {
 
           <div className="relative z-1 flex items-center justify-between gap-hero-feed-gap pl-hero-feed-inset max-md:flex-col max-md:gap-6.5 max-md:pl-0">
             <div className="relative z-1 grid grid-cols-(--hero-tool-columns) gap-3 max-md:gap-1.75">
-              {picture.tools.map((tool, i) => {
-                const lit = board.lit.includes(i);
-                return (
-                  <span
-                    key={tool.name}
-                    ref={toolRef(i)}
-                    title={tool.name}
-                    className={`grid size-10.5 place-items-center rounded-12 border bg-panel transition-[border-color,box-shadow] duration-300 max-md:size-7.5 max-md:rounded-8 ${lit ? "border-brand shadow-lit" : "border-line-2 shadow-card"}`}
-                  >
-                    <ToolIcon
-                      icon={tool.icon}
-                      markClassName={`size-5 transition-[fill,color] duration-300 max-md:size-3.5 ${lit ? "fill-ink text-ink" : "fill-muted text-muted"}`}
-                      lineClassName={`size-4.75 transition-[color] duration-300 max-md:size-3.5 ${lit ? "text-ink" : "text-muted"}`}
-                    />
-                  </span>
-                );
-              })}
+              {picture.tools.map((tool, i) => (
+                <Tool key={tool.name} tool={tool} lit={board.lit.includes(i)} tileRef={toolRef(i)} />
+              ))}
             </div>
             <div ref={nodeRef} title={picture.node} className="relative z-1 grid place-items-center rounded-mark">
               <img src={markLight.src} width={markLight.width} height={markLight.height} alt="" className={`${markClass} dark:hidden`} />
@@ -88,7 +75,12 @@ export function HeroPicture() {
           </div>
 
           <HeroBoard board={board} {...boardRefs} />
-          <HeroPanel board={board} panelRef={panelRef} />
+          <HeroPanel
+            cell={board.shown ?? 0}
+            sources={board.sources[board.shown ?? 0] ?? []}
+            phase={board.panel}
+            panelRef={panelRef}
+          />
 
           <svg
             ref={lightRef}
@@ -105,3 +97,22 @@ export function HeroPicture() {
     </div>
   );
 }
+
+type ToolProps = { tool: HeroTool; lit: boolean; tileRef: (element: HTMLElement | null) => void };
+
+/** A source tool; it lights while it sends a document. */
+const Tool = memo(function Tool({ tool, lit, tileRef }: ToolProps) {
+  return (
+    <span
+      ref={tileRef}
+      title={tool.name}
+      className={`grid size-10.5 place-items-center rounded-12 border bg-panel transition-[border-color,box-shadow] duration-300 max-md:size-7.5 max-md:rounded-8 ${lit ? "border-brand shadow-lit" : "border-line-2 shadow-card"}`}
+    >
+      <ToolIcon
+        icon={tool.icon}
+        markClassName={`size-5 transition-[fill,color] duration-300 max-md:size-3.5 ${lit ? "fill-ink text-ink" : "fill-muted text-muted"}`}
+        lineClassName={`size-4.75 transition-[color] duration-300 max-md:size-3.5 ${lit ? "text-ink" : "text-muted"}`}
+      />
+    </span>
+  );
+});

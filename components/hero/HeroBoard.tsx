@@ -1,9 +1,9 @@
-import { Bot, ChevronDown, UserRound } from "lucide-react";
-import { Fragment } from "react";
+import { Fragment, memo } from "react";
 import { hero } from "@/content/hero";
 import type { HeroPictureRefs } from "@/hooks/use-hero-picture";
 import { COLS, WALKERS, cellAt, type Board } from "@/lib/hero-picture";
 import { LANE_COLORS } from "./lanes";
+import { Glyph } from "./Glyph";
 import { ToolIcon } from "./ToolIcon";
 
 const { picture } = hero;
@@ -33,7 +33,7 @@ export function HeroBoard({ board, sheetRef, cellRef, walkerRef }: HeroBoardProp
           <span className="text-ink">{breadcrumb.scenario}</span>
           <span className="ml-auto inline-flex items-center gap-1.25 rounded-6 border border-line-2 py-1 pr-1.5 pl-2 text-muted">
             {breadcrumb.path}
-            <ChevronDown aria-hidden strokeWidth={1.75} className="size-2.75" />
+            <Glyph name="chevron" className="size-2.75" />
           </span>
         </div>
         <div
@@ -66,11 +66,7 @@ export function HeroBoard({ board, sheetRef, cellRef, walkerRef }: HeroBoardProp
                 kind === "person" ? "rounded-full bg-ink text-bg" : "rounded-8 bg-brand text-on-primary max-md:rounded-6"
               }`}
             >
-              {kind === "person" ? (
-                <UserRound aria-hidden strokeWidth={2.2} className="size-3.25 max-md:size-2.5" />
-              ) : (
-                <Bot aria-hidden strokeWidth={2.2} className="size-3.25 max-md:size-2.5" />
-              )}
+              <Glyph name={kind} className="size-3.25 max-md:size-2.5" />
             </span>
           ))}
         </div>
@@ -87,8 +83,8 @@ type CellProps = {
 
 const sketch = "block h-1 rounded-2 transition-[width] duration-500 ease-sketch max-md:h-0.5";
 
-/** A cell: two sketched lines once filled, and a badge for each source that fed it. */
-function Cell({ sources, focused, cellRef }: CellProps) {
+/** A cell: two sketched lines once filled, and a badge for each source that fed it. Memoised, so a change to one cell re-renders only that cell. */
+const Cell = memo(function Cell({ sources, focused, cellRef }: CellProps) {
   const filled = sources.length > 0;
   const state = focused
     ? "border-brand shadow-focus"
@@ -118,4 +114,4 @@ function Cell({ sources, focused, cellRef }: CellProps) {
       </span>
     </span>
   );
-}
+});

@@ -273,20 +273,23 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
     open(round.at[0]!);
   }
 
+  /** The board fades out and a new round starts. */
+  function restart() {
+    dispatch({ type: "fade", on: true });
+    later(() => {
+      reset();
+      dispatch({ type: "fade", on: false });
+      later(tick, TIMING.afterReset);
+    }, TIMING.fade);
+  }
+
   function tick() {
     if (!inView() || document.hidden) {
       later(tick, TIMING.idle);
       return;
     }
     if (!queue.length) {
-      later(() => {
-        dispatch({ type: "fade", on: true });
-        later(() => {
-          reset();
-          dispatch({ type: "fade", on: false });
-          later(tick, TIMING.afterReset);
-        }, TIMING.fade);
-      }, TIMING.rest);
+      later(restart, TIMING.rest);
       return;
     }
     // A document every other beat; a step every beat.
@@ -305,10 +308,9 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
   layout();
   void document.fonts?.ready.then(() => live && layout());
   addEventListener("resize", onResize);
-  if (!reduced) {
-    reset();
-    later(tick, TIMING.firstTick);
-  }
+  // The page arrives showing the finished board, so the first round starts the
+  // way every later one does: the board fades and refills.
+  if (!reduced) later(restart, TIMING.firstRound);
 
   return () => {
     live = false;
@@ -318,14 +320,26 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
   };
 }
 
-/** Runs `start` once the browser is idle (or after `ms` at most), so the picture starts after the page has loaded. */
-function whenIdle(start: () => void, ms: number) {
-  if (typeof requestIdleCallback === "function") {
-    const id = requestIdleCallback(start, { timeout: ms });
-    return () => cancelIdleCallback(id);
-  }
-  const id = window.setTimeout(start, 0);
-  return () => clearTimeout(id);
+/**
+ * Runs `start` a while after the page has loaded, at an idle moment, so the
+ * picture's first measurements never hold up the page's first paints.
+ */
+function afterLoad(start: () => void) {
+  let timer: number | undefined;
+  let idle: number | undefined;
+  const wait = () => {
+    timer = window.setTimeout(() => {
+      if (typeof requestIdleCallback === "function") idle = requestIdleCallback(start, { timeout: TIMING.startBy });
+      else start();
+    }, TIMING.afterLoad);
+  };
+  if (document.readyState === "complete") wait();
+  else addEventListener("load", wait, { once: true });
+  return () => {
+    removeEventListener("load", wait);
+    clearTimeout(timer);
+    if (idle !== undefined) cancelIdleCallback(idle);
+  };
 }
 
 /**
@@ -385,7 +399,7 @@ export function useHeroPicture(toolCount: number) {
 
   useEffect(() => {
     let stop: (() => void) | undefined;
-    const cancel = whenIdle(() => {
+    const cancel = afterLoad(() => {
       started.current = true;
       stop = startTimeline({
         el,
@@ -398,7 +412,7 @@ export function useHeroPicture(toolCount: number) {
           jumpNext.current = true;
         },
       });
-    }, TIMING.startBy);
+    });
     return () => {
       cancel();
       stop?.();

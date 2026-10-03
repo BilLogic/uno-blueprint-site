@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { showOnly } from "./isolate";
 
 // Baselines are rendered on Linux (CI, or the Playwright image locally): font
 // rasterisation differs by platform, so other platforms skip unless asked.
@@ -22,6 +23,7 @@ for (const width of widths) {
         // The beams and the projection are drawn once the picture has measured itself.
         await page.waitForFunction(() => document.querySelector("[role=img] polygon")?.hasAttribute("points"));
         const hero = page.locator("main section").first();
+        await showOnly(hero);
         await expect(hero).toHaveScreenshot(`hero-${width}-${colorScheme}.png`);
       });
     });
