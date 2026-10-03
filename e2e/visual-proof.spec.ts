@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { showOnly } from "./isolate";
 
 // Baselines are rendered on Linux (CI, or the Playwright image locally): font
 // rasterisation differs by platform, so other platforms skip unless asked.
@@ -24,7 +25,10 @@ for (const width of widths) {
 
       test("proof chart", async ({ page }) => {
         const section = page.locator("#proof");
+        await showOnly(section);
         await section.scrollIntoViewIfNeeded();
+        // Reduced motion grows every pair to full and shows its values.
+        await expect(section.getByText("71%", { exact: true })).toHaveCSS("opacity", "1");
 
         // The sticky nav would otherwise land over the section wherever the capture scrolls it.
         await page.addStyleTag({ content: "header { visibility: hidden; }" });
