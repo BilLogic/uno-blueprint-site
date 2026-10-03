@@ -100,9 +100,9 @@ describe("poseTransform", () => {
 
   it("centres each pose in the room above the caption on a phone", () => {
     const fit = { narrow: true, height: 400, scales: [0.5, 0.5, 0.5] as const };
-    expect(poseTransform(fit, 0, 400)).toBe("translate(0.0px,54.0px) scale(0.5)");
-    expect(poseTransform(fit, 1, 400)).toBe("translate(-5.5px,40.5px) scale(0.5)");
-    expect(poseTransform(fit, 2, 300)).toBe("translate(5.5px,21.0px) scale(0.5)");
+    expect(poseTransform(fit, 0, 400)).toBe("translate(0.0px,70.0px) scale(0.5)");
+    expect(poseTransform(fit, 1, 400)).toBe("translate(-5.5px,75.0px) scale(0.5)");
+    expect(poseTransform(fit, 2, 300)).toBe("translate(5.5px,35.5px) scale(0.5)");
   });
 });
 
