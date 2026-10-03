@@ -1,0 +1,917 @@
+@reference "../../app/globals.css";
+
+/*
+ * The bento's panels and pictures. Every picture is complete and grey at rest;
+ * while its panel is hovered, focused from the keyboard or playing on a touch
+ * screen ([data-hot]) it plays in the brand colour, each part after its own
+ * delay, and it resets at once when that ends. Geometry and timing are the
+ * prototype's.
+ */
+
+/* ---- panel ---- */
+
+.panel {
+  position: relative;
+  display: flex;
+  grid-column: span 4;
+  min-height: 320px;
+  padding: 1px;
+  border-radius: var(--radius-16);
+  /* The rim: lit where the pointer is (--mx, --my), a quiet gradient elsewhere. */
+  background:
+    radial-gradient(
+      420px circle at var(--mx, -999px) var(--my, -999px),
+      var(--color-line-hot),
+      transparent 62%
+    ),
+    linear-gradient(to bottom, var(--color-line-2), var(--color-line));
+  transition:
+    opacity var(--duration-arrive) var(--ease-out),
+    transform var(--duration-rise) var(--ease-out);
+
+  /* Hidden until it arrives, which takes script; without script it is simply there. */
+  @media (scripting: enabled) {
+    &:not([data-arrived]) {
+      opacity: 0;
+      transform: translateY(44px);
+    }
+  }
+  &:focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+  /* Leaving resets every part at once; only playing is choreographed. */
+  &:not(:hover, :focus-visible, [data-hot]) * {
+    transition-delay: 0s !important;
+  }
+}
+
+.wide {
+  grid-column: span 7;
+  min-height: 400px;
+}
+.narrow {
+  grid-column: span 5;
+  min-height: 400px;
+}
+
+@variant max-xl {
+  .panel {
+    grid-column: span 6;
+  }
+  .wide,
+  .narrow,
+  .panel:last-child {
+    grid-column: span 12;
+  }
+}
+@variant max-sm {
+  .panel {
+    grid-column: span 12;
+  }
+}
+/* Reduced motion: panels are in place, and a picture jumps straight to how it ends. */
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none;
+  }
+  .panel *,
+  .panel *::before,
+  .panel *::after {
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+  }
+}
+
+.inner {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 24px;
+  overflow: hidden;
+  border-radius: calc(var(--radius-16) - 1px);
+  background: var(--color-card);
+}
+
+.title {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: var(--text-16);
+  line-height: var(--text-16--line-height);
+  font-weight: 500;
+  white-space: nowrap;
+
+  & svg {
+    flex: none;
+    width: 17px;
+    height: 17px;
+    color: var(--color-muted);
+  }
+  @variant max-sm {
+    white-space: normal;
+  }
+}
+
+.body {
+  max-width: 44ch;
+  color: var(--color-muted);
+  font-size: var(--text-14);
+  line-height: var(--leading-20);
+}
+
+.picture {
+  display: grid;
+  flex: 1;
+  align-content: center;
+  padding-top: 22px;
+  font-size: var(--text-12);
+  line-height: 1.5;
+}
+
+/* ---- a small blueprint grid, shared by the duo picture ---- */
+
+.grid {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-10);
+  background: var(--color-panel);
+
+  & > div {
+    display: grid;
+    grid-template-columns: 6px repeat(5, minmax(0, 1fr));
+    gap: 4px;
+    align-items: center;
+  }
+  & b {
+    display: block;
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-2);
+    background: var(--color-line-hot);
+    opacity: 0.55;
+  }
+  & i {
+    display: block;
+    height: 17px;
+    border-radius: var(--radius-4);
+    background: var(--color-card-2);
+    outline: 1px dashed transparent;
+    outline-offset: -1px;
+    transition:
+      background var(--duration-t-2),
+      outline-color var(--duration-t-2);
+  }
+  & .empty {
+    background: none;
+    box-shadow: inset 0 0 0 1px var(--color-line);
+  }
+}
+
+/* ---- duo users: one cell, its two readings ---- */
+
+.duo {
+  display: grid;
+  justify-items: center;
+  width: 100%;
+}
+.board {
+  position: relative;
+  width: min(100%, 300px);
+}
+.token {
+  position: absolute;
+  bottom: -9px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-ink);
+  color: var(--color-bg);
+  box-shadow: 0 0 0 2px var(--color-card);
+  pointer-events: none;
+  transition:
+    transform var(--duration-travel) var(--ease-io),
+    background var(--duration-t-2);
+
+  & svg {
+    width: 13px;
+    height: 13px;
+  }
+}
+.person {
+  left: -9px;
+}
+.agent {
+  right: -9px;
+  border-radius: var(--radius-8);
+  background: var(--color-muted);
+}
+.branch {
+  position: relative;
+  width: 50%;
+  height: 30px;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 0;
+    height: 15px;
+    border-left: 1px solid var(--color-line-2);
+    transition: border-color var(--duration-t-2);
+  }
+  & i {
+    position: absolute;
+    inset: 15px 0 0;
+    display: block;
+    border: 1px solid var(--color-line-2);
+    border-bottom: 0;
+    border-radius: var(--radius-12) var(--radius-12) 0 0;
+    transition: border-color var(--duration-t-2);
+  }
+}
+.leaves {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  width: 100%;
+
+  @variant max-sm {
+    gap: 10px;
+  }
+}
+.leaf {
+  display: grid;
+  justify-items: center;
+  min-width: 0;
+
+  & > * {
+    box-sizing: border-box;
+    width: min(100%, 230px);
+  }
+}
+.page {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 7px 10px;
+  align-content: start;
+  min-height: 88px;
+  padding: 10px;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-10);
+  background: var(--color-panel);
+  transition:
+    border-color var(--duration-t-2),
+    box-shadow var(--duration-t-2);
+
+  & .image {
+    display: block;
+    grid-row: 1 / 4;
+    border-radius: var(--radius-6);
+    background: var(--color-card-2);
+  }
+  & u {
+    display: block;
+    width: 86%;
+    height: 4px;
+    border-radius: var(--radius-2);
+    background: var(--color-bento-bar);
+  }
+  & u + u {
+    width: 58%;
+    background: var(--color-line-2);
+  }
+  @variant max-sm {
+    grid-template-columns: 30px 1fr;
+    gap: 6px 8px;
+    padding: 8px;
+  }
+}
+.pill {
+  display: flex;
+  box-sizing: border-box;
+  align-items: center;
+  width: 40px;
+  height: 14px;
+  padding-left: 5px;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-pill);
+
+  &::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--color-line-hot);
+    transition: background var(--duration-t-2);
+  }
+}
+.json {
+  box-sizing: border-box;
+  min-height: 88px;
+  margin: 0;
+  padding: 10px 12px;
+  overflow: hidden;
+  border-radius: var(--radius-10);
+  background: var(--color-term);
+  /* The prototype dims the resting text to 50%; 54% is the least that reads at 4.5:1. */
+  color: color-mix(in oklab, var(--color-term-ink) 54%, transparent);
+  font-family: var(--font-mono);
+  font-size: var(--text-11);
+  line-height: var(--leading-term);
+  white-space: pre;
+
+  & span,
+  & i {
+    font-style: normal;
+    transition: color var(--duration-t-2);
+  }
+  & .folded {
+    display: none;
+  }
+  /* A phone keeps the tree; the data reading folds its last line to fit. */
+  @variant max-sm {
+    padding: 9px 8px;
+    & .last {
+      display: none;
+    }
+    & .folded {
+      display: inline;
+    }
+  }
+}
+
+.panel:is(:hover, :focus-visible, [data-hot]) {
+  & .token {
+    transform: translate(var(--tx, 0px), var(--ty, 0px));
+  }
+  & .agent {
+    background: var(--color-brand);
+    color: var(--color-on-primary);
+    transition-delay: 0.07s;
+  }
+  & .grid .target {
+    background: var(--color-brand-soft);
+    outline-color: var(--color-brand);
+    transition-delay: 0.36s;
+  }
+  & .branch::before {
+    border-color: var(--color-brand);
+    transition-delay: 0.46s;
+  }
+  & .branch i {
+    border-color: var(--color-brand);
+    transition-delay: 0.52s;
+  }
+  & .page {
+    border-color: var(--color-brand);
+    box-shadow: 0 0 0 3px var(--color-brand-soft);
+    transition-delay: 0.64s;
+  }
+  & .pill::before {
+    background: var(--color-brand);
+    transition-delay: 0.72s;
+  }
+  & .json span {
+    color: var(--color-term-ink);
+    transition-delay: calc(0.64s + var(--n) * 0.07s);
+  }
+  & .json i {
+    color: var(--color-term-key);
+    transition-delay: calc(0.64s + var(--n) * 0.07s);
+  }
+}
+
+/* ---- built for RAG: cells, one retriever, ranked results ---- */
+
+.rag {
+  display: grid;
+  gap: 10px;
+}
+.query {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-self: start;
+  padding: 7px 11px;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-10);
+  background: var(--color-panel);
+  color: var(--color-muted);
+  font-size: var(--text-13);
+  line-height: 1.5;
+  transition:
+    border-color var(--duration-t-2),
+    color var(--duration-t-2);
+
+  & svg {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    color: var(--color-faint);
+  }
+}
+.retrieval {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+
+  & .cell {
+    fill: var(--color-card-2);
+    stroke: transparent;
+    transition:
+      fill var(--duration-t-2),
+      stroke var(--duration-t-2);
+  }
+  & .cell.empty {
+    fill: none;
+    stroke: var(--color-line);
+  }
+  & .wire {
+    fill: none;
+    stroke: var(--color-line-2);
+    stroke-width: 1;
+  }
+  & .flow {
+    fill: none;
+    stroke: var(--color-brand);
+    stroke-width: 1.25;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    transition: stroke-dashoffset var(--duration-t-3) var(--ease-io);
+  }
+  & .node {
+    fill: var(--color-panel);
+    stroke: var(--color-line-2);
+    transition: stroke var(--duration-t-2);
+  }
+  & .lens {
+    fill: none;
+    stroke: var(--color-muted);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    transition: stroke var(--duration-t-2);
+  }
+  & .row {
+    fill: var(--color-panel);
+    stroke: var(--color-line-2);
+    transition:
+      fill var(--duration-t-2),
+      stroke var(--duration-t-2);
+  }
+  & .rank {
+    fill: var(--color-line-hot);
+    transition: fill var(--duration-t-2);
+  }
+  & .text {
+    fill: var(--color-bento-bar);
+  }
+  & .text2 {
+    fill: var(--color-line-2);
+  }
+  & .track {
+    fill: var(--color-line);
+  }
+  & .score {
+    fill: var(--color-line-hot);
+    transform-box: fill-box;
+    transform-origin: 0 50%;
+    transform: scaleX(0.42);
+    transition:
+      transform var(--duration-t-3) var(--ease-out),
+      fill var(--duration-t-2);
+  }
+}
+
+.panel:is(:hover, :focus-visible, [data-hot]) {
+  & .query {
+    border-color: var(--color-line-hot);
+    color: var(--color-ink);
+  }
+  & .retrieval .cell.hit {
+    fill: var(--color-brand-soft);
+    stroke: var(--color-brand);
+    stroke-dasharray: 3 2;
+    transition-delay: calc(var(--n) * 0.07s);
+  }
+  & .retrieval .flow.in {
+    stroke-dashoffset: 0;
+    transition-delay: calc(0.1s + var(--n) * 0.07s);
+  }
+  & .retrieval :is(.node, .lens) {
+    stroke: var(--color-brand);
+    transition-delay: 0.5s;
+  }
+  & .retrieval .flow.out {
+    stroke-dashoffset: 0;
+    transition-delay: calc(0.56s + var(--n) * 0.05s);
+  }
+  & .retrieval .score {
+    transform: scaleX(var(--s));
+    transition-delay: 0.8s;
+  }
+  & .retrieval .row.top {
+    fill: color-mix(in oklab, var(--color-brand) 9%, var(--color-panel));
+    stroke: var(--color-brand);
+    transition-delay: 0.95s;
+  }
+  & .retrieval .score.top {
+    fill: var(--color-brand);
+    transition-delay: 0.8s;
+  }
+  & .retrieval .rank.top {
+    fill: var(--color-brand);
+    transition-delay: 0.95s;
+  }
+}
+
+/* ---- uno team or every team: stacks that grow ---- */
+
+.scale {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  min-height: 118px;
+}
+.stack {
+  position: relative;
+  width: 64px;
+  height: calc(46px + var(--n) * 8px);
+  margin: 0 -4px;
+
+  & i {
+    position: absolute;
+    left: 4px;
+    bottom: calc(var(--k) * 8px);
+    display: block;
+    width: 56px;
+    height: 36px;
+    border: 1px solid var(--color-line-hot);
+    border-radius: var(--radius-6);
+    background: var(--color-panel);
+    opacity: 0;
+    transform: rotateX(58deg) rotateZ(-45deg) translate(5px, -5px);
+    transition:
+      opacity var(--duration-t-2),
+      transform var(--duration-t-3) var(--ease-out),
+      border-color var(--duration-t-2),
+      background var(--duration-t-2);
+  }
+  /* At rest: one team's flow in the middle, and room for more either side. */
+  & i:first-child,
+  &.middle i:nth-child(-n + 2) {
+    opacity: 1;
+    transform: rotateX(58deg) rotateZ(-45deg);
+  }
+  &:not(.middle) i:first-child {
+    border-style: dashed;
+    border-color: var(--color-line-2);
+    background: none;
+  }
+}
+
+.panel:is(:hover, :focus-visible, [data-hot]) {
+  & .stack i {
+    border-style: solid;
+    border-color: var(--color-line-hot);
+    background: var(--color-panel);
+    opacity: 1;
+    transform: rotateX(58deg) rotateZ(-45deg);
+    transition-delay: calc(var(--o) + var(--k) * 40ms);
+  }
+  & .stack i:last-child {
+    border-color: var(--color-brand);
+    background: color-mix(in oklab, var(--color-brand) 10%, var(--color-panel));
+  }
+}
+
+/* ---- product context: one cell with its owner, status and value, and its neighbours ---- */
+
+.context {
+  display: grid;
+  grid-template-columns: minmax(30px, 50px) minmax(18px, 1fr) 124px minmax(18px, 1fr) minmax(
+      30px,
+      50px
+    );
+  align-items: center;
+  width: min(100%, 330px);
+  margin-inline: auto;
+  padding: 14px 0 16px;
+
+  & u {
+    display: block;
+    width: 80%;
+    height: 4px;
+    border-radius: var(--radius-2);
+    background: var(--color-bento-bar-dim);
+  }
+}
+.neighbour {
+  box-sizing: border-box;
+  height: 40px;
+  padding: 9px 7px;
+  border-radius: var(--radius-8);
+  background: var(--color-card-2);
+}
+.arrow {
+  position: relative;
+  display: block;
+  height: 0;
+  margin: 0 6px;
+  border-top: 1px solid var(--color-line-2);
+  color: var(--color-line-2);
+  transition:
+    border-color var(--duration-t-2),
+    color var(--duration-t-2);
+
+  &::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: -3.5px;
+    box-sizing: border-box;
+    width: 6px;
+    height: 6px;
+    border-top: 1px solid currentColor;
+    border-right: 1px solid currentColor;
+    transform: rotate(45deg);
+  }
+}
+.card {
+  position: relative;
+  display: grid;
+  box-sizing: border-box;
+  gap: 6px;
+  align-content: start;
+  height: 80px;
+  padding: 24px 12px 0;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-10);
+  background: var(--color-panel);
+  transition:
+    border-color var(--duration-t-2),
+    box-shadow var(--duration-t-2);
+
+  & > u + u {
+    width: 54%;
+    background: var(--color-line-2);
+  }
+}
+.owner {
+  position: absolute;
+  left: -10px;
+  top: -11px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--color-line-2);
+  border-radius: 50%;
+  background: var(--color-card-2);
+  box-shadow: 0 0 0 2px var(--color-card);
+  color: var(--color-muted);
+  transition:
+    border-color var(--duration-t-2),
+    color var(--duration-t-2),
+    background var(--duration-t-2);
+}
+.owner svg,
+.value svg {
+  width: 12px;
+  height: 12px;
+}
+.status {
+  position: absolute;
+  right: -13px;
+  top: -10px;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px 0 7px;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-panel);
+  box-shadow: 0 0 0 2px var(--color-card);
+  color: var(--color-muted);
+  font-size: var(--text-11);
+  line-height: 1;
+  transition:
+    border-color var(--duration-t-2),
+    color var(--duration-t-2);
+
+  &::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-line-hot);
+    transition: background var(--duration-t-2);
+  }
+  & em {
+    position: relative;
+    display: block;
+    width: 42px;
+    height: 12px;
+    font-style: normal;
+  }
+  & b {
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-weight: 400;
+    line-height: 12px;
+    transition: opacity var(--duration-t-1);
+  }
+  & b + b {
+    opacity: 0;
+  }
+}
+.value {
+  position: absolute;
+  left: 50%;
+  bottom: -12px;
+  display: flex;
+  box-sizing: border-box;
+  gap: 6px;
+  align-items: center;
+  width: 80px;
+  height: 22px;
+  margin-left: -40px;
+  padding: 0 8px;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-8);
+  background: var(--color-panel);
+  box-shadow: 0 0 0 2px var(--color-card);
+  color: var(--color-muted);
+  transition:
+    border-color var(--duration-t-2),
+    color var(--duration-t-2);
+
+  & u {
+    flex: none;
+    width: 24px;
+    background: var(--color-line-2);
+    transition:
+      width var(--duration-t-3) var(--ease-out),
+      background var(--duration-t-2);
+  }
+}
+
+.panel:is(:hover, :focus-visible, [data-hot]) {
+  & .card {
+    border-color: var(--color-brand);
+    box-shadow: 0 0 0 3px var(--color-brand-soft);
+  }
+  & .owner {
+    border-color: var(--color-brand);
+    background: var(--color-panel);
+    color: var(--color-brand);
+    transition-delay: 0.12s;
+  }
+  & .status {
+    border-color: var(--color-brand);
+    color: var(--color-ink);
+    transition-delay: 0.26s;
+  }
+  & .status::before {
+    background: var(--color-brand);
+    transition-delay: 0.26s;
+  }
+  & .status b {
+    opacity: 0;
+    transition-delay: 0.26s;
+  }
+  & .status b + b {
+    opacity: 1;
+    transition-delay: 0.3s;
+  }
+  & .value {
+    border-color: var(--color-brand);
+    color: var(--color-brand);
+    transition-delay: 0.4s;
+  }
+  & .value u {
+    width: 44px;
+    background: var(--color-bento-bar-hot);
+    transition-delay: 0.4s;
+  }
+  & .arrow {
+    border-color: var(--color-brand);
+    color: var(--color-brand);
+    transition-delay: 0.54s;
+  }
+  & .arrow ~ .arrow {
+    transition-delay: 0.62s;
+  }
+}
+
+/* ---- sources stay attached: one cell wired to its documents ---- */
+
+.sources {
+  display: grid;
+  grid-template-columns: auto 40px auto;
+  justify-content: center;
+  align-items: center;
+}
+.source {
+  display: grid;
+  box-sizing: border-box;
+  gap: 5px;
+  width: 76px;
+  padding: 10px;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-10);
+  background: var(--color-panel);
+  transition:
+    border-color var(--duration-t-2),
+    box-shadow var(--duration-t-2);
+
+  & u {
+    display: block;
+    width: 80%;
+    height: 4px;
+    border-radius: var(--radius-2);
+    background: var(--color-bento-bar);
+  }
+  & u + u {
+    width: 50%;
+    background: var(--color-line-2);
+  }
+}
+.wires {
+  display: block;
+  width: 40px;
+  height: 106px;
+  overflow: visible;
+
+  & path {
+    fill: none;
+    stroke: var(--color-line-2);
+    stroke-width: 1;
+    transition: stroke var(--duration-t-2);
+  }
+}
+.links {
+  display: grid;
+  gap: 8px;
+
+  & span {
+    display: inline-flex;
+    box-sizing: border-box;
+    gap: 7px;
+    align-items: center;
+    height: 30px;
+    padding: 0 11px 0 9px;
+    border: 1px solid var(--color-line-2);
+    border-radius: var(--radius-pill);
+    background: var(--color-panel);
+    transition:
+      border-color var(--duration-t-2),
+      transform var(--duration-t-2) var(--ease-out);
+  }
+  & svg {
+    width: 14px;
+    height: 14px;
+    fill: var(--color-muted);
+    transition: fill var(--duration-t-2);
+  }
+  & i {
+    display: block;
+    width: 58px;
+    height: 4px;
+    border-radius: var(--radius-2);
+    background: var(--color-line-2);
+  }
+}
+
+.panel:is(:hover, :focus-visible, [data-hot]) {
+  & .source {
+    border-color: var(--color-brand);
+    box-shadow: 0 0 0 3px var(--color-brand-soft);
+  }
+  & .wires path {
+    stroke: var(--color-brand);
+    transition-delay: calc(0.08s + var(--j) * 0.09s);
+  }
+  & .links span {
+    border-color: var(--color-brand);
+    transform: translateX(3px);
+    transition-delay: calc(0.16s + var(--j) * 0.09s);
+  }
+  & .links span svg {
+    fill: var(--color-ink);
+    transition-delay: calc(0.16s + var(--j) * 0.09s);
+  }
+}

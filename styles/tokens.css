@@ -54,6 +54,10 @@
   --color-note-line: light-dark(#ecd9a6, #4a3d1c);
   --color-term: #101417;
   --color-term-ink: #d7e3df;
+  /* Bento: the text bars drawn in its pictures, at the prototype's 24%, 26% and, once played, 30% of ink. */
+  --color-bento-bar-dim: color-mix(in oklab, var(--color-ink) 24%, transparent);
+  --color-bento-bar: color-mix(in oklab, var(--color-ink) 26%, transparent);
+  --color-bento-bar-hot: color-mix(in oklab, var(--color-ink) 30%, transparent);
   --color-s1: light-dark(#7c8684, #7d8886);
   --color-s2: light-dark(#00735f, #2fa58c);
   --color-transparent: transparent;
@@ -110,6 +114,9 @@
   --leading-code: 1.65;
   /* Agent view: a mono label, such as the file name above the guide. */
   --leading-label: 1.2;
+  /* Bento: a panel's body copy (the prototype's 14px/20px), and the JSON in its picture (11px/1.55). */
+  --leading-20: 20px;
+  --leading-term: 1.55;
 
   --blur-nav: 6px;
 
@@ -123,6 +130,10 @@
   --duration-t-2: 280ms;
   --duration-t-3: 460ms;
   --duration-t-4: 800ms;
+  /* Bento: a panel fades in and rises as it arrives; a token travels to its cell (the prototype's .55s, .85s, .5s). */
+  --duration-arrive: 550ms;
+  --duration-rise: 850ms;
+  --duration-travel: 500ms;
 
   --shadow-*: initial;
   /* Light casts a soft drop shadow; dark lights the top edge instead. */
