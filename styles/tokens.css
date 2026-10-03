@@ -185,6 +185,46 @@
   --breakpoint-xl: 1001px;
   --breakpoint-2xl: 1101px;
 
+  /*
+   * Showcases (canvas, touch points): a tab row over a framed product mock.
+   * The mock's insides are sized in em so the whole picture scales with its font.
+   */
+  --container-title: 620px; /* a section headline */
+  --container-caption: 70ch;
+  --text-mock: clamp(12px, 1.05vw, 13px);
+  --text-mock--line-height: 1.5;
+  --text-lane: max(11px, 0.86em);
+  --text-lane--line-height: 1.5;
+  --shadow-mock: 0 20px 50px rgba(0, 0, 0, 0.1);
+  --spacing-dots: 18px; /* the stage's dot grid */
+  --spacing-mock-panel: 280px; /* the mock's side panel */
+  --spacing-cell: 34px; /* a cell's least height */
+  --spacing-cell-bars: 30px; /* the same, drawn as bars on a phone */
+  --spacing-tag-x: 9px;
+  --spacing-note-dot: 7px;
+  --spacing-note-dot-y: 5px; /* drops the dot to the first line's middle */
+  --spacing-term-gap: 3px;
+  --spacing-lane-label: 6.4em;
+  --spacing-lane-gap: 0.5em;
+  --spacing-lane-y: 0.45em;
+  --spacing-lane-dot: 0.6em;
+  --radius-lane-dot: 0.2em;
+  --spacing-bubble-x: 0.9em;
+  --spacing-bubble-y: 0.7em;
+  /* A cell on a phone draws its words as two bars. */
+  --text-0: 0px; /* the words themselves take no room */
+  --text-0--line-height: 0;
+  --spacing-bar-long: 78%;
+  --spacing-bar-short: 48%;
+  --color-bar: color-mix(in oklab, var(--color-ink) 22%, transparent);
+  /* Lane accents, the same in both themes. */
+  --color-lane-user: #3f8fd6;
+  --color-lane-front: #d9902f;
+  --color-lane-back: #d0648f;
+  --color-lane-support: #7b74c9;
+  /* A warning on the always-dark terminal; its command and progress lines use term-key and term-faint. */
+  --color-term-amber: #fbbf6a;
+
   --animate-menu-in: menu-in var(--duration-t-1) var(--ease-out);
   @keyframes menu-in {
     from {
@@ -201,6 +241,12 @@
 @utility duration-t-* {
   --tw-duration: --value(--duration-t-*);
   transition-duration: --value(--duration-t-*);
+}
+
+/* The showcase stage's dot grid. */
+@utility bg-dots {
+  background-image: radial-gradient(var(--color-line-2) 1px, transparent 1px);
+  background-size: var(--spacing-dots) var(--spacing-dots);
 }
 
 :root {
