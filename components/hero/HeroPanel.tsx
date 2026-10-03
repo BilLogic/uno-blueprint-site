@@ -1,7 +1,7 @@
 import { ImageIcon, X } from "lucide-react";
 import { hero } from "@/content/hero";
 import { panelFill, type Board } from "@/lib/hero-picture";
-import { LANE_COLORS } from "./HeroBoard";
+import { LANE_COLORS } from "./lanes";
 import { ToolIcon } from "./ToolIcon";
 
 const { panel: words, tools } = hero.picture;

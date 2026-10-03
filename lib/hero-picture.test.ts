@@ -62,7 +62,7 @@ describe("boardReducer", () => {
     const next = boardReducer(board, { type: "reset", landed: [[cellAt(1, 1), 3]], at: [7, 7, 7, 7] });
     expect(filledCells(next)).toEqual([cellAt(1, 1)]);
     expect(next.sources[cellAt(1, 1)]).toEqual([3]);
-    expect(next.focus).toBeNull();
+    expect(next).toMatchObject({ focus: null, projecting: false });
     expect(next.shown).toBe(board.shown);
   });
 
@@ -71,11 +71,11 @@ describe("boardReducer", () => {
     expect(next.sources[cellAt(0, 0)]).toEqual([0, 5]);
   });
 
-  it("blanks the panel and drops the focus, then takes the new cell, then shows it", () => {
+  it("blanks the panel and puts out the light, then takes the new cell, then shows it", () => {
     const closed = boardReducer(board, { type: "close" });
-    expect(closed).toMatchObject({ focus: null, shown: board.shown, panel: "hidden" });
+    expect(closed).toMatchObject({ focus: board.focus, projecting: false, shown: board.shown, panel: "hidden" });
     const focused = boardReducer(closed, { type: "focus", cell: 9 });
-    expect(focused).toMatchObject({ focus: 9, shown: 9, panel: "hidden" });
+    expect(focused).toMatchObject({ focus: 9, projecting: true, shown: 9, panel: "hidden" });
     expect(boardReducer(focused, { type: "reveal" }).panel).toBe("shown");
   });
 

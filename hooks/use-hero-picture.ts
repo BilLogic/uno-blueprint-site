@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, type ActionDispatch } from "react";
 import { useInView } from "./use-in-view";
 import {
   BEAM_EASING,
@@ -21,6 +21,7 @@ import {
   slotsOf,
   walkerSpot,
   type Board,
+  type BoardAction,
   type FeedEvent,
 } from "@/lib/hero-picture";
 
@@ -102,22 +103,26 @@ const box = (element: Element) => element.getBoundingClientRect();
 /** Stands each walker on its cell; `jump` skips the walk, as on a new round or a resize. */
 function placeWalkers(el: Elements, at: Board["at"], jump: boolean) {
   const slots = slotsOf(at);
-  el.walkers.forEach((walker, i) => {
+  // Every read before any write, so placing four walkers costs one layout.
+  const spots = el.walkers.map((walker, i) => {
     const cell = at[i] == null ? null : el.cells[at[i]];
-    if (!walker || !cell) return;
-    const { x, y } = walkerSpot(
+    if (!walker || !cell) return null;
+    return walkerSpot(
       { left: cell.offsetLeft, top: cell.offsetTop, width: cell.offsetWidth },
       slots[i] ?? 0,
       { width: walker.offsetWidth, height: walker.offsetHeight },
     );
+  });
+  el.walkers.forEach((walker, i) => {
+    const spot = spots[i];
+    if (!walker || !spot) return;
     if (jump) walker.style.transition = "none";
-    walker.style.transform = `translate(${x}px,${y}px)`;
-    if (jump) {
-      void walker.offsetWidth;
-      walker.style.transition = "";
-    }
+    walker.style.transform = `translate(${spot.x}px,${spot.y}px)`;
     walker.dataset.placed = "";
   });
+  if (!jump) return;
+  void el.stage?.offsetWidth;
+  for (const walker of el.walkers) if (walker) walker.style.transition = "";
 }
 
 /**
@@ -152,6 +157,177 @@ function project(el: Elements, focus: number | null, animate: boolean) {
   light.style.clipPath = geometry.to;
 }
 
+type Timeline = {
+  el: Elements;
+  dispatch: ActionDispatch<[BoardAction]>;
+  toolCount: number;
+  /** The latest state, read between renders. */
+  board: () => Board;
+  inView: () => boolean;
+  setBeams: (beams: Beams) => void;
+  /** Called before a new round lands, so the walkers jump to their first cells. */
+  onRound: () => void;
+};
+
+/**
+ * The prototype's timeline, as timers. Measures the picture, then (without
+ * reduced motion) empties the board to a few cells and fills it again on a
+ * loop. Returns a function that stops everything it started.
+ */
+function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRound }: Timeline) {
+  const reduced = matchMedia(REDUCED).matches;
+  const timers = new Set<number>();
+  const animations = new Set<Animation>();
+  const busy = new Set<number>();
+  let queue: FeedEvent[] = [];
+  let ticks = 0;
+  let reveal: number | undefined;
+
+  const later = (run: () => void, ms: number) => {
+    const id = window.setTimeout(() => {
+      timers.delete(id);
+      run();
+    }, ms);
+    timers.add(id);
+    return id;
+  };
+  const track = (animation: Animation) => {
+    animations.add(animation);
+    animation.addEventListener("finish", () => animations.delete(animation));
+    return animation;
+  };
+  const play = (element: Element | null | undefined, keyframes: Keyframe[], options: KeyframeAnimationOptions) =>
+    element && track(element.animate(keyframes, options));
+  const hit = (cell: number) => play(el.cells[cell], HIT_KEYFRAMES, { duration: TIMING.hit, easing: "ease" });
+  const measured = (path: SVGPathElement | null | undefined): path is SVGPathElement => Boolean(path?.dataset.length);
+  const run = (path: SVGPathElement, duration: number) =>
+    track(
+      path.animate(runKeyframes(Number(path.dataset.dash), Number(path.dataset.length)), { duration, easing: BEAM_EASING }),
+    );
+
+  function layout() {
+    const stageBox = el.stage && box(el.stage);
+    if (!stageBox?.width || !el.node || !el.sheet) return;
+    const toolBoxes = el.tools.flatMap((tool) => (tool ? [relativeTo(stageBox, box(tool))] : []));
+    const toNode = relativeTo(stageBox, box(el.node));
+    setBeams(beamPaths(toolBoxes, toNode, relativeTo(stageBox, box(el.sheet)), matchMedia(STACKED).matches));
+    busy.clear();
+    placeWalkers(el, board().at, true);
+    const { focus, projecting } = board();
+    project(el, projecting ? focus : null, false);
+  }
+
+  function open(cell: number) {
+    dispatch({ type: "close" });
+    clearTimeout(reveal);
+    later(() => {
+      dispatch({ type: "focus", cell });
+      reveal = later(() => dispatch({ type: "reveal" }), TIMING.reveal);
+    }, TIMING.close);
+  }
+
+  function step() {
+    const plan = planStep(board(), Math.random);
+    if (!plan) return;
+    dispatch({ type: "move", at: plan.at });
+    later(() => {
+      hit(plan.to);
+      if (plan.person && plan.to !== board().focus) open(plan.to);
+    }, TIMING.arrive);
+  }
+
+  /** A document leaves a tool, passes through the node, and lands in a cell (or joins a filled one). */
+  function feed(event: FeedEvent) {
+    const stacked = matchMedia(STACKED).matches;
+    const free = Array.from({ length: toolCount }, (_, tool) => tool).filter(
+      (tool) => !busy.has(beamOf(tool, stacked)) && measured(el.feeds[beamOf(tool, stacked)]),
+    );
+    const down = el.toBoard;
+    if (!free.length || !measured(down)) {
+      queue.push(event);
+      return;
+    }
+    const plan = planFeed(board(), event, free, Math.random);
+    if (!plan) return;
+    const beam = beamOf(plan.tool, stacked);
+    const path = el.feeds[beam]!;
+    busy.add(beam);
+    dispatch({ type: "light", tool: plan.tool, on: true });
+    run(path, TIMING.feed).onfinish = () => {
+      busy.delete(beam);
+      dispatch({ type: "light", tool: plan.tool, on: false });
+      play(el.ping, PING_KEYFRAMES, { duration: TIMING.ping, easing: "ease-out" });
+      run(down, TIMING.toBoard).onfinish = () => {
+        dispatch({ type: "land", cell: plan.cell, tool: plan.tool });
+        hit(plan.cell);
+      };
+    };
+  }
+
+  function reset() {
+    const round = planRound(Math.random, toolCount);
+    queue = round.queue;
+    ticks = 0;
+    onRound();
+    dispatch({ type: "reset", landed: round.landed, at: round.at });
+    open(round.at[0]!);
+  }
+
+  function tick() {
+    if (!inView() || document.hidden) {
+      later(tick, TIMING.idle);
+      return;
+    }
+    if (!queue.length) {
+      later(() => {
+        dispatch({ type: "fade", on: true });
+        later(() => {
+          reset();
+          dispatch({ type: "fade", on: false });
+          later(tick, TIMING.afterReset);
+        }, TIMING.fade);
+      }, TIMING.rest);
+      return;
+    }
+    // A document every other beat; a step every beat.
+    const next = ++ticks % 2 === 0 ? queue.shift() : undefined;
+    if (next !== undefined) feed(next);
+    step();
+    later(tick, TIMING.tick + Math.random() * TIMING.tickJitter);
+  }
+
+  let live = true;
+  let resizing: number | undefined;
+  const onResize = () => {
+    clearTimeout(resizing);
+    resizing = later(layout, TIMING.relayout);
+  };
+  layout();
+  void document.fonts?.ready.then(() => live && layout());
+  addEventListener("resize", onResize);
+  if (!reduced) {
+    reset();
+    later(tick, TIMING.firstTick);
+  }
+
+  return () => {
+    live = false;
+    removeEventListener("resize", onResize);
+    for (const id of timers) clearTimeout(id);
+    for (const animation of animations) animation.cancel();
+  };
+}
+
+/** Runs `start` once the browser is idle (or after `ms` at most), so the picture starts after the page has loaded. */
+function whenIdle(start: () => void, ms: number) {
+  if (typeof requestIdleCallback === "function") {
+    const id = requestIdleCallback(start, { timeout: ms });
+    return () => cancelIdleCallback(id);
+  }
+  const id = window.setTimeout(start, 0);
+  return () => clearTimeout(id);
+}
+
 /**
  * Runs the hero picture. The page renders the finished picture, which is what
  * reduced motion keeps; otherwise the board empties to a few cells and fills
@@ -163,18 +339,18 @@ export function useHeroPicture(toolCount: number) {
   const [board, dispatch] = useReducer(boardReducer, toolCount, settledBoard);
   const [beams, setBeams] = useState<Beams | null>(null);
   const [inViewRef, inView] = useInView<HTMLDivElement>();
-
   const [{ el, attach }] = useState(createElements);
 
   // The timeline reads the latest state between renders.
   const boardNow = useRef(board);
   const inViewNow = useRef(inView);
-  const jumpNext = useRef(true);
-  const animateFocus = useRef(false);
   useEffect(() => {
     boardNow.current = board;
     inViewNow.current = inView;
   });
+  /** Nothing is measured until the timeline starts, after the page has loaded. */
+  const started = useRef(false);
+  const jumpNext = useRef(true);
 
   const stage = useCallback(
     (element: HTMLDivElement | null) => {
@@ -185,13 +361,15 @@ export function useHeroPicture(toolCount: number) {
   );
 
   useLayoutEffect(() => {
+    if (!started.current) return;
     placeWalkers(el, board.at, jumpNext.current);
     jumpNext.current = false;
   }, [el, board.at]);
 
   useLayoutEffect(() => {
-    project(el, board.focus, animateFocus.current);
-  }, [el, board.focus]);
+    if (!started.current) return;
+    project(el, board.projecting ? board.focus : null, true);
+  }, [el, board.focus, board.projecting]);
 
   // Each run is a short dash travelling the length of its beam.
   useLayoutEffect(() => {
@@ -206,160 +384,25 @@ export function useHeroPicture(toolCount: number) {
   }, [el, beams]);
 
   useEffect(() => {
-    const reduced = matchMedia(REDUCED).matches;
-    const pace = (ms: number) => (reduced ? 0 : ms);
-    const timers = new Set<number>();
-    const animations = new Set<Animation>();
-    const busy = new Set<number>();
-    let queue: FeedEvent[] = [];
-    let ticks = 0;
-    let reveal: number | undefined;
-    let live = true;
-
-    const later = (run: () => void, ms: number) => {
-      const id = window.setTimeout(() => {
-        timers.delete(id);
-        run();
-      }, ms);
-      timers.add(id);
-      return id;
-    };
-    const play = (element: Element | null | undefined, keyframes: Keyframe[], options: KeyframeAnimationOptions) => {
-      const animation = element?.animate(keyframes, options);
-      if (!animation) return null;
-      animations.add(animation);
-      animation.addEventListener("finish", () => animations.delete(animation));
-      return animation;
-    };
-    const hit = (cell: number) =>
-      play(el.cells[cell], HIT_KEYFRAMES, { duration: TIMING.hit, easing: "ease" });
-    const run = (path: SVGPathElement | null | undefined, duration: number) =>
-      path?.dataset.length
-        ? play(path, runKeyframes(Number(path.dataset.dash), Number(path.dataset.length)), {
-            duration,
-            easing: BEAM_EASING,
-          })
-        : null;
-
-    function layout() {
-      const stageBox = el.stage && box(el.stage);
-      const nodeEl = el.node;
-      const sheetEl = el.sheet;
-      if (!live || !stageBox?.width || !nodeEl || !sheetEl) return;
-      const toolBoxes = el.tools.flatMap((tool) => (tool ? [relativeTo(stageBox, box(tool))] : []));
-      const paths = beamPaths(
-        toolBoxes,
-        relativeTo(stageBox, box(nodeEl)),
-        relativeTo(stageBox, box(sheetEl)),
-        matchMedia(STACKED).matches,
-      );
-      setBeams(paths);
-      busy.clear();
-      placeWalkers(el, boardNow.current.at, true);
-      project(el, boardNow.current.focus, false);
-    }
-
-    function open(cell: number) {
-      dispatch({ type: "close" });
-      clearTimeout(reveal);
-      later(() => {
-        dispatch({ type: "focus", cell });
-        reveal = later(() => dispatch({ type: "reveal" }), pace(TIMING.reveal));
-      }, pace(TIMING.close));
-    }
-
-    function step() {
-      const plan = planStep(boardNow.current, Math.random);
-      if (!plan) return;
-      dispatch({ type: "move", at: plan.at });
-      later(() => {
-        hit(plan.to);
-        if (plan.person && plan.to !== boardNow.current.focus) open(plan.to);
-      }, pace(TIMING.arrive));
-    }
-
-    /** A document leaves a tool, passes through the node, and lands in a cell (or joins a filled one). */
-    function feed(event: FeedEvent) {
-      const stacked = matchMedia(STACKED).matches;
-      const free = Array.from({ length: toolCount }, (_, tool) => tool).filter(
-        (tool) => !busy.has(beamOf(tool, stacked)),
-      );
-      if (!free.length || !el.toBoard?.dataset.length) {
-        queue.push(event);
-        return;
-      }
-      const plan = planFeed(boardNow.current, event, free, Math.random);
-      if (!plan) return;
-      const beam = beamOf(plan.tool, stacked);
-      busy.add(beam);
-      dispatch({ type: "light", tool: plan.tool, on: true });
-      const toNode = run(el.feeds[beam], TIMING.feed);
-      if (!toNode) return;
-      toNode.onfinish = () => {
-        busy.delete(beam);
-        dispatch({ type: "light", tool: plan.tool, on: false });
-        play(el.ping, PING_KEYFRAMES, { duration: TIMING.ping, easing: "ease-out" });
-        const down = run(el.toBoard, TIMING.toBoard);
-        if (!down) return;
-        down.onfinish = () => {
-          dispatch({ type: "land", cell: plan.cell, tool: plan.tool });
-          hit(plan.cell);
-        };
-      };
-    }
-
-    function reset() {
-      const round = planRound(Math.random, toolCount);
-      queue = round.queue;
-      ticks = 0;
-      jumpNext.current = true;
-      dispatch({ type: "reset", landed: round.landed, at: round.at });
-      open(round.at[0]!);
-    }
-
-    function tick() {
-      if (!inViewNow.current || document.hidden) {
-        later(tick, TIMING.idle);
-        return;
-      }
-      if (!queue.length) {
-        later(() => {
-          dispatch({ type: "fade", on: true });
-          later(() => {
-            reset();
-            dispatch({ type: "fade", on: false });
-            later(tick, TIMING.afterReset);
-          }, TIMING.fade);
-        }, TIMING.rest);
-        return;
-      }
-      // A document every other beat; a step every beat.
-      const next = ++ticks % 2 === 0 ? queue.shift() : undefined;
-      if (next !== undefined) feed(next);
-      step();
-      later(tick, TIMING.tick + Math.random() * TIMING.tickJitter);
-    }
-
-    layout();
-    void document.fonts?.ready.then(layout);
-    let resizing: number | undefined;
-    const onResize = () => {
-      clearTimeout(resizing);
-      resizing = later(layout, TIMING.relayout);
-    };
-    addEventListener("resize", onResize);
-
-    if (!reduced) {
-      animateFocus.current = true;
-      reset();
-      later(tick, TIMING.firstTick);
-    }
-
+    let stop: (() => void) | undefined;
+    const cancel = whenIdle(() => {
+      started.current = true;
+      stop = startTimeline({
+        el,
+        dispatch,
+        toolCount,
+        board: () => boardNow.current,
+        inView: () => inViewNow.current,
+        setBeams,
+        onRound: () => {
+          jumpNext.current = true;
+        },
+      });
+    }, TIMING.startBy);
     return () => {
-      live = false;
-      removeEventListener("resize", onResize);
-      for (const id of timers) clearTimeout(id);
-      for (const animation of animations) animation.cancel();
+      cancel();
+      stop?.();
+      started.current = false;
     };
   }, [el, toolCount]);
 

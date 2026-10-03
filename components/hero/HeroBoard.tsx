@@ -3,12 +3,11 @@ import { Fragment } from "react";
 import { hero } from "@/content/hero";
 import type { HeroPictureRefs } from "@/hooks/use-hero-picture";
 import { COLS, WALKERS, cellAt, type Board } from "@/lib/hero-picture";
+import { LANE_COLORS } from "./lanes";
 import { ToolIcon } from "./ToolIcon";
 
 const { picture } = hero;
 
-/** Each lane's colour, top to bottom. */
-export const LANE_COLORS = ["bg-lane-user", "bg-lane-front", "bg-lane-back", "bg-lane-support"] as const;
 
 const ghost = "absolute inset-0 block rounded-16 border border-line-2 bg-panel";
 
@@ -50,7 +49,7 @@ export function HeroBoard({ board, sheetRef, cellRef, walkerRef }: HeroBoardProp
                     <Cell
                       key={col}
                       sources={board.sources[cell] ?? []}
-                      focused={board.focus === cell}
+                      focused={board.projecting && board.focus === cell}
                       cellRef={cellRef(cell)}
                     />
                   );

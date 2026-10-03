@@ -51,6 +51,8 @@ export const TIMING = {
   close: 260,
   reveal: 340,
   relayout: 120,
+  /** The picture starts once the page is idle, and no later than this after it loads. */
+  startBy: 2000,
   hit: 900,
   ping: 700,
 } as const;
@@ -88,9 +90,11 @@ export type Board = {
   sources: readonly (readonly number[])[];
   /** Per walker, the cell it stands on. */
   at: readonly (number | null)[];
-  /** The cell lit on the board and projected into the panel. */
+  /** The cell a person last opened; it stays while the panel blanks for the next one. */
   focus: number | null;
-  /** The cell the panel describes; it outlasts `focus` while the panel blanks. */
+  /** The focus is lit on the board and projected into the panel. */
+  projecting: boolean;
+  /** The cell the panel describes. */
   shown: number | null;
   panel: "shown" | "hidden";
   /** The board fades out between rounds. */
@@ -108,6 +112,7 @@ export function settledBoard(toolCount: number): Board {
     sources,
     at: [cellAt(0, 1), cellAt(1, 2), cellAt(2, 3), cellAt(3, 0)],
     focus,
+    projecting: true,
     shown: focus,
     panel: "shown",
     fading: false,
@@ -130,7 +135,7 @@ export function boardReducer(board: Board, action: BoardAction): Board {
     case "reset": {
       const sources: number[][] = board.sources.map(() => []);
       for (const [cell, tool] of action.landed) sources[cell]?.push(tool);
-      return { ...board, sources, at: action.at, focus: null };
+      return { ...board, sources, at: action.at, focus: null, projecting: false };
     }
     case "land":
       return {
@@ -140,9 +145,9 @@ export function boardReducer(board: Board, action: BoardAction): Board {
     case "move":
       return { ...board, at: action.at };
     case "close":
-      return { ...board, focus: null, panel: "hidden" };
+      return { ...board, projecting: false, panel: "hidden" };
     case "focus":
-      return { ...board, focus: action.cell, shown: action.cell };
+      return { ...board, focus: action.cell, projecting: true, shown: action.cell };
     case "reveal":
       return { ...board, panel: "shown" };
     case "fade":
