@@ -74,7 +74,7 @@ export function ProofChart() {
                   <button
                     type="button"
                     aria-describedby={definitionId}
-                    className="group/name relative cursor-help border-b border-dotted border-faint px-0.5 py-1.5 text-14 leading-label font-medium text-ink focus-visible:outline-brand focus-visible:outline-offset-3"
+                    className="group/name relative cursor-help border-b border-dotted border-faint px-0.5 py-1.5 text-14 leading-caption font-medium text-ink focus-visible:outline-brand focus-visible:outline-offset-3"
                   >
                     {metric.name}
                     <span
@@ -82,7 +82,7 @@ export function ProofChart() {
                       id={definitionId}
                       // Read once, through aria-describedby, rather than as part of the button's name.
                       aria-hidden
-                      className="pointer-events-none absolute bottom-[calc(100%+--spacing(2.5))] left-1/2 z-4 w-[min(var(--spacing-chart-tip),72vw)] -translate-x-1/2 translate-y-1 rounded-8 bg-ink px-2.75 py-2.25 text-left text-12-5 leading-tip font-normal text-bg opacity-0 transition-[opacity,translate] duration-t-tip group-hover/name:translate-y-0 group-hover/name:opacity-100 group-focus-visible/name:translate-y-0 group-focus-visible/name:opacity-100"
+                      className="pointer-events-none absolute bottom-[calc(100%+--spacing(2.5))] left-1/2 z-4 w-[min(var(--spacing-chart-tip),72vw)] -translate-x-1/2 translate-y-1 rounded-8 bg-ink px-2.75 py-2.25 text-left text-12-5 leading-tip font-normal text-bg opacity-0 transition-[opacity,translate] duration-t-tip ease-plain group-hover/name:translate-y-0 group-hover/name:opacity-100 group-focus-visible/name:translate-y-0 group-focus-visible/name:opacity-100"
                     >
                       {metric.definition}
                     </span>

@@ -45,7 +45,7 @@ export function VoiceCard({ voice, side, row, on }: VoiceCardProps) {
       style={{ gridRow: `${row} / span 2` } as CSSProperties}
       className={`mb-6.5 block self-start rounded-16 border border-line-2 bg-panel p-5 text-ink opacity-0 [transition:opacity_var(--duration-t-3)_var(--ease-out),translate_var(--duration-t-4)_var(--ease-out),border-color_var(--duration-t-rail)] hover:border-muted data-on:translate-x-0 data-on:opacity-100 motion-reduce:translate-x-0 motion-reduce:opacity-100 motion-reduce:transition-none max-md:hidden ${sides[side]}`}
     >
-      <span className="mb-3 flex gap-2.5 text-12 leading-label font-medium text-muted">
+      <span className="mb-3 flex gap-2.5 text-12 leading-caption font-medium text-muted">
         <b className="font-medium text-ink">{voice.date}</b>
         {voice.field}
       </span>

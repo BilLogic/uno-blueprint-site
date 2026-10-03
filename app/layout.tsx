@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Ubuntu_Sans, Ubuntu_Sans_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import { site } from "@/content/site";
+import { view } from "@/content/view";
 import { THEME_COLORS, themeBootScript } from "@/lib/theme";
 import "./globals.css";
 
@@ -10,7 +11,7 @@ const mono = Ubuntu_Sans_Mono({
   subsets: ["latin"],
   variable: "--font-ubuntu-sans-mono",
   display: "swap",
-  // The mono face only appears once a reader opens the agent view.
+  // The mono face first appears far down the page (the install commands) or in the agent view.
   preload: false,
 });
 
@@ -18,6 +19,8 @@ export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: site.name,
   description: site.description,
+  // Points agents at the same page as markdown.
+  alternates: { types: { "text/markdown": `/${view.agentFile}` } },
   openGraph: {
     type: "website",
     url: "/",
