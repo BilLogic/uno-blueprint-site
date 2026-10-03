@@ -1,0 +1,32 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+
+@layer base {
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-16);
+    line-height: 1.5;
+  }
+
+  a {
+    color: var(--color-link);
+    text-decoration: none;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-link);
+    outline-offset: 2px;
+  }
+
+  /* The agent view replaces the human page while it is chosen. */
+  [data-view="agent"] #human,
+  :root:not([data-view="agent"]) #agent {
+    display: none;
+  }
+}
