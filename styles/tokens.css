@@ -54,6 +54,8 @@
   --color-note-line: light-dark(#ecd9a6, #4a3d1c);
   --color-term: #101417;
   --color-term-ink: #d7e3df;
+  /* Bento: a key in the JSON on the terminal background, lit while its picture plays. */
+  --color-term-key: #7fe3cc;
   --color-s1: light-dark(#7c8684, #7d8886);
   --color-s2: light-dark(#00735f, #2fa58c);
   --color-transparent: transparent;
