@@ -1,0 +1,14 @@
+# Uno Blueprint
+
+> An open-source toolkit for context engineering. One service blueprint that people read as a canvas and agents read as structured data.
+
+## Docs
+
+- [Agent guide](https://uno-blueprint.netlify.app/uno-blueprint.md): what Uno Blueprint is for, how a blueprint is laid out, the four skills, the workflow for coding agents, and how to set it up
+- [README and quick start](https://github.com/BilLogic/uno-blueprint#readme): the template's own documentation
+- [Agent router](https://github.com/BilLogic/uno-blueprint/blob/main/AGENTS.md): routes each request to a skill
+
+## Optional
+
+- [Demo blueprint](https://uno-blueprint.netlify.app/demo/): a sample blueprint on the canvas
+- [Source](https://github.com/BilLogic/uno-blueprint): the repository, MIT license
