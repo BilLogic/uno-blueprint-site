@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Ubuntu_Sans, Ubuntu_Sans_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import { site } from "@/content/site";
+import { view } from "@/content/view";
 import { THEME_COLORS, themeBootScript } from "@/lib/theme";
 import "./globals.css";
 
@@ -18,6 +19,8 @@ export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: site.name,
   description: site.description,
+  // Points agents at the same page as markdown.
+  alternates: { types: { "text/markdown": `/${view.agentFile}` } },
   openGraph: {
     type: "website",
     url: "/",
