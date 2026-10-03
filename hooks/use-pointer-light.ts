@@ -9,12 +9,14 @@ let frame = 0;
 function paint() {
   frame = 0;
   if (!pointer) return;
-  for (const element of lit) {
-    const box = element.getBoundingClientRect();
+  const { clientX, clientY } = pointer;
+  // Read every box first, then write, so the writes never force a layout between reads.
+  const boxes = [...lit].map((element) => [element, element.getBoundingClientRect()] as const);
+  for (const [element, box] of boxes) {
     // Panels well off screen keep their last light; nobody can see it.
     if (box.bottom < -200 || box.top > innerHeight + 200) continue;
-    element.style.setProperty("--mx", `${pointer.clientX - box.left}px`);
-    element.style.setProperty("--my", `${pointer.clientY - box.top}px`);
+    element.style.setProperty("--mx", `${clientX - box.left}px`);
+    element.style.setProperty("--my", `${clientY - box.top}px`);
   }
 }
 

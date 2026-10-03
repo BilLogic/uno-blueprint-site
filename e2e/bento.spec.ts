@@ -22,24 +22,20 @@ test.describe("bento", () => {
     await expect(panel(page, titles[0])).toHaveCSS("opacity", "0");
 
     // Note when each panel first shows, frame by frame, while the reader scrolls down.
-    await page.evaluate((names) => {
-      const panels = names.map((name) =>
-        [...document.querySelectorAll<HTMLElement>('[role="group"]')].find(
-          (p) => p.querySelector("h3")?.textContent === name,
-        )!,
-      );
+    const panels = await Promise.all(titles.map((title) => panel(page, title).elementHandle()));
+    await page.evaluate((panels) => {
       const shown: number[] = [];
       Object.assign(window, { shown });
       const watch = () => {
         panels.forEach((p, i) => {
-          if (shown[i] === undefined && Number(getComputedStyle(p).opacity) > 0)
+          if (shown[i] === undefined && Number(getComputedStyle(p!).opacity) > 0)
             shown[i] = performance.now();
         });
         if (shown.filter((t) => t !== undefined).length < panels.length)
           requestAnimationFrame(watch);
       };
       watch();
-    }, titles);
+    }, panels);
     await panel(page, titles[4]).scrollIntoViewIfNeeded();
     await page.mouse.wheel(0, 400);
 
@@ -81,24 +77,37 @@ test.describe("bento", () => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
     for (const title of titles) await expect(panel(page, title)).toHaveCSS("opacity", "1");
+
+    // A picture shows how it ends at once, with nothing in between.
+    await panel(page, "Product context, built in").hover();
+    await expect(live(page)).toHaveCSS("opacity", "1", { timeout: 100 });
   });
 
   test("on a phone the duo card keeps its tree, both readings side by side", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
+    // Reduced motion: the panel is in place, not still rising.
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
     const duo = panel(page, "Uno map, duo users");
     await duo.scrollIntoViewIfNeeded();
-    await expect(duo).toHaveCSS("transform", "none");
+    await expect(duo).toBeInViewport();
 
-    const data = duo.locator("pre");
-    const reading = data.locator("xpath=../preceding-sibling::div/div");
-    const [left, right] = [await reading.boundingBox(), await data.boundingBox()];
-    expect(left!.y).toBe(right!.y);
-    expect(left!.x + left!.width).toBeLessThanOrEqual(right!.x);
+    // The data reading sits in the right half, beside the page reading rather than under it.
+    const [card, data] = [await duo.boundingBox(), await duo.getByText('"lane"').boundingBox()];
+    expect(data!.x).toBeGreaterThan(card!.x + card!.width / 2);
 
     // The data reading folds its last line to fit.
-    await expect(data.getByText("…")).toBeVisible();
-    await expect(data.getByText('"leads_to"')).toBeHidden();
+    await expect(duo.getByText("…")).toBeVisible();
+    await expect(duo.getByText('"leads_to"')).toBeHidden();
+  });
+});
+
+test.describe("bento without script", () => {
+  test.use({ javaScriptEnabled: false });
+
+  test("every panel is there", async ({ page }) => {
+    await page.goto("/");
+    for (const title of titles) await expect(panel(page, title)).toHaveCSS("opacity", "1");
   });
 });
 

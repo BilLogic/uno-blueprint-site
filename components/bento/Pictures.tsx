@@ -1,11 +1,9 @@
 import { Gem, Search, UserRound } from "lucide-react";
-import type { CSSProperties } from "react";
 import { bento } from "@/content/bento";
 import { ToolLogo } from "@/components/icons/ToolLogo";
 import { BOARD, HITS, RESULTS, SOURCE_WIRES, STACKS } from "./geometry";
 import styles from "./bento.module.css";
-
-const vars = (values: Record<string, string | number>) => values as CSSProperties;
+import { vars } from "./vars";
 
 /** Built for RAG: a question, one hit in each lane, one retriever, four ranked results. */
 export function RagPicture() {

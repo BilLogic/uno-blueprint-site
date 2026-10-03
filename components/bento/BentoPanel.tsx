@@ -2,7 +2,7 @@
 
 import { useCallback, useId, type ReactNode } from "react";
 import { useInView } from "@/hooks/use-in-view";
-import { useNoHover } from "@/hooks/use-media-query";
+import { useNoHover, useReducedMotion } from "@/hooks/use-media-query";
 import { usePlayCycle } from "@/hooks/use-play-cycle";
 import { usePointerLight } from "@/hooks/use-pointer-light";
 import { useArrived } from "./BentoGrid";
@@ -29,7 +29,11 @@ export function BentoPanel({ index, size, icon, title, body, children }: BentoPa
   const noHover = useNoHover();
   // No pointer to hover with: the picture plays while its panel is in the middle of the screen.
   const [middleRef, inMiddle] = useInView<HTMLDivElement>({ rootMargin: "-22% 0px -22% 0px" });
-  const playing = usePlayCycle(noHover && inMiddle, PLAY_MS, REST_MS);
+  const reducedMotion = useReducedMotion();
+  const centred = noHover && inMiddle;
+  const cycling = usePlayCycle(centred && !reducedMotion, PLAY_MS, REST_MS);
+  // With reduced motion it holds the played picture instead of replaying it.
+  const playing = centred && (reducedMotion || cycling);
   const lightRef = usePointerLight<HTMLDivElement>();
   const ref = useCallback(
     (node: HTMLDivElement | null) => {

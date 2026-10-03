@@ -1,11 +1,12 @@
 "use client";
 
 import { Bot, UserRound } from "lucide-react";
-import { Fragment, useEffect, useRef, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { bento } from "@/content/bento";
 import { tokenTravel } from "@/lib/bento";
 import { BOARD, SHARED_CELL } from "./geometry";
 import styles from "./bento.module.css";
+import { vars } from "./vars";
 
 type Travel = Record<"person" | "agent", { x: number; y: number }>;
 
@@ -48,16 +49,21 @@ export function DuoPicture() {
         agent: tokenTravel(target, restingBox(agent, frame), "agent"),
       });
     };
+    let live = true;
     const observer = new ResizeObserver(aim);
     observer.observe(board);
-    void document.fonts.ready.then(aim);
-    return () => observer.disconnect();
+    // Webfonts can move the board after it is first measured.
+    void document.fonts.ready.then(() => {
+      if (live) aim();
+    });
+    return () => {
+      live = false;
+      observer.disconnect();
+    };
   }, []);
 
   const to = (side: keyof Travel) =>
-    travel
-      ? ({ "--tx": `${travel[side].x}px`, "--ty": `${travel[side].y}px` } as CSSProperties)
-      : undefined;
+    travel ? vars({ "--tx": `${travel[side].x}px`, "--ty": `${travel[side].y}px` }) : undefined;
 
   return (
     <div className={styles.duo}>
@@ -104,22 +110,16 @@ export function DuoPicture() {
               const last = n === bento.duo.json.length - 1;
               return (
                 <Fragment key={n}>
-                  <span
-                    className={last ? styles.last : undefined}
-                    style={{ "--n": n } as CSSProperties}
-                  >
+                  <span className={last ? styles.last : undefined} style={vars({ "--n": n })}>
                     {indent}
-                    <i style={{ "--n": n } as CSSProperties}>{key}</i>
+                    <i>{key}</i>
                     {rest}
                   </span>
                   {last ? null : "\n"}
                 </Fragment>
               );
             })}
-            <span
-              className={styles.folded}
-              style={{ "--n": bento.duo.json.length - 1 } as CSSProperties}
-            >
+            <span className={styles.folded} style={vars({ "--n": bento.duo.json.length - 1 })}>
               {bento.duo.folded}
             </span>
           </pre>

@@ -25,8 +25,10 @@ for (const width of widths) {
       });
 
       test("bento", async ({ page }) => {
-        const grid = page.getByRole("group", { name: "Uno map, duo users" }).locator("..");
-        await expect(grid).toHaveScreenshot(`bento-${width}-${colorScheme}.png`);
+        const section = page
+          .locator("section")
+          .filter({ has: page.getByRole("heading", { name: "What the structure gives you" }) });
+        await expect(section).toHaveScreenshot(`bento-${width}-${colorScheme}.png`);
       });
     });
   }
