@@ -66,6 +66,11 @@
   --font-*: initial;
   --font-sans: var(--font-ubuntu-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: var(--font-ubuntu-sans-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  /*
+   * The system face, for glyphs Ubuntu Sans lacks (arrows). Without it they
+   * would come from the size-matched Arial fallback, as the prototype's do not.
+   */
+  --font-symbol: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
   /* Type scale, named by size so a prototype value maps to a token at a glance. */
   --text-*: initial;
@@ -106,6 +111,7 @@
   --radius-10: 10px;
   --radius-12: 12px;
   --radius-16: 16px;
+  --radius-16-inset: calc(var(--radius-16) - 1px); /* inside a panel's one-pixel rim */
   --radius-20: 20px; /* the hero picture's frame (the prototype's .hv sets --r:20px) */
   --radius-20-inset: calc(var(--radius-20) - 1px); /* inside that frame's one-pixel rim */
   --radius-mark: 24%; /* the logo mark's squircle */
@@ -233,6 +239,30 @@
   --color-lane-front: #d9902f;
   --color-lane-back: #d0648f;
   --color-lane-support: #7b74c9;
+
+  /*
+   * Structure walkthrough: the sheets, the board and the panel. The motion
+   * values are the prototype's.
+   */
+  --shadow-sheet: -7px 7px 0 -1px color-mix(in oklab, var(--color-ink) 5%, transparent);
+  --shadow-lift: 0 24px 60px -20px rgba(0, 0, 0, 0.35); /* a panel raised above the board */
+  --ease-settle: cubic-bezier(0.2, 0.8, 0.2, 1); /* a label sliding to its sheet */
+  --text-11-5: 11.5px;
+  --text-14-5: 14.5px;
+  --duration-stagger: 70ms; /* between one sheet, or one column, and the next */
+  --duration-word-delay: 100ms; /* a word follows its bar out */
+  --duration-word-out: 350ms;
+  --duration-fade: 400ms;
+  --duration-fade-slow: 450ms;
+  --duration-shade: 500ms;
+  --duration-shadow: 600ms;
+  --duration-leave: 620ms;
+  --duration-panel-delay: 840ms; /* the panel opens once the beam has reached it */
+  --duration-sheet: 900ms;
+  --duration-tag: 950ms;
+  --duration-board: 1000ms;
+  --duration-named-delay: 1050ms; /* the board's words arrive once it has turned to face the reader */
+
   /* A warning on the always-dark terminal; its command and progress lines use term-key and term-faint. */
   --color-term-amber: #fbbf6a;
 
