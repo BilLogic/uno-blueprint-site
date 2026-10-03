@@ -166,7 +166,7 @@
   --color-term-faint: #8b99a3; /* what a skill does */
   --color-term-hover: rgba(255, 255, 255, 0.055);
   --leading-command: 1.6; /* commands in a box; the agent view's page reads looser */
-  --leading-label: 1.4; /* a prompt's title */
+  --leading-prompt-title: 1.4; /* a prompt's title */
   --tracking-label: -0.01em; /* a step's label */
   --radius-1: 1px; /* the bars of the questions' plus sign */
   --spacing-bar: 1.5px; /* their thickness */
