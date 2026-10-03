@@ -11,8 +11,9 @@ test("the hero says what the toolkit is and offers two ways in", async ({ page }
   await expect(
     page.getByText("An open-source toolkit for context engineering: a canvas for your team, a harness for your agents."),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Get the template" })).toHaveAttribute("href", "#start");
-  await expect(page.getByRole("link", { name: "Try the demo" })).toHaveAttribute("href", /\/demo\/$/);
+  const hero = page.locator("main section").first();
+  await expect(hero.getByRole("link", { name: "Get the template" })).toHaveAttribute("href", "#start");
+  await expect(hero.getByRole("link", { name: "Try the demo" })).toHaveAttribute("href", /\/demo\/$/);
 });
 
 test("the picture is one image with a description", async ({ page }) => {
