@@ -1,0 +1,223 @@
+/*
+ * Design tokens, declared once. Values are the prototype's final computed ones
+ * (reference/prototype.html, where later rules in its <style> block win).
+ *
+ * `@theme static` emits every token as a custom property on :root, so a token
+ * is usable from Tailwind (`bg-panel`, `rounded-10`, `ease-out`) and from CSS
+ * (`var(--color-panel)`) alike. Each colour carries its light and dark value
+ * together, which is what lets the theme switch without a rebuild.
+ *
+ * Prototype name -> token
+ *   --bg --panel --ink ...   --color-bg --color-panel --color-ink ...
+ *   --shadow                 --shadow-card
+ *   --e-out/in/io/spring     --ease-out/in/io/spring
+ *   --t-1..--t-4             --duration-t-1..--duration-t-4
+ *   --gutter --sec --head    --spacing-gutter --spacing-section --spacing-head
+ *   --gap --r                --spacing-gap  --radius-16
+ */
+
+@theme static {
+  --color-*: initial;
+  --color-bg: light-dark(oklch(0.99 0.001 175), oklch(0.19 0.004 175));
+  --color-panel: light-dark(#fff, oklch(0.245 0.005 175));
+  --color-card: light-dark(oklch(0.972 0.002 175), oklch(0.215 0.004 175));
+  --color-card-2: light-dark(oklch(0.94 0.003 175), oklch(0.28 0.005 175));
+  --color-ink: light-dark(oklch(0.21 0.008 175), oklch(0.95 0.003 175));
+  --color-muted: light-dark(oklch(0.47 0.008 175), oklch(0.72 0.008 175));
+  --color-faint: light-dark(oklch(0.53 0.006 175), oklch(0.68 0.008 175));
+  --color-line: light-dark(
+    color-mix(in oklab, var(--color-ink) 9%, transparent),
+    color-mix(in oklab, var(--color-ink) 8%, transparent)
+  );
+  --color-line-2: light-dark(
+    color-mix(in oklab, var(--color-ink) 17%, transparent),
+    color-mix(in oklab, var(--color-ink) 15%, transparent)
+  );
+  --color-line-hot: light-dark(
+    color-mix(in oklab, var(--color-ink) 42%, transparent),
+    color-mix(in oklab, var(--color-ink) 45%, transparent)
+  );
+  --color-brand: light-dark(#00806a, #3ecfb0);
+  --color-brand-soft: color-mix(in oklab, var(--color-brand) 13%, transparent);
+  --color-primary: light-dark(#007a66, #047a68);
+  --color-primary-hover: light-dark(#00685a, #068f7a);
+  --color-on-primary: #fff;
+  --color-link: light-dark(#007a66, #5fdcc3);
+  --color-accent: #85ecd5;
+  --color-tint: light-dark(#e3f6f1, #11302b);
+  --color-hi: light-dark(#dff5ef, #123a33);
+  --color-hi-line: light-dark(#39b89c, #3fc3a5);
+  --color-amber: light-dark(#b45309, #fbbf6a);
+  --color-amber-bg: light-dark(#fff4e0, #33260f);
+  --color-note: light-dark(#fff7e3, #2a2414);
+  --color-note-ink: light-dark(#6f5410, #f0d48c);
+  --color-note-line: light-dark(#ecd9a6, #4a3d1c);
+  --color-term: #101417;
+  --color-term-ink: #d7e3df;
+  --color-s1: light-dark(#7c8684, #7d8886);
+  --color-s2: light-dark(#00735f, #2fa58c);
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --font-*: initial;
+  --font-sans: var(--font-ubuntu-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-ubuntu-sans-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Type scale, named by size so a prototype value maps to a token at a glance. */
+  --text-*: initial;
+  --text-11: 11px;
+  --text-11--line-height: 1;
+  --text-12: 12px;
+  --text-12--line-height: 1.5;
+  --text-12-5: 12.5px;
+  --text-12-5--line-height: 1.5;
+  --text-13: 13px;
+  --text-13--line-height: 1.5;
+  --text-13-5: 13.5px;
+  --text-13-5--line-height: 1;
+  --text-14: 14px;
+  --text-14--line-height: 1.5;
+  --text-16: 16px;
+  --text-16--line-height: 1.5;
+  --text-18: 18px;
+  --text-18--line-height: 28px;
+  --text-20: 20px;
+  --text-20--line-height: 1.2;
+  --text-22: 22px;
+  --text-22--line-height: 1.35;
+  --text-title: clamp(26px, 3vw, 34px);
+  --text-title--line-height: 1.12;
+  --text-title--letter-spacing: -0.02em;
+  --text-title--font-weight: 500;
+  --text-display: clamp(38px, 5vw, 56px);
+  --text-display--line-height: 1.04;
+  --text-display--letter-spacing: -0.03em;
+  --text-display--font-weight: 500;
+
+  --radius-*: initial;
+  --radius-2: 2px;
+  --radius-4: 4px;
+  --radius-6: 6px;
+  --radius-8: 8px;
+  --radius-10: 10px;
+  --radius-12: 12px;
+  --radius-16: 16px;
+  --radius-20: 20px; /* the hero picture's frame (the prototype's .hv sets --r:20px) */
+  --radius-20-inset: calc(var(--radius-20) - 1px); /* inside that frame's one-pixel rim */
+  --radius-mark: 24%; /* the logo mark's squircle */
+  --radius-pill: 99px;
+
+  --leading-code: 1.65;
+
+  --blur-nav: 6px;
+
+  --ease-*: initial;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* something arrives or is revealed */
+  --ease-in: cubic-bezier(0.6, 0, 0.85, 0.25); /* something leaves */
+  --ease-io: cubic-bezier(0.65, 0, 0.35, 1); /* something on screen moves from A to B */
+  --ease-spring: cubic-bezier(0.34, 1.45, 0.5, 1); /* a small thing pops */
+  --duration-t-1: 160ms;
+  --duration-t-2: 280ms;
+  --duration-t-3: 460ms;
+  --duration-t-4: 800ms;
+
+  --shadow-*: initial;
+  /* Light casts a soft drop shadow; dark lights the top edge instead. */
+  --shadow-card:
+    0 1px 2px light-dark(rgba(16, 24, 22, 0.04), transparent),
+    0 14px 34px -14px light-dark(rgba(16, 24, 22, 0.14), transparent),
+    inset 0 1px 0 light-dark(transparent, rgba(255, 255, 255, 0.04));
+  --shadow-menu: 0 10px 30px rgba(0, 0, 0, 0.14);
+  --shadow-ring: 0 0 0 1px var(--color-line); /* a pressed segment's hairline */
+
+  /* Page rhythm; narrower screens tighten it below. */
+  --spacing-gutter: 96px;
+  --spacing-section: 96px;
+  --spacing-head: 64px;
+  --spacing-gap: 12px;
+  --spacing-menu-item-y: 9px;
+  --spacing-mark: 22px; /* the logo mark */
+  --spacing-icon: 20px; /* footer and nav icons */
+  --spacing-icon-sm: 15px; /* icons inside the view switch */
+  /* The hero picture's height, matched to the prototype's render; grows with the viewport above md. */
+  --spacing-hero-picture: 597px;
+  --container-page: 1280px;
+  --container-hero: 760px;
+  --container-lead: 540px;
+  --container-agent: 860px;
+
+  /*
+   * The prototype writes its breakpoints as max-widths, so each one sits a pixel
+   * above the prototype's value: `max-sm:` is the prototype's (max-width:640px).
+   */
+  --breakpoint-*: initial;
+  --breakpoint-xs: 521px;
+  --breakpoint-sm: 641px;
+  --breakpoint-md: 761px;
+  --breakpoint-ml: 821px;
+  --breakpoint-lg: 901px;
+  --breakpoint-xl: 1001px;
+  --breakpoint-2xl: 1101px;
+
+  --animate-menu-in: menu-in var(--duration-t-1) var(--ease-out);
+  @keyframes menu-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+@utility duration-t-* {
+  --tw-duration: --value(--duration-t-*);
+  transition-duration: --value(--duration-t-*);
+}
+
+:root {
+  @variant md {
+    --spacing-hero-picture: calc(372px + 12vw);
+  }
+  @variant 2xl {
+    --spacing-hero-picture: min(calc(470px + 12vw), 647px);
+  }
+  @variant max-2xl {
+    --spacing-gutter: 40px;
+    --spacing-section: 72px;
+    --spacing-head: 40px;
+  }
+  @variant max-sm {
+    --spacing-gutter: 16px;
+    --spacing-section: 56px;
+    --spacing-head: 32px;
+  }
+}
+
+/*
+ * Every colour above is light-dark(light, dark), so `color-scheme` picks the
+ * palette: the system's by default, the reader's once they choose one.
+ */
+:root {
+  color-scheme: light dark;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* `dark:` matches whichever way the page came to be dark. */
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+  &:where(:root[data-theme="dark"] *) {
+    @slot;
+  }
+}
