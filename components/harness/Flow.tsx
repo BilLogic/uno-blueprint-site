@@ -72,7 +72,7 @@ export function Skill({ command, pings, raised = false, nameRef }: SkillProps) {
       <span
         key={pings}
         ref={nameRef}
-        className={`rounded-10 bg-term px-[1em] py-[.65em] font-mono text-[1.05em] leading-[normal] font-medium text-term-command ${pings ? "animate-skill-ping motion-reduce:animate-none" : ""}`}
+        className={`rounded-10 bg-term px-[1em] py-[.65em] font-mono text-[1.05em] leading-[normal] font-medium text-term-key ${pings ? "animate-skill-ping motion-reduce:animate-none" : ""}`}
       >
         {command}
       </span>

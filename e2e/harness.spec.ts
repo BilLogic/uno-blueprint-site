@@ -116,7 +116,7 @@ test.describe("harness showcase", () => {
       const harness = section(page);
       for (const [tab] of pictures) {
         await harness.getByRole("tab", { name: tab }).click();
-        const results = await new AxeBuilder({ page }).include("main section:has(#harness-title)").analyze();
+        const results = await new AxeBuilder({ page }).include('main section[aria-label="Harness for your agents."]').analyze();
         expect(results.violations).toEqual([]);
       }
     });

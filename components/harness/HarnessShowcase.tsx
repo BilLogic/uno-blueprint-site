@@ -76,7 +76,7 @@ export function HarnessShowcase() {
         id={tabPanelId(ID_BASE, skill)}
         aria-labelledby={tabId(ID_BASE, skill)}
         aria-describedby={CAPTION_ID}
-        className="relative aspect-video max-w-full overflow-hidden rounded-16 border border-line bg-card bg-[radial-gradient(var(--color-line-2)_1px,transparent_1px)] bg-size-[18px_18px] max-lg:aspect-auto"
+        className="relative aspect-video max-w-full overflow-hidden rounded-16 border border-line bg-card bg-dots max-lg:aspect-auto"
       >
         {/* A new key starts the picture from its first frame. */}
         <Picture key={`${skill}-${run}-${running}`} running={running} onStale={replay} />
@@ -93,7 +93,7 @@ export function HarnessShowcase() {
         )}
       </div>
       <p id={CAPTION_ID} className="mt-4 flex justify-between gap-6 text-14 text-muted">
-        <span className="max-w-[70ch]">
+        <span className="max-w-caption">
           <b className="font-medium text-ink">{current.label}.</b> {current.caption}
         </span>
       </p>
