@@ -285,7 +285,7 @@
     width: 86%;
     height: 4px;
     border-radius: var(--radius-2);
-    background: var(--color-bar);
+    background: var(--color-bento-bar);
   }
   & u + u {
     width: 58%;
@@ -475,7 +475,7 @@
     transition: fill var(--duration-t-2);
   }
   & .text {
-    fill: var(--color-bar);
+    fill: var(--color-bento-bar);
   }
   & .text2 {
     fill: var(--color-line-2);
@@ -614,7 +614,7 @@
     width: 80%;
     height: 4px;
     border-radius: var(--radius-2);
-    background: var(--color-bar-dim);
+    background: var(--color-bento-bar-dim);
   }
 }
 .neighbour {
@@ -804,7 +804,7 @@
   }
   & .value u {
     width: 44px;
-    background: var(--color-bar-hot);
+    background: var(--color-bento-bar-hot);
     transition-delay: 0.4s;
   }
   & .arrow {
@@ -843,7 +843,7 @@
     width: 80%;
     height: 4px;
     border-radius: var(--radius-2);
-    background: var(--color-bar);
+    background: var(--color-bento-bar);
   }
   & u + u {
     width: 50%;
