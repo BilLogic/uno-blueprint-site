@@ -163,7 +163,7 @@ export function MapPicture({ running, onStale }: PictureProps) {
                   return (
                     <span key={s} className={opens(open)}>
                       <span
-                        className={`ml-1.5 grid min-h-[3.6em] content-center rounded-8 border px-[.55em] py-[.45em] text-[max(11px,.86em)] leading-[1.2] hyphens-auto wrap-anywhere transition-[background-color,border-color] duration-t-2 motion-reduce:transition-none ${look}`}
+                        className={`ml-1.5 grid min-h-[3.6em] content-center rounded-8 border px-[.55em] py-[.45em] text-[max(11px,.86em)] leading-[1.2] hyphens-auto transition-[background-color,border-color] duration-t-2 motion-reduce:transition-none ${look}`}
                       >
                         {placed ? map.placements[phrase]?.text : null}
                       </span>
