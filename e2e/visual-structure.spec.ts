@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { structure } from "../content/structure";
+import { showOnly } from "./isolate";
 
 // Baselines are rendered on Linux (CI, or the Playwright image locally): font
 // rasterisation differs by platform, so other platforms skip unless asked.
@@ -29,7 +30,26 @@ for (const width of widths) {
         await expect(section.locator("[aria-live] b")).toHaveText(structure.steps.at(-1)!.title);
         // The section is taller than the viewport, so the sticky nav would land on it mid-capture.
         await page.addStyleTag({ content: "header { visibility: hidden; }" });
+        await showOnly(section);
         await expect(section).toHaveScreenshot(`structure-${width}-${colorScheme}.png`);
+      });
+
+      test("structure walkthrough pinned on the flat blueprint", async ({ page }) => {
+        await page.goto("/");
+        await page.evaluate(() => document.fonts.ready);
+        const section = page
+          .locator("section")
+          .filter({ has: page.getByRole("heading", { level: 2, name: heading }) });
+        await page.addStyleTag({ content: "header { visibility: hidden; }" });
+        await showOnly(section);
+        // Scroll down until the line of visibility is being read; the screenshot settles the transitions.
+        const title = section.locator("[aria-live] b");
+        for (let y = 0; (await title.textContent()) !== "Line of visibility"; y += 40) {
+          if (y > 20000) throw new Error("never reached the line of visibility");
+          await page.evaluate((top) => window.scrollTo(0, top), y);
+          await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+        }
+        await expect(page).toHaveScreenshot(`structure-pinned-${width}-${colorScheme}.png`);
       });
     });
   }
