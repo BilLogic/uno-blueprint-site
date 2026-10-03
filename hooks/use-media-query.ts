@@ -27,3 +27,6 @@ export const useReducedMotion = () => useMediaQuery("(prefers-reduced-motion: re
 
 /** A touch screen with no hover: pictures that play on hover play by themselves. */
 export const useNoHover = () => useMediaQuery("(hover: none)");
+
+/** Wider than a phone: the prototype's (max-width:760px) turned round, in step with --breakpoint-md. */
+export const useWide = () => useMediaQuery("(min-width: 761px)");
