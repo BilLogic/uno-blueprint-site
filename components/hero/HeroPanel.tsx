@@ -10,6 +10,8 @@ const { panel: words, tools } = hero.picture;
 const sketch = "block h-1 rounded-2";
 const label = "text-11 leading-label font-medium text-muted";
 const field = "grid gap-1.5";
+/** Per tab, the panel content width below which it is hidden: three tabs need 185 px, two need 124. */
+const TAB_FIT = ["", "@max-hero-tabs-2:hidden", "@max-hero-tabs-3:hidden"] as const;
 const chip = "inline-flex min-w-0 items-center gap-2 rounded-8 border border-line-2 px-2.25 py-1.5 text-faint";
 
 /**
@@ -33,7 +35,7 @@ export const HeroPanel = memo(function HeroPanel({ cell, sources, phase, panelRe
   return (
     <div
       ref={panelRef}
-      className="relative z-1 grid w-hero-panel min-w-0 grid-cols-1 gap-3 justify-self-start rounded-16 border border-line-2 bg-panel p-3.5 text-12 shadow-hero-panel max-md:w-full max-md:justify-self-stretch"
+      className="@container relative z-1 grid w-hero-panel min-w-0 grid-cols-1 gap-3 justify-self-start rounded-16 border border-line-2 bg-panel p-3.5 text-12 shadow-hero-panel max-md:w-full max-md:justify-self-stretch"
     >
       <div className={`${row} flex items-center gap-1.5 text-faint`}>
         <span className={`${sketch} w-8.5 bg-line-2`} />›<span className={`${sketch} w-8.5 bg-line-2`} />
@@ -66,9 +68,12 @@ export const HeroPanel = memo(function HeroPanel({ cell, sources, phase, panelRe
         <span className={label}>{words.valueProposition}</span>
         <span className={`${sketch} w-7/10 bg-line-2`} />
       </div>
-      <div className={`${row} flex gap-2.5 border-b border-line text-11/normal text-faint max-md:hidden`}>
+      {/* Tabs that do not fit drop from the end; the prototype lets them run past the panel. */}
+      <div
+        className={`${row} flex gap-2.5 overflow-x-clip border-b border-line text-11/normal whitespace-nowrap text-faint max-md:hidden`}
+      >
         {words.tabs.map((tab, i) => (
-          <span key={tab} className={`pb-1.75 ${i === 0 ? "text-ink shadow-tab" : ""}`}>
+          <span key={tab} className={`pb-1.75 ${TAB_FIT[i]} ${i === 0 ? "text-ink shadow-tab" : ""}`}>
             {tab}
           </span>
         ))}

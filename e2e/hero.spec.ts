@@ -79,3 +79,34 @@ test.describe("the panel keeps the rows its width can hold", () => {
     }
   });
 });
+
+for (const width of [800, 1000, 1160]) {
+  test(`at ${width} px no words in the picture run past their box`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    await page.evaluate(() => document.fonts.ready);
+    const overflowing = await picture(page).evaluate((root) => {
+      const bordered = (element: Element | null): Element | null => {
+        for (let at = element; at && at !== root; at = at.parentElement) {
+          const style = getComputedStyle(at);
+          if (["Top", "Right", "Bottom", "Left"].some((side) => parseFloat(style.getPropertyValue(`border-${side.toLowerCase()}-width`)) > 0)) return at;
+        }
+        return root;
+      };
+      const out: string[] = [];
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (!node.textContent?.trim()) continue;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const text = range.getBoundingClientRect();
+        if (!text.width) continue;
+        const box = bordered(node.parentElement)!.getBoundingClientRect();
+        if (text.left < box.left - 0.5 || text.right > box.right + 0.5) out.push(node.textContent);
+      }
+      return out;
+    });
+    expect(overflowing).toEqual([]);
+  });
+}
