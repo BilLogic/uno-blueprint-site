@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextMenuIndex } from "./menu-keys";
+import { nextMenuIndex, nextTabIndex } from "./menu-keys";
 
 describe("nextMenuIndex", () => {
   it("moves down and wraps to the first item", () => {
@@ -20,5 +20,28 @@ describe("nextMenuIndex", () => {
   it("ignores other keys and empty menus", () => {
     expect(nextMenuIndex("Tab", 0, 3)).toBeNull();
     expect(nextMenuIndex("ArrowDown", 0, 0)).toBeNull();
+  });
+});
+
+describe("nextTabIndex", () => {
+  it("moves right and wraps to the first tab", () => {
+    expect(nextTabIndex("ArrowRight", 0, 4)).toBe(1);
+    expect(nextTabIndex("ArrowRight", 3, 4)).toBe(0);
+  });
+
+  it("moves left and wraps to the last tab", () => {
+    expect(nextTabIndex("ArrowLeft", 1, 4)).toBe(0);
+    expect(nextTabIndex("ArrowLeft", 0, 4)).toBe(3);
+  });
+
+  it("jumps to either end", () => {
+    expect(nextTabIndex("Home", 2, 4)).toBe(0);
+    expect(nextTabIndex("End", 0, 4)).toBe(3);
+  });
+
+  it("ignores vertical arrows, other keys and empty rows", () => {
+    expect(nextTabIndex("ArrowDown", 1, 4)).toBeNull();
+    expect(nextTabIndex("Enter", 1, 4)).toBeNull();
+    expect(nextTabIndex("ArrowRight", 0, 0)).toBeNull();
   });
 });
