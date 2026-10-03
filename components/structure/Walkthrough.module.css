@@ -1,0 +1,896 @@
+@reference "../../app/globals.css";
+
+/*
+ * The walkthrough's stage: a 1010 by 530 box in its own px, scaled to the
+ * frame by script. Lengths inside it are the stage's geometry, so they stay
+ * in px; colour, type and motion come from the tokens. State classes on the
+ * stage (.flat, .named, .steps, .cell, .open) are set per step.
+ */
+
+.scroller {
+  position: relative;
+}
+
+.sticky {
+  position: sticky;
+  top: 72px;
+}
+
+/* A one-pixel rim that lights up near the pointer. */
+.frame {
+  position: relative;
+  display: flex;
+  padding: 1px;
+  border-radius: var(--radius-16);
+  background:
+    radial-gradient(420px circle at var(--mx, -999px) var(--my, -999px), var(--color-line-hot), transparent 62%),
+    linear-gradient(to bottom, var(--color-line-2), var(--color-line));
+}
+
+.stage {
+  position: relative;
+  overflow: hidden;
+  /* Until script measures the frame. */
+  height: 530px;
+}
+
+.world {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 1010px;
+  height: 530px;
+  margin-left: -505px;
+  transform-origin: 50% 0;
+  font-size: var(--text-13);
+  line-height: 1.5;
+}
+
+.dots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--color-line-2) 1px, transparent 1px);
+  background-size: 20px 20px;
+  mask-image: radial-gradient(ellipse 62% 72% at 50% 50%, #000 15%, transparent 78%);
+  pointer-events: none;
+}
+
+/* Sheets: services, phases, scenarios. */
+
+.sheet {
+  position: absolute;
+  left: 355px;
+  top: 0;
+  width: 300px;
+  height: 190px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-line-hot);
+  border-radius: var(--radius-16);
+  box-shadow: var(--shadow-sheet);
+  transition:
+    transform var(--duration-sheet) var(--ease-out),
+    opacity var(--duration-t-3) var(--ease-out),
+    filter var(--duration-shadow),
+    box-shadow var(--duration-shadow);
+}
+
+.stage .sheet.gone {
+  opacity: 0;
+  filter: none;
+  transition:
+    transform var(--duration-leave) var(--ease-in),
+    opacity var(--duration-shade) var(--ease-in);
+}
+
+.stage.flat .sheet {
+  opacity: 0;
+}
+
+.tile {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-10);
+  border: 1px solid var(--color-line-2);
+  background: var(--color-card);
+  font: 500 var(--text-12) / 1 var(--font-mono);
+  color: var(--color-faint);
+  transition:
+    background var(--duration-shade),
+    border-color var(--duration-shade);
+}
+
+.sheet.out .tile.followed {
+  background: var(--color-brand-soft);
+  border-color: var(--color-brand);
+  color: var(--color-ink);
+}
+
+/* A corner the projection lines are drawn from or to. */
+.corner {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.links line {
+  stroke: var(--color-brand);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.8;
+}
+
+.links polygon {
+  fill: var(--color-brand);
+  opacity: 0.07;
+}
+
+.links g {
+  opacity: 0;
+  transition: opacity var(--duration-fade-slow);
+}
+
+.links g.in {
+  opacity: 1;
+}
+
+/* The board: one path's blueprint, with two more paths behind it. */
+
+.board,
+.ghost {
+  position: absolute;
+  left: 205px;
+  top: 69px;
+  width: 600px;
+  height: 372px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-line-hot);
+  border-radius: var(--radius-16);
+  box-shadow: var(--shadow-sheet);
+  transition:
+    transform var(--duration-board) var(--ease-out),
+    opacity var(--duration-shade),
+    box-shadow var(--duration-shadow),
+    border-color var(--duration-shade);
+}
+
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+
+.stage.flat .board {
+  box-shadow: var(--shadow-card);
+  border-color: var(--color-line-2);
+}
+
+.stage.flat .ghost {
+  border-color: var(--color-line-2);
+  box-shadow: none;
+  opacity: 0.7;
+}
+
+.stage.open .ghost {
+  opacity: 0;
+}
+
+/* A word that is a grey bar until the blueprint is being read. */
+.word {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.word i {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  display: block;
+  width: 100%;
+  min-width: 34px;
+  height: 5px;
+  margin-top: -2.5px;
+  border-radius: var(--radius-4);
+  background: var(--color-line-2);
+  transition: opacity var(--duration-word-out);
+}
+
+.word b {
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity var(--duration-fade) var(--duration-word-delay);
+}
+
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font: 500 var(--text-11) / 1 var(--font-sans);
+  color: var(--color-faint);
+}
+
+.crumbs s {
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity var(--duration-fade);
+}
+
+.crumbs .key b {
+  color: var(--color-ink);
+}
+
+.crumbs .key i {
+  background: var(--color-muted);
+}
+
+.pathSelect {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+  margin-left: auto;
+  padding: 0 20px 0 8px;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-6);
+  color: var(--color-muted);
+  font: inherit;
+  font-style: normal;
+}
+
+.pathSelect::after {
+  content: "";
+  position: absolute;
+  right: 8px;
+  top: 6px;
+  width: 5px;
+  height: 5px;
+  border-right: 1.5px solid var(--color-faint);
+  border-bottom: 1.5px solid var(--color-faint);
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.stage.named .crumbs .word b,
+.stage.named .crumbs s {
+  opacity: 1;
+}
+
+.stage.named .crumbs .word i {
+  opacity: 0;
+}
+
+.stage.named .crumbs .word b,
+.stage.named .crumbs s,
+.stage.named .crumbs .word i {
+  transition-delay: var(--duration-named-delay);
+}
+
+.grid {
+  position: relative;
+  display: grid;
+  flex: 1;
+  grid-template-rows: auto repeat(4, 1fr);
+  gap: 18px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 92px repeat(6, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 7px;
+  border-radius: var(--radius-8);
+  outline: 1px dashed transparent;
+  outline-offset: 3px;
+  transition:
+    opacity var(--duration-t-3) var(--ease-out),
+    background var(--duration-t-3) var(--ease-out),
+    outline-color var(--duration-t-3) var(--ease-out);
+}
+
+.row.header {
+  align-items: center;
+}
+
+.row.header span {
+  width: 44%;
+  height: 4px;
+  border-radius: var(--radius-4);
+  background: var(--color-line);
+  transition: background var(--duration-fade);
+}
+
+.row.header span:first-child {
+  visibility: hidden;
+}
+
+.stage.columnsOn .row.header span {
+  background: var(--color-brand);
+}
+
+.row em {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-left: 6px;
+  font: 500 var(--text-11) / 1.1 var(--font-sans);
+  font-style: normal;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.row em::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-2);
+  background: var(--lane);
+}
+
+.row em .word i {
+  min-width: 46px;
+}
+
+.row.named em .word b {
+  opacity: 1;
+}
+
+.row.named em .word i {
+  opacity: 0;
+}
+
+.row.current {
+  outline-color: var(--color-brand);
+  background: var(--color-brand-soft);
+}
+
+.row.current em {
+  color: var(--color-ink);
+}
+
+.row.dim {
+  opacity: 0.16;
+}
+
+.cell {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: 9px;
+  border-radius: var(--radius-8);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--color-line);
+  transition:
+    opacity var(--duration-fade),
+    border-color var(--duration-fade),
+    box-shadow var(--duration-fade),
+    background var(--duration-fade);
+}
+
+.cell.filled {
+  background: var(--color-card-2);
+  box-shadow: none;
+}
+
+.cell.filled::before {
+  content: "";
+  width: 58%;
+  height: 4px;
+  border-radius: var(--radius-2);
+  background: color-mix(in oklab, var(--color-ink) 22%, transparent);
+}
+
+.cell.picked {
+  position: relative;
+}
+
+.stage.cellPicked .cell:not(.picked) {
+  opacity: 0.35;
+}
+
+.stage.cellPicked .cell.picked {
+  background: var(--color-panel);
+  box-shadow:
+    0 0 0 1px var(--color-brand),
+    0 0 0 4px var(--color-brand-soft);
+}
+
+.columns {
+  position: absolute;
+  inset: 0 0 0 99px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 7px;
+  pointer-events: none;
+}
+
+.columns i {
+  margin: -4px -3px;
+  border: 1px dashed var(--color-brand);
+  border-radius: var(--radius-10);
+  background: var(--color-brand-soft);
+  opacity: 0;
+  transition: opacity var(--duration-fade);
+  transition-delay: calc(var(--i) * var(--duration-stagger));
+}
+
+.stage.columnsOn .columns i {
+  opacity: 1;
+}
+
+.line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px solid var(--color-line-2);
+  opacity: 0;
+  transition:
+    opacity var(--duration-t-3) var(--ease-out),
+    border-color var(--duration-t-3) var(--ease-out);
+}
+
+.line::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -1px;
+  border-top: 1px dashed var(--color-brand);
+  opacity: 0;
+  transition: opacity var(--duration-t-3) var(--ease-out);
+}
+
+.line span {
+  position: absolute;
+  right: 6px;
+  top: -9px;
+  z-index: 1;
+  padding: 3px 7px;
+  border-radius: var(--radius-6);
+  background: color-mix(in oklab, var(--color-brand) 14%, var(--color-panel));
+  color: var(--color-brand);
+  font: 500 var(--text-11) / 1 var(--font-sans);
+  opacity: 0;
+  transform: translateY(3px);
+  transition:
+    opacity var(--duration-t-3) var(--ease-out),
+    transform var(--duration-t-3) var(--ease-out);
+}
+
+.line.on {
+  opacity: 1;
+}
+
+.line.on span {
+  color: var(--color-faint);
+}
+
+.line.current {
+  border-color: transparent;
+}
+
+.line.current::after,
+.line.current span {
+  opacity: 1;
+}
+
+.line.current span {
+  color: var(--color-brand);
+  transform: none;
+}
+
+/* The labels beside the stack. */
+
+.tag {
+  position: absolute;
+  left: 706px;
+  margin-top: -11px;
+  padding-left: 36px;
+  font: 500 var(--text-12) / 1 var(--font-sans);
+  color: var(--color-faint);
+  white-space: nowrap;
+  opacity: 0;
+  transition:
+    opacity var(--duration-fade-slow),
+    top var(--duration-tag) var(--ease-settle),
+    color var(--duration-fade-slow);
+}
+
+.tag::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 26px;
+  border-top: 1px solid var(--color-line-2);
+}
+
+.tag b {
+  display: inline-block;
+  padding: 5px 8px;
+  border-radius: var(--radius-6);
+  background: var(--color-card-2);
+  color: var(--color-muted);
+  font-weight: 500;
+  transition:
+    background var(--duration-t-2),
+    color var(--duration-t-2);
+}
+
+.tag.in {
+  opacity: 1;
+}
+
+.tag.current {
+  color: var(--color-ink);
+}
+
+.tag.current::before {
+  border-color: var(--color-brand);
+}
+
+.tag.current b {
+  background: color-mix(in oklab, var(--color-brand) 14%, var(--color-panel));
+  color: var(--color-brand);
+}
+
+.stage.flat .tag {
+  opacity: 0;
+}
+
+/* The picked cell's panel. */
+
+.panel {
+  position: absolute;
+  left: 566px;
+  top: 16px;
+  z-index: 8;
+  display: grid;
+  gap: 12px;
+  width: 318px;
+  padding: 16px;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-16);
+  background: var(--color-panel);
+  box-shadow: var(--shadow-card), var(--shadow-lift);
+  font-size: var(--text-12-5);
+  opacity: 0;
+  transform-origin: 0 50%;
+  clip-path: inset(-90px 100% -90px -90px);
+  transition:
+    clip-path var(--duration-t-2) var(--ease-in),
+    opacity var(--duration-t-1);
+}
+
+.stage.open .panel {
+  opacity: 1;
+  clip-path: inset(-90px);
+  transition:
+    clip-path var(--duration-leave) var(--ease-out) var(--duration-panel-delay),
+    opacity var(--duration-t-2) var(--duration-panel-delay);
+}
+
+.bar {
+  display: block;
+  height: 4px;
+  border-radius: var(--radius-2);
+  background: var(--color-line-2);
+}
+
+.panelTop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-faint);
+}
+
+.panelTop .bar {
+  width: 34px;
+}
+
+.panelTop .bar:nth-child(3) {
+  width: 40px;
+  background: var(--color-muted);
+}
+
+.panelTop svg {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+}
+
+.panelImage {
+  display: grid;
+  place-items: center;
+  height: 96px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-10);
+  background: var(--color-card);
+  color: var(--color-faint);
+}
+
+.panelImage svg {
+  width: 22px;
+  height: 22px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.label {
+  font: 500 var(--text-11) / 1.2 var(--font-sans);
+  color: var(--color-muted);
+}
+
+.field .bar.long {
+  width: 86%;
+  background: color-mix(in oklab, var(--color-ink) 32%, transparent);
+}
+
+.field .bar.short {
+  width: 52%;
+}
+
+.field .bar.value {
+  width: 72%;
+}
+
+.fieldRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 6px;
+  padding: 2px 9px;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-11-5);
+}
+
+.pill::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-brand);
+}
+
+.owner {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.owner i {
+  display: block;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--color-line-2);
+  border-radius: 50%;
+  background: var(--color-card-2);
+}
+
+.owner .bar {
+  flex: 1;
+  max-width: 70px;
+}
+
+.tabs {
+  display: flex;
+  gap: 14px;
+  border-bottom: 1px solid var(--color-line);
+  color: var(--color-faint);
+  font-size: var(--text-11-5);
+}
+
+.tabs span {
+  padding-bottom: 7px;
+}
+
+.tabs span:first-child {
+  color: var(--color-ink);
+  box-shadow: 0 1.5px 0 var(--color-ink);
+}
+
+.evidence {
+  display: grid;
+  min-height: 0;
+  align-content: start;
+  align-items: center;
+  gap: 7px;
+}
+
+.evidence div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.evidence i {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-8);
+}
+
+.evidence svg {
+  width: 11px;
+  height: 11px;
+  fill: var(--color-muted);
+}
+
+.evidence .bar {
+  flex: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-8);
+  color: var(--color-faint);
+}
+
+.arrow {
+  font-family: var(--font-symbol);
+}
+
+.chip .bar {
+  width: 96px;
+}
+
+/* The beam from the picked cell to its panel; script sweeps its clip from left to right. */
+.beam {
+  z-index: 14;
+  clip-path: inset(0 100% 0 0);
+}
+
+/* The caption under the stage. */
+
+.caption {
+  min-height: 118px;
+  margin: 0;
+  padding: 2px 24px 30px;
+  text-align: center;
+}
+
+.caption b {
+  display: block;
+  font-size: var(--text-17);
+  font-weight: 500;
+}
+
+.caption p {
+  max-width: 62ch;
+  margin: 5px auto 0;
+  color: var(--color-muted);
+  font-size: var(--text-14-5);
+  line-height: 1.45;
+  text-wrap: balance;
+}
+
+.caption > * {
+  animation: caption-in var(--duration-fade) both;
+}
+
+@keyframes caption-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+ * Phones: the caption sits at the foot of the frame, the labels beside the
+ * stack go, and every word on the stage is too small to read, so it is a bar.
+ */
+@media (width < theme(--breakpoint-md)) {
+  .scroller {
+    overflow-x: clip;
+  }
+
+  .world {
+    transition: transform var(--duration-t-4) var(--ease-out);
+  }
+
+  .tag {
+    display: none;
+  }
+
+  .caption {
+    display: grid;
+    align-content: end;
+    min-height: 116px;
+    padding: 2px 14px 14px;
+  }
+
+  .stage .word b,
+  .stage .crumbs s {
+    opacity: 0 !important;
+  }
+
+  .stage .word i {
+    opacity: 1 !important;
+  }
+
+  .stage .line span {
+    top: -5px;
+    width: 58px;
+    height: 9px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .stage .panel .label,
+  .stage .tabs span {
+    display: block;
+    height: 5px;
+    border-radius: var(--radius-4);
+    background: var(--color-line-2);
+    font-size: 0;
+  }
+
+  .stage .panel .label {
+    width: 46px;
+  }
+
+  .stage .tabs {
+    padding-bottom: 8px;
+  }
+
+  .stage .tabs span {
+    width: 44px;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .stage .tabs span:first-child {
+    background: var(--color-muted);
+  }
+
+  .stage .pill {
+    min-width: 36px;
+    height: 15px;
+    font-size: 0;
+  }
+}
+
+/* Reduced motion: every step lands at once. */
+@media (prefers-reduced-motion: reduce) {
+  .scroller *,
+  .scroller *::before,
+  .scroller *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
