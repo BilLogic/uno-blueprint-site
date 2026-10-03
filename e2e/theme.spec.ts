@@ -53,7 +53,7 @@ test.describe("theme menu", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Toggle theme" }).click();
     await expect(page.getByRole("menu")).toBeVisible();
-    await page.getByRole("link", { name: "Uno Blueprint on GitHub" }).focus();
+    await page.getByRole("link", { name: "Uno Blueprint on GitHub" }).first().focus();
     await expect(page.getByRole("menu")).toBeHidden();
   });
 
