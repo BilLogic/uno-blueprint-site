@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { harness, lanes, map } from "@/content/harness";
+import { lanes, map, skill } from "@/content/harness";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useSteps } from "@/hooks/use-steps";
 import { mapColumns, mapFrame, mapLinks, mapSteps } from "@/lib/harness-map";
@@ -13,7 +13,7 @@ import type { PictureProps } from "./pictures";
 const STEPS = mapSteps(map.readOrder);
 const TIMES = STEPS.map((step) => step.at);
 const STEP_COUNT = 3;
-const command = harness.skills[0].command;
+const { command } = skill("map");
 
 /** A grey stand-in for words that are not the point. */
 const bar = "block h-1 flex-none rounded-2 bg-line-2";
@@ -24,6 +24,7 @@ const bar = "block h-1 flex-none rounded-2 bg-line-2";
  * and a step found later opens up between its neighbours.
  */
 export function MapPicture({ running, onStale }: PictureProps) {
+  // Stacked below the lg breakpoint, as the flow's max-lg: classes are.
   const stacked = useMediaQuery("(max-width: 900px)");
   const flow = useRef<HTMLDivElement>(null);
   const skill = useRef<HTMLSpanElement>(null);
@@ -173,6 +174,7 @@ export function MapPicture({ running, onStale }: PictureProps) {
             ))}
           </div>
           <span
+            aria-hidden={!frame.done}
             className={`mt-1 justify-self-start rounded-pill bg-amber-bg px-[9px] py-0.5 text-11 leading-normal font-medium text-amber transition-opacity duration-400 motion-reduce:transition-none ${frame.done ? "opacity-100" : "opacity-0"}`}
           >
             {map.done}

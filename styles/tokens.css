@@ -179,6 +179,13 @@
   --color-lane-support: #7b74c9;
   /* A skill's command on the terminal ground. */
   --color-term-command: #7fe3cc;
+  /* The suggested option's ground, its badge, and the badge's words: a shade
+     under the brand in light so they clear 4.5:1 on the badge. */
+  --color-brand-wash: color-mix(in oklab, var(--color-brand) 9%, var(--color-panel));
+  --color-brand-badge: color-mix(in oklab, var(--color-brand) 14%, var(--color-panel));
+  --color-brand-badge-ink: light-dark(var(--color-primary-hover), var(--color-brand));
+  /* The glow round the audit's scan line. */
+  --color-scan-glow: color-mix(in oklab, var(--color-primary) 35%, transparent);
   /* The skill rings once as something passes through it. */
   --animate-skill-ping: skill-ping 0.5s var(--ease-out);
   @keyframes skill-ping {

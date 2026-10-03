@@ -25,8 +25,12 @@ export function useSteps(
     if (!running || reduced) return;
     const timers = times.map((at, step) =>
       setTimeout(() => {
-        latestOnStep.current?.(step);
-        setCount((passed) => Math.max(passed, step + 1));
+        try {
+          latestOnStep.current?.(step);
+        } finally {
+          // A step that fails to measure still passes, so the picture never stalls.
+          setCount((passed) => Math.max(passed, step + 1));
+        }
       }, at),
     );
     return () => timers.forEach(clearTimeout);

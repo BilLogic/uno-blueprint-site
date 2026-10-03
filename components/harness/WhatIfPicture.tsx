@@ -1,6 +1,6 @@
 "use client";
 
-import { harness, occupied, whatif, type CellChange, type CellChangeAt } from "@/content/harness";
+import { occupied, skill, whatif, type CellChange, type CellChangeAt } from "@/content/harness";
 import { useSteps } from "@/hooks/use-steps";
 import { markedToday, whatIfFrame, whatIfSteps } from "@/lib/harness-whatif";
 import { Card, Flow, Side, Skill, flowColumns } from "./Flow";
@@ -10,7 +10,7 @@ import type { PictureProps } from "./pictures";
 const CELL_COUNTS = whatif.options.map((option) => option.changes.length);
 const STEPS = whatIfSteps(CELL_COUNTS);
 const TIMES = STEPS.map((step) => step.at);
-const command = harness.skills[3].command;
+const { command } = skill("whatif");
 const { question } = whatif;
 const NOT_TRIED = { shown: false, traced: 0, weighed: false };
 
@@ -101,7 +101,7 @@ export function WhatIfPicture({ running }: PictureProps) {
             const state = frame.options[k] ?? NOT_TRIED;
             const best = frame.suggested === k;
             const look = best
-              ? "border-dashed border-brand bg-[color-mix(in_oklab,var(--color-brand)_9%,var(--color-panel))] shadow-card"
+              ? "border-dashed border-brand bg-brand-wash shadow-card"
               : state.shown
                 ? `bg-panel shadow-card ${frame.current === k ? "border-line-hot" : "border-line-2"}`
                 : "border-dashed border-line-2";
@@ -111,9 +111,9 @@ export function WhatIfPicture({ running }: PictureProps) {
                 key={option.title}
                 className={`relative grid min-h-[88px] items-center rounded-10 border [transition:border-color_var(--duration-t-2),background-color_var(--duration-t-2),box-shadow_var(--duration-t-2),opacity_var(--duration-t-3)] motion-reduce:transition-none ${look} ${resting ? "opacity-70" : ""}`}
               >
-                {/* A shade darker than the prototype's brand in light, so the badge clears 4.5:1 on its tint. */}
                 <em
-                  className={`absolute top-[-.85em] right-2.5 rounded-pill bg-[color-mix(in_oklab,var(--color-brand)_14%,var(--color-panel))] px-[.75em] py-[.4em] text-11 leading-none font-medium whitespace-nowrap text-primary-hover not-italic dark:text-brand [transition:opacity_var(--duration-t-2),transform_var(--duration-t-2)_var(--ease-spring)] motion-reduce:transition-none ${
+                  aria-hidden={!best}
+                  className={`absolute top-[-.85em] right-2.5 rounded-pill bg-brand-badge px-[.75em] py-[.4em] text-11 leading-none font-medium whitespace-nowrap text-brand-badge-ink not-italic [transition:opacity_var(--duration-t-2),transform_var(--duration-t-2)_var(--ease-spring)] motion-reduce:transition-none ${
                     best ? "opacity-100 [transform:none]" : "opacity-0 [transform:scale(.8)]"
                   }`}
                 >
@@ -126,11 +126,11 @@ export function WhatIfPicture({ running }: PictureProps) {
                   <div className="grid min-w-0 gap-0.5 text-[.94em] leading-[1.3]">
                     <b className="font-medium text-ink">{option.title}</b>
                     <span className="text-muted">
-                      {whatif.differsBefore}
+                      {whatif.differs(state.traced)[0]}
                       <b className="font-medium text-ink tabular-nums">{state.traced}</b>
-                      {whatif.differsAfter}
+                      {whatif.differs(state.traced)[1]}
                     </span>
-                    <span className={`flex gap-1.5 text-muted ${reveal(state.weighed, "small")}`}>
+                    <span aria-hidden={!state.weighed} className={`flex gap-1.5 text-muted ${reveal(state.weighed, "small")}`}>
                       <span aria-hidden="true" className="w-[.7em] flex-none text-center font-medium text-brand">
                         +
                       </span>
@@ -140,6 +140,7 @@ export function WhatIfPicture({ running }: PictureProps) {
                       </span>
                     </span>
                     <span
+                      aria-hidden={!state.weighed}
                       className={`flex gap-1.5 text-muted ${reveal(state.weighed, "small", state.weighed ? "after" : "now")}`}
                     >
                       <span aria-hidden="true" className="w-[.7em] flex-none text-center font-medium text-amber">

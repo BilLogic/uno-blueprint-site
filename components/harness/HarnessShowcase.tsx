@@ -2,7 +2,7 @@
 
 import { Presentation, RotateCcw, SearchCheck } from "lucide-react";
 import { useCallback, useState, type ComponentType } from "react";
-import { harness, type SkillId } from "@/content/harness";
+import { harness, skill as skillOf, type SkillId } from "@/content/harness";
 import { TabList, tabId, tabPanelId } from "@/components/ui/Tabs";
 import { useInView } from "@/hooks/use-in-view";
 import { AuditPicture } from "./AuditPicture";
@@ -56,7 +56,7 @@ export function HarnessShowcase() {
     replay();
   };
 
-  const current = harness.skills.find((s) => s.id === skill) ?? harness.skills[0];
+  const current = skillOf(skill);
   const Picture = pictures[skill];
 
   return (
@@ -86,9 +86,9 @@ export function HarnessShowcase() {
             aria-label={harness.replay}
             title={harness.replay}
             onClick={replay}
-            className="absolute top-2.5 right-2.5 z-6 grid size-8 cursor-pointer place-items-center rounded-8 border border-line-2 bg-panel text-muted transition-[color,border-color] duration-t-1 hover:border-line-hot hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand max-lg:top-2 max-lg:right-2"
+            className="absolute top-2.5 right-2.5 z-6 grid size-8 cursor-pointer place-items-center rounded-8 border border-line-2 bg-panel text-muted transition-[color,border-color] duration-t-1 motion-reduce:transition-none hover:border-line-hot hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand max-lg:top-2 max-lg:right-2"
           >
-            <RotateCcw className="size-[15px]" strokeWidth={1.75} />
+            <RotateCcw className="size-icon-sm" strokeWidth={1.75} />
           </button>
         )}
       </div>

@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { harness, occupied, slice } from "@/content/harness";
+import { occupied, skill, slice } from "@/content/harness";
 import { useReducedMotion } from "@/hooks/use-media-query";
 import { SLICE_FIRST, SLICE_HOLD, SLICE_RESUME, inSlice, nextSlice } from "@/lib/harness-slice";
 import { Card, Flow, Side, Skill, flowColumns } from "./Flow";
 import { MiniBoard, restingLook } from "./MiniBoard";
 import type { PictureProps } from "./pictures";
 
-const command = harness.skills[1].command;
+const { command } = skill("slice");
 const count = slice.kinds.length;
 
 /**
@@ -39,6 +39,12 @@ export function SlicePicture({ running }: PictureProps) {
     playFrom(SLICE_FIRST);
     return () => clearTimeout(state.timer);
   }, [running, reduced, playFrom]);
+
+  // A loop resumed after a hold outlives the effect above, so stop it on unmount too.
+  useEffect(() => {
+    const state = loop.current;
+    return () => clearTimeout(state.timer);
+  }, []);
 
   const hold = (kind: number) => {
     clearTimeout(loop.current.timer);

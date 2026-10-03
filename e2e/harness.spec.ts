@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 const section = (page: Page) =>
@@ -80,18 +81,44 @@ test.describe("harness showcase", () => {
     await expect(cell).toHaveAttribute("aria-pressed", "true");
   });
 
-  test("on a phone each picture reads top to bottom: source, skill, result", async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
+  // Each tab with the labels above its source, its skill and its result.
+  const pictures = [
+    ["Map", "Your existing context", "/ub:map", "Your blueprint"],
+    ["Slice", "Pick a slice", "/ub:slice", "What it takes"],
+    ["Audit", "Your blueprint", "/ub:audit", "What to fix first"],
+    ["What-if", "Your blueprint today", "/ub:whatif", "Options it explores, none applied"],
+  ] as const;
+
+  test("on a phone each picture reads top to bottom, source, skill, result, and fits the screen", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
-    const panel = section(page).getByRole("tabpanel");
-    const top = async (text: string) => (await panel.getByText(text, { exact: true }).boundingBox())!.y;
-    const [source, skill, result] = await Promise.all([
-      top("Your existing context"),
-      top("/ub:map"),
-      top("Your blueprint"),
-    ]);
-    expect(source).toBeLessThan(skill);
-    expect(skill).toBeLessThan(result);
+    const harness = section(page);
+    for (const [tab, ...labels] of pictures) {
+      await harness.getByRole("tab", { name: tab }).click();
+      const panel = harness.getByRole("tabpanel");
+      const tops = [];
+      for (const label of labels) tops.push((await panel.getByText(label, { exact: true }).boundingBox())!.y);
+      expect(tops).toEqual([...tops].sort((a, b) => a - b));
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow).toBeLessThanOrEqual(0);
+    }
   });
+
+  for (const colorScheme of ["light", "dark"] as const) {
+    test(`axe finds no violations on any tab in ${colorScheme}`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
+      await page.goto("/");
+      const harness = section(page);
+      for (const [tab] of pictures) {
+        await harness.getByRole("tab", { name: tab }).click();
+        const results = await new AxeBuilder({ page }).include("main section:has(#harness-title)").analyze();
+        expect(results.violations).toEqual([]);
+      }
+    });
+  }
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, type CSSProperties } from "react";
-import { audit, harness } from "@/content/harness";
+import { audit, skill } from "@/content/harness";
 import { useSteps } from "@/hooks/use-steps";
 import { AUDIT_FLIGHT, auditFrame, auditSteps, flightStart } from "@/lib/harness-audit";
 import { Card, Flow, Side, Skill, flowColumns } from "./Flow";
@@ -9,7 +9,7 @@ import { MiniBoard, restingLook } from "./MiniBoard";
 import type { PictureProps } from "./pictures";
 
 const TIMES = auditSteps(audit.findings.length);
-const command = harness.skills[2].command;
+const { command } = skill("audit");
 const flagAnimation = { warn: "animate-to-warn", gap: "animate-to-gap" } as const;
 
 /**
@@ -33,7 +33,7 @@ export function AuditPicture({ running }: PictureProps) {
         { transform: "none", opacity: 1 },
       ],
       // A finding slows into its place on the house curve, as everything that arrives does.
-      { duration: AUDIT_FLIGHT, easing: getComputedStyle(dot).getPropertyValue("--ease-out") },
+      { duration: AUDIT_FLIGHT, easing: getComputedStyle(dot).getPropertyValue("--ease-out") || "ease-out" },
     );
   });
   const frame = auditFrame(audit.findings.length, count);
@@ -42,7 +42,7 @@ export function AuditPicture({ running }: PictureProps) {
     <Flow className={flowColumns}>
       <Side label={audit.sources}>
         <Card>
-          <div className="absolute top-0 bottom-0 w-[3px] animate-sweep bg-primary shadow-[0_0_18px_6px_color-mix(in_oklab,var(--color-primary)_35%,transparent)] motion-reduce:[animation-duration:.01s]" />
+          <div className="absolute top-0 bottom-0 w-[3px] animate-sweep bg-primary shadow-[0_0_18px_6px_var(--color-scan-glow)] motion-reduce:[animation-duration:.01s]" />
           <MiniBoard
             cell={(lane, step) => {
               const flag = audit.flags.find((f) => f.lane === lane && f.step === step);

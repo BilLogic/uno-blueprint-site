@@ -97,52 +97,54 @@ export type CellChange = "rm" | "ch" | "mv" | "ad";
 export type CellChangeAt = { lane: number; step: number; change: CellChange };
 type WhatIfOption = { title: string; gain: string; cost: string; changes: readonly CellChangeAt[] };
 
+const whatIfOptions: readonly WhatIfOption[] = [
+  {
+    title: "Online booking only",
+    gain: "No queue at the desk",
+    cost: "Walk-in users lose their path",
+    changes: [
+      { lane: 0, step: 2, change: "rm" },
+      { lane: 1, step: 2, change: "ch" },
+      { lane: 1, step: 3, change: "ch" },
+      { lane: 2, step: 2, change: "ch" },
+      { lane: 2, step: 3, change: "ch" },
+      { lane: 2, step: 4, change: "ch" },
+      { lane: 3, step: 3, change: "ch" },
+    ],
+  },
+  {
+    title: "Online and walk-in",
+    gain: "Nobody is turned away",
+    cost: "Two paths to keep current",
+    changes: [
+      { lane: 0, step: 2, change: "mv" },
+      { lane: 1, step: 2, change: "ch" },
+      { lane: 1, step: 3, change: "ch" },
+    ],
+  },
+  {
+    title: "Online for returning users",
+    gain: "Smallest change",
+    cost: "New users still walk in",
+    changes: [
+      { lane: 0, step: 2, change: "ad" },
+      { lane: 1, step: 2, change: "ch" },
+    ],
+  },
+];
+
 export const whatif = {
   sources: "Your blueprint today",
   result: "Options it explores, none applied",
   suggested: "Suggested",
-  differsBefore: "Differs in ",
-  differsAfter: " cells",
+  /** "Differs in 3 cells", split round the count, which is drawn in bold. */
+  differs: (count: number) => ["Differs in ", ` ${count === 1 ? "cell" : "cells"}`] as const,
   /** Read out before what an option gains and what it costs; on screen a sign marks each. */
   gainLabel: "Gains: ",
   costLabel: "Costs: ",
   /** The cell the question is about: today it has a gap. */
   question: { lane: 0, step: 2 },
-  options: <readonly WhatIfOption[]>[
-    {
-      title: "Online booking only",
-      gain: "No queue at the desk",
-      cost: "Walk-in users lose their path",
-      changes: [
-        { lane: 0, step: 2, change: "rm" },
-        { lane: 1, step: 2, change: "ch" },
-        { lane: 1, step: 3, change: "ch" },
-        { lane: 2, step: 2, change: "ch" },
-        { lane: 2, step: 3, change: "ch" },
-        { lane: 2, step: 4, change: "ch" },
-        { lane: 3, step: 3, change: "ch" },
-      ],
-    },
-    {
-      title: "Online and walk-in",
-      gain: "Nobody is turned away",
-      cost: "Two paths to keep current",
-      changes: [
-        { lane: 0, step: 2, change: "mv" },
-        { lane: 1, step: 2, change: "ch" },
-        { lane: 1, step: 3, change: "ch" },
-      ],
-    },
-    {
-      title: "Online for returning users",
-      gain: "Smallest change",
-      cost: "New users still walk in",
-      changes: [
-        { lane: 0, step: 2, change: "ad" },
-        { lane: 1, step: 2, change: "ch" },
-      ],
-    },
-  ],
+  options: whatIfOptions,
 } as const;
 
 export const harness = {
@@ -186,3 +188,6 @@ export const harness = {
 
 // The ids above are the ones the page knows how to draw.
 harness.skills satisfies readonly { id: SkillId }[];
+
+/** One skill's tab, command and caption. */
+export const skill = (id: SkillId) => harness.skills.find((s) => s.id === id) ?? harness.skills[0];
