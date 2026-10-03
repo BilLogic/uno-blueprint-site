@@ -1,18 +1,22 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 /**
  * Whether a media query matches, kept current. Before hydration it reads
  * `serverValue`, so the static HTML renders one known state.
  */
 export function useMediaQuery(query: string, serverValue = false): boolean {
-  return useSyncExternalStore(
-    (notify) => {
+  const subscribe = useCallback(
+    (notify: () => void) => {
       const list = matchMedia(query);
       list.addEventListener("change", notify);
       return () => list.removeEventListener("change", notify);
     },
+    [query],
+  );
+  return useSyncExternalStore(
+    subscribe,
     () => matchMedia(query).matches,
     () => serverValue,
   );

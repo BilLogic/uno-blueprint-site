@@ -11,7 +11,7 @@ export const tabPanelId = (idBase: string, value: string) => `${idBase}-panel-${
 
 type TabListProps<T extends string> = {
   label: string;
-  /** Prefix for the tab and panel ids; the caller renders the panel with `tabPanelId`. */
+  /** Prefix for the tab and panel ids; the caller renders the selected tab's panel with `tabPanelId`. */
   idBase: string;
   tabs: readonly Tab<T>[];
   value: T;
@@ -64,7 +64,8 @@ export function TabList<T extends string>({
             role="tab"
             id={tabId(idBase, tab.value)}
             aria-selected={selected}
-            aria-controls={tabPanelId(idBase, tab.value)}
+            // Only the selected tab's panel is rendered, so only it is referenced.
+            aria-controls={selected ? tabPanelId(idBase, tab.value) : undefined}
             tabIndex={selected ? 0 : -1}
             className={tabClassName}
             onClick={() => onChange(tab.value)}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type RefObject } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type InViewOptions = {
   /** Shrinks or grows the viewport the element is tested against, as in IntersectionObserver. */
@@ -10,19 +10,25 @@ type InViewOptions = {
   once?: boolean;
 };
 
-/** Whether `ref`'s element is on screen. */
-export function useInView(
-  ref: RefObject<Element | null>,
-  { rootMargin = "0px", threshold = 0, once = false }: InViewOptions = {},
-): boolean {
+/**
+ * Whether an element is on screen. Pass the returned ref to the element; one
+ * that mounts later, or is swapped for another, is observed when it arrives.
+ */
+export function useInView<T extends Element>({
+  rootMargin = "0px",
+  threshold = 0,
+  once = false,
+}: InViewOptions = {}): [ref: (node: T | null) => void, inView: boolean] {
+  const [element, setElement] = useState<T | null>(null);
   const [inView, setInView] = useState(false);
+  const seenForGood = once && inView;
 
   useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
+    if (!element || seenForGood) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        const seen = entries.some((entry) => entry.isIntersecting);
+        // A batch can hold several entries for the element; the last is current.
+        const seen = entries.at(-1)?.isIntersecting ?? false;
         setInView(seen);
         if (seen && once) observer.disconnect();
       },
@@ -30,7 +36,8 @@ export function useInView(
     );
     observer.observe(element);
     return () => observer.disconnect();
-  }, [ref, rootMargin, threshold, once]);
+  }, [element, rootMargin, threshold, once, seenForGood]);
 
-  return inView;
+  const ref = useCallback((node: T | null) => setElement(node), []);
+  return [ref, inView];
 }
