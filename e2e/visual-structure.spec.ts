@@ -28,9 +28,8 @@ for (const width of widths) {
         await section.scrollIntoViewIfNeeded();
         await expect(section.locator("[aria-live] b")).toHaveText(structure.steps.at(-1)!.title);
         // The section is taller than the viewport, so the sticky nav would land on it mid-capture.
-        await expect(section).toHaveScreenshot(`structure-${width}-${colorScheme}.png`, {
-          style: "header { visibility: hidden; }",
-        });
+        await page.addStyleTag({ content: "header { visibility: hidden; }" });
+        await expect(section).toHaveScreenshot(`structure-${width}-${colorScheme}.png`);
       });
     });
   }
