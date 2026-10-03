@@ -10,7 +10,7 @@ const mono = Ubuntu_Sans_Mono({
   subsets: ["latin"],
   variable: "--font-ubuntu-sans-mono",
   display: "swap",
-  // The mono face only appears once a reader opens the agent view.
+  // The mono face first appears far down the page (the install commands) or in the agent view.
   preload: false,
 });
 
