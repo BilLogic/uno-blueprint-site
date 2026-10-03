@@ -8,6 +8,8 @@ Next.js (App Router) rendered to a fully static export, TypeScript in strict mod
 
 Node 22 (`.nvmrc`) and npm.
 
+Browser floor: Safari 17.5+, Chrome and Edge 123+, Firefox 120+. Every colour token is a CSS `light-dark()` pair, which older browsers do not support.
+
 ```bash
 npm ci
 npm run dev        # http://localhost:3000
@@ -22,7 +24,7 @@ npm run serve      # serves out/ on http://localhost:4173 with those headers
 | `app/` | The page, its metadata, icons and preview image |
 | `components/` | One folder per part of the page; components only render and animate |
 | `content/` | Every word and link the page shows, apart from the components |
-| `content/links.ts` | All links. One not ready yet carries `notReady: true`, so `grep -rn "notReady: true" content` lists what to fill before launch |
+| `content/links.ts` | All links. One not ready yet carries `notReady: true` and renders inert in production builds (no `href`, `aria-disabled`); it stays clickable under `npm run dev`. List them with `grep -rn "notReady: true" content` |
 | `styles/tokens.css` | Design tokens, declared once, exposed to Tailwind (see the mapping at its top) |
 | `hooks/`, `lib/` | Small typed hooks, and the pure logic they use |
 | `e2e/` | End-to-end, accessibility and visual tests against the built site |
@@ -60,8 +62,15 @@ A changed snapshot is reviewed in the pull request like code, never updated just
 
   The second `-v` keeps the container's `node_modules` apart from yours. Keep the image tag equal to the `@playwright/test` version.
 
-- **From CI.** Delete the snapshots that should change and push. Where a baseline is missing, the visual tests write the fresh render and fail; download the `snapshots` artifact from that run (`gh run download <run-id> -n snapshots -D e2e/__snapshots__`), look at the images, and commit them.
+- **From CI.** Delete the snapshots that should change and push. Where a baseline is missing, the visual tests write the fresh render and fail (there are no retries, so a run never passes against a baseline it wrote itself); download the `snapshots` artifact from that run (`gh run download <run-id> -n snapshots -D e2e/__snapshots__`), look at the images, and commit them.
 
 ## Deploy
 
-`netlify.toml` holds the build command, the publish folder (`out`), Node 22, the security headers and a year-long immutable cache for the hashed files under `/_next/static/`. The content security policy lists a hash for every inline script Next.js writes, so `npm run build` generates it into `out/_headers` (`scripts/write-csp.mjs`) instead of keeping it in `netlify.toml`. `npx netlify-cli build --offline` runs the same build locally.
+`netlify.toml` holds the build command, the publish folder (`out`), Node 22, the security headers and a year-long immutable cache for the hashed files under `/_next/static/`. The content security policy lists a hash for every inline script Next.js writes, so `npm run build` generates it into `out/_headers` (`scripts/write-csp.mjs`) instead of keeping it in `netlify.toml`; the build fails if it finds no inline scripts or misses the theme boot script. The end-to-end server (`scripts/serve.mjs`) applies the same `_headers`, so the tests run under the production policy. `npx netlify-cli build --offline` runs the same build locally.
+
+## Upgrading
+
+Two versions are written in three places each; change them together.
+
+- **Node:** `.nvmrc`, `engines` in `package.json`, `NODE_VERSION` in `netlify.toml`.
+- **Playwright:** `@playwright/test` in `package.json`, the container image in `.github/workflows/ci.yml`, and the `docker run` command above. A new Playwright usually renders differently, so regenerate the snapshots in the same pull request.

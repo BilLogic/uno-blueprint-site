@@ -48,4 +48,24 @@ test.describe("theme menu", () => {
     await expect(page.getByRole("menu")).toBeHidden();
     await expect(toggle).toBeFocused();
   });
+
+  test("the menu closes when focus leaves it", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Toggle theme" }).click();
+    await expect(page.getByRole("menu")).toBeVisible();
+    await page.getByRole("link", { name: "Uno Blueprint on GitHub" }).focus();
+    await expect(page.getByRole("menu")).toBeHidden();
+  });
+
+  test("a manual pick repoints the browser chrome colour", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Toggle theme" }).click();
+    await page.getByRole("menuitemradio", { name: "Dark" }).click();
+    const colours = () =>
+      page.locator('meta[name="theme-color"]').evaluateAll((metas) => metas.map((m) => m.getAttribute("content")));
+    expect(new Set(await colours())).toEqual(new Set(["#121414"]));
+    await page.reload();
+    expect(new Set(await colours())).toEqual(new Set(["#121414"]));
+  });
 });

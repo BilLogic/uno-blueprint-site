@@ -1,5 +1,6 @@
 import { footer } from "@/content/footer";
 import { Container } from "@/components/ui/Container";
+import { anchorProps } from "@/components/ui/anchor-props";
 import { ThemeMenu } from "./ThemeMenu";
 import { ViewMenu } from "./ViewMenu";
 
@@ -25,7 +26,7 @@ export function Footer() {
 function PersonLink({ person }: { person: (typeof footer.credit.people)[number] }) {
   return (
     <a
-      href={person.link.href}
+      {...anchorProps(person.link)}
       className="inline-block py-2 text-ink underline underline-offset-3"
     >
       {person.name}

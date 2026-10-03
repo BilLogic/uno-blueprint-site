@@ -1,7 +1,7 @@
 import markDark from "@/public/images/uno-mark-dark.png";
 import markLight from "@/public/images/uno-mark-light.png";
 
-const markClass = "size-[22px] rounded-[24%]";
+const markClass = "size-mark rounded-mark";
 
 /** The mark and the name; the mark swaps with the theme so it keeps its contrast. */
 export function Logo({ name }: { name: string }) {

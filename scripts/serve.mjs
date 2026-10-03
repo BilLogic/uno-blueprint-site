@@ -60,8 +60,16 @@ function locate(urlPath) {
 }
 
 createServer((req, res) => {
-  const path = new URL(req.url ?? "/", "http://localhost").pathname;
-  const file = locate(path);
+  let path;
+  let file;
+  try {
+    path = new URL(req.url ?? "/", "http://localhost").pathname;
+    file = locate(path);
+  } catch {
+    // A malformed URL (a stray % escape, say) is the client's mistake, not a crash.
+    res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" }).end("Bad request");
+    return;
+  }
   const status = file ? 200 : 404;
   const body = file ?? join(root, "404.html");
   for (const rule of rules) {

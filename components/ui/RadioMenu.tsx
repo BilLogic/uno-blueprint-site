@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FocusEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { nextMenuIndex } from "@/lib/menu-keys";
 
 type Option<T extends string> = { value: T; label: string };
@@ -31,6 +39,7 @@ export function RadioMenu<T extends string>({
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const items = useRef<(HTMLButtonElement | null)[]>([]);
+  const pressing = useRef(false);
   const menuId = useId();
 
   useEffect(() => {
@@ -66,8 +75,27 @@ export function RadioMenu<T extends string>({
     items.current[next]?.focus();
   }
 
+  // Focus that leaves the button and its menu closes the menu. Escape and a
+  // pick move focus to the button, which is inside, so they are unaffected. A
+  // press inside is ignored: Safari blurs without focusing the pressed item,
+  // and closing then would unmount the item before its click lands.
+  function onBlur(event: FocusEvent<HTMLDivElement>) {
+    if (pressing.current) return;
+    if (!(event.relatedTarget instanceof Node && root.current?.contains(event.relatedTarget))) {
+      setOpen(false);
+    }
+  }
+
   return (
-    <div ref={root} className="relative">
+    <div
+      ref={root}
+      onBlur={onBlur}
+      onPointerDown={() => {
+        pressing.current = true;
+        document.addEventListener("pointerup", () => (pressing.current = false), { once: true });
+      }}
+      className="relative"
+    >
       <button
         ref={button}
         type="button"
@@ -76,7 +104,7 @@ export function RadioMenu<T extends string>({
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((wasOpen) => !wasOpen)}
-        className="grid size-9 cursor-pointer place-items-center rounded-6 text-muted [&_svg]:size-5"
+        className="grid size-9 cursor-pointer place-items-center rounded-6 text-muted [&_svg]:size-icon"
       >
         {icon}
       </button>
@@ -102,7 +130,7 @@ export function RadioMenu<T extends string>({
                 onChange(option.value);
                 close();
               }}
-              className="flex w-full cursor-pointer items-center gap-2.5 rounded-6 px-2.5 py-[9px] text-left text-14 leading-none text-ink before:size-1.5 before:flex-none before:rounded-full before:content-[''] hover:bg-card aria-checked:before:bg-ink"
+              className="flex w-full cursor-pointer items-center gap-2.5 rounded-6 px-2.5 py-menu-item-y text-left text-14 leading-none text-ink before:size-1.5 before:flex-none before:rounded-full before:content-[''] hover:bg-card aria-checked:before:bg-ink"
             >
               {option.label}
             </button>

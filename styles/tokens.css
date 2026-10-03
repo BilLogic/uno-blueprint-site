@@ -102,8 +102,14 @@
   --radius-10: 10px;
   --radius-12: 12px;
   --radius-16: 16px;
-  --radius-20: 20px; /* the hero picture's frame only */
+  --radius-20: 20px; /* the hero picture's frame (the prototype's .hv sets --r:20px) */
+  --radius-20-inset: calc(var(--radius-20) - 1px); /* inside that frame's one-pixel rim */
+  --radius-mark: 24%; /* the logo mark's squircle */
   --radius-pill: 99px;
+
+  --leading-code: 1.65;
+
+  --blur-nav: 6px;
 
   --ease-*: initial;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* something arrives or is revealed */
@@ -122,12 +128,19 @@
     0 14px 34px -14px light-dark(rgba(16, 24, 22, 0.14), transparent),
     inset 0 1px 0 light-dark(transparent, rgba(255, 255, 255, 0.04));
   --shadow-menu: 0 10px 30px rgba(0, 0, 0, 0.14);
+  --shadow-ring: 0 0 0 1px var(--color-line); /* a pressed segment's hairline */
 
   /* Page rhythm; narrower screens tighten it below. */
   --spacing-gutter: 96px;
   --spacing-section: 96px;
   --spacing-head: 64px;
   --spacing-gap: 12px;
+  --spacing-menu-item-y: 9px;
+  --spacing-mark: 22px; /* the logo mark */
+  --spacing-icon: 20px; /* footer and nav icons */
+  --spacing-icon-sm: 15px; /* icons inside the view switch */
+  /* The hero picture's height, matched to the prototype's render; grows with the viewport above md. */
+  --spacing-hero-picture: 597px;
   --container-page: 1280px;
   --container-hero: 760px;
   --container-lead: 540px;
@@ -164,16 +177,19 @@
   transition-duration: --value(--duration-t-*);
 }
 
-@media (max-width: 1100px) {
-  :root {
+:root {
+  @variant md {
+    --spacing-hero-picture: calc(372px + 12vw);
+  }
+  @variant 2xl {
+    --spacing-hero-picture: min(calc(470px + 12vw), 647px);
+  }
+  @variant max-2xl {
     --spacing-gutter: 40px;
     --spacing-section: 72px;
     --spacing-head: 40px;
   }
-}
-
-@media (max-width: 640px) {
-  :root {
+  @variant max-sm {
     --spacing-gutter: 16px;
     --spacing-section: 56px;
     --spacing-head: 32px;

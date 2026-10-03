@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Ubuntu_Sans, Ubuntu_Sans_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import { site } from "@/content/site";
-import { themeBootScript } from "@/lib/theme";
+import { THEME_COLORS, themeBootScript } from "@/lib/theme";
 import "./globals.css";
 
 const sans = Ubuntu_Sans({ subsets: ["latin"], variable: "--font-ubuntu-sans", display: "swap" });
@@ -28,10 +28,11 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: site.name, description: site.description },
 };
 
+// THEME_COLORS explains why these are literals; a manual pick repoints them (boot script, useTheme).
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fbfcfc" },
-    { media: "(prefers-color-scheme: dark)", color: "#121414" },
+    { media: "(prefers-color-scheme: light)", color: THEME_COLORS.light },
+    { media: "(prefers-color-scheme: dark)", color: THEME_COLORS.dark },
   ],
 };
 

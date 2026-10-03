@@ -21,7 +21,7 @@ export function ViewSwitch() {
           aria-label={option.switchLabel}
           title={option.switchLabel}
           onClick={() => setView(option.value)}
-          className="grid h-8 w-8.5 cursor-pointer place-items-center rounded-8 text-muted transition-colors duration-t-1 hover:text-ink aria-pressed:bg-panel aria-pressed:text-ink aria-pressed:shadow-[0_0_0_1px_var(--color-line)] [&_svg]:size-[15px]"
+          className="grid h-8 w-8.5 cursor-pointer place-items-center rounded-8 text-muted transition-[color,background-color] duration-t-1 hover:text-ink aria-pressed:bg-panel aria-pressed:text-ink aria-pressed:shadow-ring [&_svg]:size-icon-sm"
         >
           <ViewIcon view={option.value} />
         </button>

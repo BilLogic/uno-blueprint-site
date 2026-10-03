@@ -4,9 +4,10 @@
 // <head> is inline too. Rather than allow every inline script, the policy lists
 // the hash of each one, so it has to be computed from the build output. The
 // other security headers do not change between builds and live in netlify.toml.
-import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { themeBootScript } from "../lib/theme-boot.mjs";
+import { buildPolicy, hashProblem, inlineScriptHashes } from "./csp.mjs";
 
 const out = "out";
 
@@ -18,27 +19,15 @@ function htmlFiles(dir) {
   });
 }
 
-const hashes = new Set();
-for (const file of htmlFiles(out)) {
-  const html = readFileSync(file, "utf8");
-  for (const [, attrs, body] of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)) {
-    if (/\bsrc=/.test(attrs) || body.length === 0) continue;
-    hashes.add(`'sha256-${createHash("sha256").update(body).digest("base64")}'`);
-  }
+const hashes = new Set(
+  htmlFiles(out).flatMap((file) => [...inlineScriptHashes(readFileSync(file, "utf8"))]),
+);
+
+const problem = hashProblem(hashes, themeBootScript);
+if (problem) {
+  console.error(problem);
+  process.exit(1);
 }
 
-const policy = [
-  "default-src 'self'",
-  `script-src 'self' ${[...hashes].sort().join(" ")}`,
-  "style-src 'self'",
-  "img-src 'self' data:",
-  "font-src 'self'",
-  "connect-src 'self'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'none'",
-  "frame-ancestors 'none'",
-].join("; ");
-
-writeFileSync(join(out, "_headers"), `/*\n  Content-Security-Policy: ${policy}\n`);
+writeFileSync(join(out, "_headers"), `/*\n  Content-Security-Policy: ${buildPolicy(hashes)}\n`);
 console.log(`Wrote ${out}/_headers with ${hashes.size} inline script hashes`);

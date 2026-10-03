@@ -1,4 +1,5 @@
 import type { SiteLink } from "@/content/links";
+import { anchorProps } from "./anchor-props";
 
 type ButtonLinkProps = {
   link: SiteLink;
@@ -14,7 +15,7 @@ const variants = {
 export function ButtonLink({ link, variant, children }: ButtonLinkProps) {
   return (
     <a
-      href={link.href}
+      {...anchorProps(link)}
       className={`inline-flex h-9.5 items-center gap-2 rounded-10 border px-4 text-14 leading-none font-medium whitespace-nowrap ${variants[variant]}`}
     >
       {children}
