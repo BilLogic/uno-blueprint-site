@@ -11,4 +11,17 @@ export const links = {
   caseStudy: { href: "#", notReady: true },
   billGuo: { href: "#bill-linkedin", notReady: true },
   meryemMarasli: { href: "#meryem-linkedin", notReady: true },
+  plusBlueprint: { href: "https://plus-uno.netlify.app/blueprint/" },
+  // Where each voice in the ideas timeline said it.
+  shostackSource: { href: "https://hbr.org/1984/01/designing-services-that-deliver" },
+  polaineSource: { href: "https://rosenfeldmedia.com/books/service-design-from-insight-to-implementation/" },
+  gibbonsSource: { href: "https://www.nngroup.com/articles/service-blueprints-definition/" },
+  lutkeSource: { href: "https://x.com/tobi/status/1935533422589399127" },
+  schmidSource: { href: "https://www.philschmid.de/context-engineering" },
+  lopopoloSource: { href: "https://openai.com/index/harness-engineering/" },
+  hashimotoSource: { href: "https://mitchellh.com/writing/my-ai-adoption-journey" },
+  karpathySource: { href: "https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" },
+  bockelerSource: {
+    href: "https://martinfowler.com/articles/exploring-gen-ai/harness-engineering.html",
+  },
 } as const satisfies Record<string, SiteLink>;

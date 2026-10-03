@@ -159,6 +159,45 @@
   --breakpoint-xl: 1001px;
   --breakpoint-2xl: 1101px;
 
+  /*
+   * Proof chart, ideas timeline and the PLUS card. The chart's bars, the
+   * timeline's column and nodes, and the card's frame are sized in px by the
+   * prototype; the chart folds to two columns at its own 700 px breakpoint.
+   */
+  --breakpoint-chart: 701px;
+  --text-15: 15px;
+  --text-15--line-height: 1.4;
+  --text-17: 17px;
+  --text-17--line-height: 1.5;
+  --leading-label: 1.2; /* small labels set in the text face */
+  --leading-tip: 1.45; /* a definition's tooltip */
+  --tracking-mark: 0.02em; /* the PLUS wordmark */
+  --spacing-chart-bars: 270px; /* the plot's height above each baseline */
+  --spacing-chart-bar-max: 230px; /* a bar at 100% */
+  --spacing-chart-bar: 64px;
+  --spacing-chart-key: 11px; /* a legend swatch */
+  --spacing-chart-tip: 250px;
+  --spacing-timeline-rail: 150px; /* the middle column the line winds down */
+  --spacing-timeline-node: 11px;
+  --spacing-avatar: 40px;
+  --spacing-case: 380px; /* the PLUS card beside its screenshot */
+  --spacing-case-shot: 240px; /* the screenshot under the text, narrow */
+  --spacing-case-logo: 22px;
+  --spacing-frame-dot: 10px;
+  --container-heading: 620px; /* a section's headline */
+  --container-timeline: 1040px;
+  --container-case-text: 34ch;
+  --color-case-hover: color-mix(in oklab, var(--color-card) 60%, var(--color-panel));
+  --color-case-scrim: color-mix(in oklab, var(--color-bg) 46%, transparent);
+  --color-screenshot: #fff; /* behind the screenshot, which is a light-theme capture in both themes */
+  --shadow-screenshot: 0 24px 60px -24px rgba(0, 0, 0, 0.28);
+  --shadow-node: 0 0 0 4px var(--color-brand-soft);
+  --ease-linear: linear; /* a line drawn at the reader's scroll speed */
+  --duration-t-tip: 150ms;
+  --duration-t-rail: 200ms; /* the line catching up with the scroll; a card's hover */
+  --duration-t-grow: 450ms; /* a bar following the scroll */
+  --blur-case: 7px;
+
   --animate-menu-in: menu-in var(--duration-t-1) var(--ease-out);
   @keyframes menu-in {
     from {
@@ -189,6 +228,10 @@
     --spacing-section: 72px;
     --spacing-head: 40px;
   }
+  @variant max-chart {
+    --spacing-chart-bars: 200px;
+    --spacing-chart-bar-max: 160px;
+  }
   @variant max-sm {
     --spacing-gutter: 16px;
     --spacing-section: 56px;
@@ -218,6 +261,16 @@
     }
   }
   &:where(:root[data-theme="dark"] *) {
+    @slot;
+  }
+}
+
+/*
+ * The PLUS card on a screen with no hover, or one too narrow for its overlay:
+ * the buttons sit under the text and nothing covers the screenshot.
+ */
+@custom-variant case-stacked {
+  @media (hover: none), (max-width: 820px) {
     @slot;
   }
 }
