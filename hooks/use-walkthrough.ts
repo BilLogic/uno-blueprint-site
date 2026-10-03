@@ -95,7 +95,8 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
       const headHeight = headEl ? headEl.offsetHeight + (parseFloat(getComputedStyle(headEl).marginBottom) || 0) : 0;
       const captionHeight = caption.current?.offsetHeight || CAPTION_FALLBACK;
       fit.current = fitStage(stageEl.clientWidth, availableStageHeight(innerHeight, headHeight, captionHeight));
-      stageEl.style.height = `${fit.current.height}px`;
+      // Whole pixels, so everything below the section sits on the pixel grid.
+      stageEl.style.height = `${Math.round(fit.current.height)}px`;
       placePose.current();
       stickyEl.style.top = `${stickyTopFor(innerHeight, stickyEl.offsetHeight)}px`;
       scrollerEl.style.height = reduced ? "auto" : `calc(${scrollLength}vh + ${stickyEl.offsetHeight}px)`;
