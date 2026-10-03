@@ -31,6 +31,18 @@ export const TIMING = {
   resizeSettle: 120,
 } as const;
 
+/** The fixed nav's height, and the margin kept above and below the pinned frame, in px. */
+const NAV_HEIGHT = 64;
+const FRAME_MARGIN = 32;
+const MIN_STICKY_TOP = 76;
+
+/**
+ * The beam's clip, open from the stage's left edge to `to` in stage px. The
+ * sweep runs from the picked cell's edge to the panel's, one px short so it
+ * meets the panel's rim without crossing it.
+ */
+export const beamClip = (to: number) => `inset(-60px ${STAGE_WIDTH - to}px -60px 0)`;
+
 /** The stack of sheets, the flat blueprint, and the blueprint with its panel. */
 export type Pose = 0 | 1 | 2;
 
@@ -67,13 +79,13 @@ export function scrollProgress({ stickyTop, sectionTop, sectionHeight, stickyHei
   return Math.min(1, Math.max(0, (stickyTop - sectionTop) / travel));
 }
 
-/** Where the frame sticks: in the middle of the screen under the 64 px nav, never above 76 px. */
+/** Where the frame sticks: in the middle of the screen under the nav, never above 76 px. */
 export const stickyTopFor = (viewportHeight: number, stickyHeight: number) =>
-  Math.max(76, 64 + (viewportHeight - 64 - stickyHeight) / 2);
+  Math.max(MIN_STICKY_TOP, NAV_HEIGHT + (viewportHeight - NAV_HEIGHT - stickyHeight) / 2);
 
 /** The viewport height the stage may use once the nav, its margins, the headline and the caption are placed. */
 export const availableStageHeight = (viewportHeight: number, headHeight: number, captionHeight: number) =>
-  viewportHeight - 64 - 32 - headHeight - captionHeight;
+  viewportHeight - NAV_HEIGHT - FRAME_MARGIN - headHeight - captionHeight;
 
 export type StageFit = {
   /** A phone-width frame: each pose gets its own scale and is centred on what it shows. */

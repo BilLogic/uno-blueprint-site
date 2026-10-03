@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   STEP,
   availableStageHeight,
+  beamClip,
   fitStage,
   poseOf,
   poseTransform,
@@ -169,5 +170,11 @@ describe("sceneAt", () => {
     expect(scene.rows.every((r) => !r.named)).toBe(true);
     expect(scene.board.transform).toBe("translate(-215px,0px) rotateX(0deg) rotateZ(0deg) scale(0.62)");
     expect(scene.ghosts[0]).toBe("translate(-202px,-11px) rotateX(0deg) rotateZ(0deg) scale(0.62)");
+  });
+});
+
+describe("beamClip", () => {
+  it("opens the beam from the stage's left edge to a point in stage px", () => {
+    expect(beamClip(400)).toBe("inset(-60px 610px -60px 0)");
   });
 });

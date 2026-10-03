@@ -7,6 +7,7 @@ import {
   STAGE_WIDTH,
   STEP,
   TIMING,
+  beamClip,
   availableStageHeight,
   fitStage,
   poseOf,
@@ -14,6 +15,13 @@ import {
   stickyTopFor,
   type StageFit,
 } from "@/lib/walkthrough";
+
+/** The pose is centred this far above the caption's first line, in px. */
+const CAPTION_GAP = 12;
+/** The caption's height before it is measured, as the prototype assumes. */
+const CAPTION_FALLBACK = 110;
+/** The beam meets the panel this far inside its top and bottom edges, in stage px. */
+const BEAM_INSET = 18;
 
 /** A point's position in stage px, read at whatever scale the stage has at this instant. */
 function stagePoint(element: Element, world: DOMRect): [number, number] {
@@ -73,7 +81,7 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
       if (!stageEl || !worldEl || !fitted) return;
       const first = caption.current?.firstElementChild;
       const room = first
-        ? first.getBoundingClientRect().top - stageEl.getBoundingClientRect().top - 12
+        ? first.getBoundingClientRect().top - stageEl.getBoundingClientRect().top - CAPTION_GAP
         : fitted.height;
       worldEl.style.transform = poseTransform(fitted, currentPose.current, room);
     };
@@ -85,7 +93,7 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
       if (!scrollerEl || !stickyEl || !stageEl) return;
       const headEl = head.current;
       const headHeight = headEl ? headEl.offsetHeight + (parseFloat(getComputedStyle(headEl).marginBottom) || 0) : 0;
-      const captionHeight = caption.current?.offsetHeight || 110;
+      const captionHeight = caption.current?.offsetHeight || CAPTION_FALLBACK;
       fit.current = fitStage(stageEl.clientWidth, availableStageHeight(innerHeight, headHeight, captionHeight));
       stageEl.style.height = `${fit.current.height}px`;
       placePose.current();
@@ -126,15 +134,17 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
       // The beam: from the picked cell's right-hand corners to the panel's left edge.
       const panel = worldEl.querySelector("[data-panel]");
       const beam = worldEl.querySelector("[data-beam-shape]");
-      const [, topRight, bottomRight] = [...worldEl.querySelectorAll('[data-corner="cell"]')].map((c) =>
-        stagePoint(c, box),
-      );
-      if (!panel || !beam || !topRight || !bottomRight) return;
+      const corner = (at: string) => worldEl.querySelector(`[data-corner="cell"][data-at="${at}"]`);
+      const topRightEl = corner("top-right");
+      const bottomRightEl = corner("bottom-right");
+      if (!panel || !beam || !topRightEl || !bottomRightEl) return;
+      const topRight = stagePoint(topRightEl, box);
+      const bottomRight = stagePoint(bottomRightEl, box);
       const scale = box.width / STAGE_WIDTH || 1;
       const rect = panel.getBoundingClientRect();
       const x = (rect.left - box.left) / scale;
-      const y1 = (rect.top - box.top) / scale + 18;
-      const y2 = (rect.bottom - box.top) / scale - 18;
+      const y1 = (rect.top - box.top) / scale + BEAM_INSET;
+      const y2 = (rect.bottom - box.top) / scale - BEAM_INSET;
       const [shape, upper, lower] = [...beam.children];
       shape?.setAttribute("points", `${topRight} ${x},${y1} ${x},${y2} ${bottomRight}`);
       setLine(upper, topRight, [x, y1]);
@@ -163,7 +173,7 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
         const beam = world.current?.querySelector<SVGElement>("[data-beam]");
         if (beam && currentOpen.current && !reduced) {
           beam.style.transition = "none";
-          beam.style.clipPath = `inset(-60px ${STAGE_WIDTH - beamEnds.current[1] - 1}px -60px 0)`;
+          beam.style.clipPath = beamClip(beamEnds.current[1] + 1);
         }
       }, TIMING.resizeSettle);
     };
@@ -189,6 +199,10 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
   useLayoutEffect(() => {
     currentPose.current = pose;
     placePose.current();
+    if (reduced) {
+      draw.current();
+      return;
+    }
     let frame = 0;
     const until = performance.now() + TIMING.follow;
     const follow = () => {
@@ -197,7 +211,7 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
     };
     follow();
     return () => cancelAnimationFrame(frame);
-  }, [step, pose]);
+  }, [step, pose, reduced]);
 
   // The beam is switched on at the cell and sweeps right until it meets the panel, which then opens the same way.
   useEffect(() => {
@@ -218,11 +232,11 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
     const timer = window.setTimeout(() => {
       draw.current();
       const [from, to] = beamEnds.current;
-      beam.style.clipPath = `inset(-60px ${STAGE_WIDTH - from}px -60px 0)`;
+      beam.style.clipPath = beamClip(from);
       // Commit the start before the transition is set, so the sweep runs from it.
       void getComputedStyle(beam).clipPath;
       beam.style.transition = "clip-path var(--duration-shade) var(--ease-io)";
-      beam.style.clipPath = `inset(-60px ${STAGE_WIDTH - to - 1}px -60px 0)`;
+      beam.style.clipPath = beamClip(to + 1);
     }, TIMING.beamDelay);
     return () => clearTimeout(timer);
   }, [open, reduced]);

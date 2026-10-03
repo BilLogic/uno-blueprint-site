@@ -9,23 +9,27 @@ const cx = (...names: unknown[]) => names.filter((name): name is string => typeo
 
 /** A box's four corners, which the projection lines are drawn from or to. */
 const CORNERS = [
-  ["0", "0"],
-  ["100%", "0"],
-  ["100%", "100%"],
-  ["0", "100%"],
+  ["top-left", "0", "0"],
+  ["top-right", "100%", "0"],
+  ["bottom-right", "100%", "100%"],
+  ["bottom-left", "0", "100%"],
 ] as const;
 
 type CornerKind = "tile" | "sheet" | "cell";
 
 function Corners({ kind }: { kind: CornerKind }) {
-  return CORNERS.map(([left, top]) => (
-    <i key={`${left}-${top}`} className={s.corner} data-corner={kind} style={{ left, top }} />
+  return CORNERS.map(([at, left, top]) => (
+    <i key={at} className={s.corner} data-corner={kind} data-at={at} style={{ left, top }} />
   ));
 }
 
 type Tile = { left: number; top: number; width: number; height: number; label?: string };
 
-/** Two services, three phases, four scenarios; the first tile of each sheet is the one followed down. */
+/**
+ * Two services, three phases, four scenarios; the first tile of each sheet is
+ * the one followed down. The phase numbers, like the arrows and chevrons in
+ * the panel, are marks in the picture rather than words, so they stay here.
+ */
 const SHEETS: readonly (readonly Tile[])[] = [
   [
     { left: 8, top: 22, width: 39, height: 56 },

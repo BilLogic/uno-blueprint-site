@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, type RefObject } from "react";
+import { useNoHover } from "@/hooks/use-media-query";
 
 /**
  * Lights a panel's rim near the pointer: keeps `--mx` and `--my` on the
@@ -8,7 +9,10 @@ import { useEffect, type RefObject } from "react";
  * its border to follow. Panels far off screen are left alone.
  */
 export function usePointerGlow(panel: RefObject<HTMLElement | null>) {
+  // A touch screen has no pointer to follow.
+  const noHover = useNoHover();
   useEffect(() => {
+    if (noHover) return;
     let frame = 0;
     let x = 0;
     let y = 0;
@@ -31,5 +35,5 @@ export function usePointerGlow(panel: RefObject<HTMLElement | null>) {
       cancelAnimationFrame(frame);
       removeEventListener("pointermove", onMove);
     };
-  }, [panel]);
+  }, [panel, noHover]);
 }

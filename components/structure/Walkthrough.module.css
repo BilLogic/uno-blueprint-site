@@ -13,6 +13,7 @@
 
 .sticky {
   position: sticky;
+  /* Until script centres the frame under the nav. */
   top: 72px;
 }
 

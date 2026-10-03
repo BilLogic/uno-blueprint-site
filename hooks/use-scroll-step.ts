@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type RefObject } from "react";
-import { scrollProgress, stepAt } from "@/lib/walkthrough";
+import { TIMING, scrollProgress, stepAt } from "@/lib/walkthrough";
 
 export type StepChange = { step: number; previous: number };
 
@@ -42,10 +42,10 @@ export function useScrollStep(
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(read);
     };
-    // A resize refits the frame first, so its new size is read once that has settled.
+    // A resize refits the frame first (after TIMING.resizeSettle), so the step is read just after that.
     const onResize = () => {
       clearTimeout(settle);
-      settle = window.setTimeout(schedule, 150);
+      settle = window.setTimeout(schedule, TIMING.resizeSettle + 30);
     };
     schedule();
     addEventListener("scroll", schedule, { passive: true });
