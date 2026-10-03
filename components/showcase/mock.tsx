@@ -35,22 +35,22 @@ const laneDot: Record<LaneKey, string> = {
 const columns: Record<Steps["length"], string> = { 4: "grid-cols-4", 6: "grid-cols-6" };
 
 /** Each state sets its own border and bar colours, so no base colour competes with it in the cascade. */
-const neutralBars = "max-md:before:bg-bar max-md:after:bg-line-2";
+const neutralBars = "max-xl:before:bg-bar max-xl:after:bg-line-2";
 const cellMarks: Record<CellMark | "none", string> = {
   none: `border-line-2 bg-panel ${neutralBars}`,
   hi: `border-dashed border-brand bg-brand-soft ${neutralBars}`,
   warn: `border-amber bg-amber-bg ${neutralBars}`,
-  gap: "border-dashed border-amber text-amber max-md:before:bg-amber max-md:before:opacity-55 max-md:after:bg-amber max-md:after:opacity-55",
+  gap: "border-dashed border-amber text-amber max-xl:before:bg-amber max-xl:before:opacity-55 max-xl:after:bg-amber max-xl:after:opacity-55",
 };
 
 /**
- * One cell. On a phone its words would be cut off, so they are drawn as two
- * bars instead.
+ * One cell. Up to 1000 px wide its words would not fit, so they are drawn as
+ * two bars instead; above that a word longer than the cell breaks inside it.
  */
 function Cell({ mark, children }: { mark: CellMark | undefined; children: string }) {
   return (
     <span
-      className={`min-h-(--spacing-cell) rounded-6 border p-1.5 text-11 leading-tight max-md:grid max-md:min-h-(--spacing-cell-bars) max-md:content-start max-md:gap-1 max-md:px-1.5 max-md:py-2 max-md:text-0 max-md:before:block max-md:before:h-1 max-md:before:w-(--spacing-bar-long) max-md:before:rounded-2 max-md:before:content-[''] max-md:after:block max-md:after:h-1 max-md:after:w-(--spacing-bar-short) max-md:after:rounded-2 max-md:after:content-[''] ${cellMarks[mark ?? "none"]}`}
+      className={`min-h-(--spacing-cell) rounded-6 border p-1.5 text-11 leading-tight hyphens-auto wrap-anywhere max-xl:grid max-xl:min-h-(--spacing-cell-bars) max-xl:content-start max-xl:gap-1 max-xl:px-1.5 max-xl:py-2 max-xl:text-0 max-xl:before:block max-xl:before:h-1 max-xl:before:w-(--spacing-bar-long) max-xl:before:rounded-2 max-xl:before:content-[''] max-xl:after:block max-xl:after:h-1 max-xl:after:w-(--spacing-bar-short) max-xl:after:rounded-2 max-xl:after:content-[''] ${cellMarks[mark ?? "none"]}`}
     >
       {mark === "gap" ? repairBoard.gapLabel : children}
     </span>
