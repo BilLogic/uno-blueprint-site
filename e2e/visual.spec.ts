@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { hideHumanPage } from "./isolate";
 
 // Baselines are rendered on Linux (CI, or the Playwright image locally): font
 // rasterisation differs by platform, so other platforms skip unless asked.
@@ -26,11 +27,13 @@ for (const width of widths) {
       });
 
       test("footer with the theme menu open", async ({ page }) => {
+        // The menu opens over the page above the footer; with the page hidden,
+        // no section ever shows behind it.
+        await hideHumanPage(page);
         const footer = page.locator("footer");
         await footer.scrollIntoViewIfNeeded();
         await page.getByRole("button", { name: "Toggle theme" }).click();
-        // Clipped to the footer and its open menu, so a section added above
-        // the footer never changes this baseline.
+        // Clipped to the footer and its open menu.
         const menu = page.getByRole("menu");
         const boxes = [await footer.boundingBox(), await menu.boundingBox()];
         const top = Math.min(...boxes.map((b) => b!.y));

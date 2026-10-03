@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { showOnly } from "./isolate";
 
 // Baselines are rendered on Linux (CI, or the Playwright image locally): font
 // rasterisation differs by platform, so other platforms skip unless asked.
@@ -24,17 +25,20 @@ for (const width of widths) {
       });
 
       test("get started", async ({ page }) => {
+        await showOnly(page.locator("#start"));
         await expect(page.locator("#start")).toHaveScreenshot(`start-${width}-${colorScheme}.png`);
       });
 
       test("questions, one open", async ({ page }) => {
         const section = page.getByRole("region", { name: "Uno more thing." });
+        await showOnly(section);
         await section.getByRole("button", { name: "How is this different from MCP?" }).click();
         await expect(section).toHaveScreenshot(`questions-${width}-${colorScheme}.png`);
       });
 
       test("closing band", async ({ page }) => {
         const band = page.getByRole("region", { name: "Uno map for your human and AI teammates." });
+        await showOnly(band);
         await expect(band).toHaveScreenshot(`closing-${width}-${colorScheme}.png`);
       });
     });
