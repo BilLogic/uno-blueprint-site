@@ -52,14 +52,21 @@ test.describe("install", () => {
   });
 
   test("the box keeps its height across the package managers", async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");
-    const heights = [];
-    for (const name of ["npm", "agent", "pnpm", "yarn 1", "bun"]) {
+    const height = async (name: string) => {
       await page.getByRole("tab", { name, exact: true }).click();
-      heights.push((await page.getByRole("tabpanel", { name, exact: true }).boundingBox())?.height);
+      return (await page.getByRole("tabpanel", { name, exact: true }).boundingBox())?.height;
+    };
+    // On a phone the agent's sentence is taller than the box, which grows for it as in the design.
+    for (const [width, names] of [
+      [1440, ["npm", "agent", "pnpm", "yarn 1", "bun"]],
+      [390, ["npm", "pnpm", "yarn 1", "bun"]],
+    ] as const) {
+      await page.setViewportSize({ width, height: 900 });
+      const heights = [];
+      for (const name of names) heights.push(await height(name));
+      expect(new Set(heights).size).toBe(1);
     }
-    expect(new Set(heights).size).toBe(1);
   });
 });
 
@@ -67,7 +74,7 @@ test.describe("skills", () => {
   test("each agent shows its own setup, and a skill copies as that agent calls it", async ({ page }) => {
     await page.goto("/");
     const claude = page.getByRole("tabpanel", { name: "Claude Code", exact: true });
-    expect(await copyFrom(page, claude.locator("div").first())).toBe(
+    expect(await copyFrom(page, claude.locator("div").filter({ hasText: "claude plugin marketplace add" }).last())).toBe(
       "claude plugin marketplace add BilLogic/uno-blueprint\nclaude plugin install ub@ub-marketplace",
     );
     expect(await copyFrom(page, claude.getByRole("listitem").filter({ hasText: "ub:audit" }))).toBe(
@@ -77,7 +84,7 @@ test.describe("skills", () => {
     await page.getByRole("tab", { name: "Cursor", exact: true }).click();
     const cursor = page.getByRole("tabpanel", { name: "Cursor", exact: true });
     await expect(cursor).toContainText("Cursor reads AGENTS.md in the workspace");
-    expect(await copyFrom(page, cursor.locator("div").first())).toBe("cd uno-blueprint\ncursor .");
+    expect(await copyFrom(page, cursor.locator("div").filter({ hasText: "cursor ." }).last())).toBe("cd uno-blueprint\ncursor .");
     expect(await copyFrom(page, cursor.getByRole("listitem").filter({ hasText: "ub:whatif" }))).toBe(
       "ub:whatif",
     );
@@ -127,4 +134,16 @@ test("the closing band leads back to the install steps", async ({ page }) => {
   const band = page.getByRole("region", { name: "Uno map for your human and AI teammates." });
   await expect(band.getByRole("link", { name: "Get the template" })).toHaveAttribute("href", "#start");
   await expect(band.getByRole("link", { name: "Try the demo" })).toHaveAttribute("href", /\/demo\/$/);
+});
+
+test("the longest commands and answers still fit a 375 px screen", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/");
+  await page.getByRole("tab", { name: "agent", exact: true }).click();
+  await page.getByRole("tab", { name: "Other agents", exact: true }).click();
+  await page.getByRole("button", { name: "Which agents can use it?" }).click();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
 });
