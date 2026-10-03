@@ -29,7 +29,7 @@ export function GetStarted() {
               <ul className="grid gap-5.5">
                 {prompts.list.map(({ title: name, prompt }) => (
                   <li key={name} className="grid gap-2">
-                    <h4 className="text-14 leading-label font-medium">{name}</h4>
+                    <h4 className="text-14 leading-prompt-title font-medium">{name}</h4>
                     <div className="group relative grid rounded-12 border border-line bg-panel py-3.5 pr-13 pl-4">
                       <p className="text-14 text-muted">{prompt}</p>
                       <CopyButton text={prompt} tone="panel" className={`top-2.5 right-2.5 ${revealCopy}`} />
