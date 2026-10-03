@@ -108,6 +108,8 @@
   --radius-pill: 99px;
 
   --leading-code: 1.65;
+  /* Agent view: the file name above the guide. */
+  --leading-file: 1.2;
 
   --blur-nav: 6px;
 
