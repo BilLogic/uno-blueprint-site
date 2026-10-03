@@ -23,3 +23,9 @@
   for = "/_next/static/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+# The agent guide is read as markdown, by agents and by browsers alike.
+[[headers]]
+  for = "/uno-blueprint.md"
+  [headers.values]
+    Content-Type = "text/markdown; charset=utf-8"
