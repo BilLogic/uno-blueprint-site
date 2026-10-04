@@ -62,8 +62,6 @@ export const TIMING = {
   /** A document travels from a tool to the node, then from the node to the board. */
   feed: 700,
   toBoard: 420,
-  /** A walker's step lands this long after it starts. */
-  arrive: 650,
   /** The panel blanks, then takes the new cell, then shows it. */
   close: 260,
   reveal: 340,
@@ -75,10 +73,6 @@ export const TIMING = {
   ping: 700,
   /** A tool an agent reaches lights this long. */
   toolLit: 700,
-  /** While the board grows or shrinks, the walkers and the beam ride along with it this long, and nobody sets off. */
-  ride: 720,
-  /** Leaving solo, the board gives its room back for this long before the cell opens. */
-  unsolo: 760,
   /** While the board stands alone, it is measured again this long after the window stops resizing. */
   soloResize: 140,
   /** A new cell opens at most this often, so the last one has time to be read. */
@@ -91,6 +85,25 @@ export const TIMING = {
 
 /** The curve a document follows along a beam. */
 export const BEAM_EASING = "cubic-bezier(.45,0,.25,1)";
+
+/** A CSS time token ("700ms" or "0.7s") in milliseconds; 0 when it is unset. */
+export function cssMs(value: string) {
+  const time = value.trim();
+  const number = parseFloat(time);
+  if (Number.isNaN(number)) return 0;
+  return time.endsWith("ms") ? number : time.endsWith("s") ? number * 1000 : number;
+}
+
+/**
+ * The timings that follow a CSS transition, worked out from its token
+ * (styles/tokens.css is the one source): a walker lands when its walk ends;
+ * while the board grows or shrinks everyone rides along with it, and nobody
+ * sets off, a little past the transition; and leaving solo, the cell opens
+ * once the board has given its room back.
+ */
+export function motionTimes(tokens: { walk: number; soloMove: number }) {
+  return { arrive: tokens.walk, ride: tokens.soloMove + 70, unsolo: tokens.soloMove + 110 };
+}
 
 /** A cell flashes when a document or a walker arrives. */
 export const HIT_KEYFRAMES: Keyframe[] = [
@@ -173,8 +186,8 @@ export type BoardAction =
   | { type: "land"; cell: number; tool: number }
   | { type: "move"; at: readonly (Place | null)[]; carry?: readonly (number | null)[] }
   | { type: "drop"; walker: number; cell: number }
-  /** `random` (0 to 1) picks the filled cell anyone standing on the panel walks back to as it closes. */
-  | { type: "solo"; on: true; random: number }
+  /** Per walker, a number from 0 to 1 that picks the filled cell it walks back to if it stands on the panel as it closes. */
+  | { type: "solo"; on: true; random: readonly number[] }
   | { type: "solo"; on: false }
   | { type: "restatus"; status: number }
   | { type: "close" }
@@ -219,8 +232,10 @@ export function boardReducer(board: Board, action: BoardAction): Board {
       if (!action.on) return { ...board, solo: false };
       // The panel closes: anyone standing on it walks back to a filled cell, never left on a field that is no longer there.
       const pool = filledCells(board);
-      const home = pool[Math.min(pool.length - 1, Math.floor(action.random * pool.length))];
-      const at = board.at.map((place) => (place?.kind === "field" && home !== undefined ? onCell(home) : place));
+      const at = board.at.map((place, i) => {
+        if (place?.kind !== "field" || !pool.length) return place;
+        return onCell(pool[Math.min(pool.length - 1, Math.floor((action.random[i] ?? 0) * pool.length))]!);
+      });
       return { ...board, at, solo: true, focus: null, projecting: false, panel: "hidden" };
     }
     case "restatus":
@@ -292,6 +307,25 @@ export function nearCells(from: number, pool: readonly number[]) {
   return close.length ? close : others;
 }
 
+/**
+ * The panel's fields can be stood on: the panel is in, showing a cell, and
+ * not blank between two cells.
+ */
+export const fieldsOpen = (board: Board) => !board.solo && board.panel === "shown" && board.focus !== null;
+
+/**
+ * A walk to a panel field still ends there: the panel is still open and
+ * shown (not solo, not a phone) and nothing sent the walker elsewhere on the
+ * way. Otherwise its arrival does nothing.
+ */
+export function arrivesOnField(board: Board, walker: number, field: Field, stacked: boolean) {
+  const place = board.at[walker];
+  return !stacked && fieldsOpen(board) && place?.kind === "field" && place.field === field;
+}
+
+/** The status the panel shows for a cell: the one a person set, or the cell's own. */
+export const statusOf = (cell: number, set: number | null, statusCount: number) => set ?? cell % statusCount;
+
 /** What the walkers can reach right now: the tools, and the panel's fields while the panel is shown. */
 export type Reach = { tools: readonly number[]; fields: readonly Field[] };
 
@@ -322,7 +356,7 @@ export function planStep(board: Board, random: Random, reach: Reach) {
     carry[walker] = tool;
     return go({ kind: "tool", tool });
   }
-  if (onMap && !agent && board.focus !== null && errand < 0.3 && reach.fields.length) {
+  if (onMap && !agent && fieldsOpen(board) && errand < 0.3 && reach.fields.length) {
     return go({ kind: "field", field: pick(reach.fields, random) });
   }
   const roomy = pool.filter((cell) => (board.sources[cell]?.length ?? 0) < 2);
@@ -367,10 +401,6 @@ export const personOpens = (solo: boolean, clock: Clock, now: number) => !(solo 
 /** The panel has been open long enough, and the board goes solo again. */
 export const panelExpired = (solo: boolean, clock: Clock, now: number) => !solo && now - clock.openSince > TIMING.panelLife;
 
-/** How far the sheets stacked behind the board stick out past it. */
-const STACK = 18;
-/** How far the board drops per unit of scale: half of how far those sheets rise above it, so it sits mid-frame. */
-const RISE = 8;
 /** The frame's own room above and below the board. */
 const FRAME = 56;
 
@@ -383,9 +413,20 @@ const FRAME = 56;
  * the board, so both go back to rest.
  */
 export function soloScale(
-  size: { board: number; gap: number; panel: number; stageHeight: number; sheetHeight: number } | null,
+  size: {
+    board: number;
+    gap: number;
+    panel: number;
+    stageHeight: number;
+    sheetHeight: number;
+    /** How far the sheets stacked behind the board stick out to the right, and rise above it (their tokens). */
+    stack: { x: number; y: number };
+  } | null,
 ) {
   if (!size) return { scale: 1, drop: 0 };
+  const STACK = size.stack.x;
+  /** How far the board drops per unit of scale: half the sheets' rise, so it sits mid-frame. */
+  const RISE = size.stack.y / 2;
   const room = (size.board + size.gap + size.panel) / (size.board + STACK);
   const tall = (size.stageHeight - FRAME) / (size.sheetHeight + STACK);
   const scale = Math.max(1, Math.min(room, tall));
@@ -411,7 +452,7 @@ export function panelFill(cell: number, sources: readonly number[], statusCount:
   return {
     summary: 62 + ((cell * 7) % 30),
     summaryShort: 34 + ((cell * 11) % 32),
-    status: cell % statusCount,
+    status: statusOf(cell, null, statusCount),
     lane: rowOf(cell),
     evidence: sources.map((tool, j) => ({ tool, width: 58 - j * 14 + (cell % 3) * 6 })),
   };

@@ -6,6 +6,11 @@ import { hero } from "@/content/hero";
 import {
   BEAM_EASING,
   FIELDS,
+  WALKERS,
+  arrivesOnField,
+  cssMs,
+  motionTimes,
+  statusOf,
   FIELD_PING_EASING,
   FIELD_PING_KEYFRAMES,
   HIT_KEYFRAMES,
@@ -216,6 +221,9 @@ const STATUSES = hero.picture.panel.statuses;
  */
 function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRound }: Timeline) {
   const reduced = matchMedia(REDUCED).matches;
+  // The timings that follow a CSS transition come from its token, so the two never drift.
+  const token = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name);
+  const motion = motionTimes({ walk: cssMs(token("--duration-walk")), soloMove: cssMs(token("--duration-solo-move")) });
   const stacked = () => matchMedia(STACKED).matches;
   const timers = new Set<number>();
   const animations = new Set<Animation>();
@@ -304,6 +312,7 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
       panel: panel.offsetWidth,
       stageHeight: stage.clientHeight,
       sheetHeight: sheet.offsetHeight,
+      stack: { x: parseFloat(token("--spacing-hero-stack-x")) || 0, y: parseFloat(token("--spacing-hero-stack-y")) || 0 },
     };
     const { scale, drop } = soloScale(stacked() ? null : size);
     stage.style.setProperty("--solo-s", scale.toFixed(3));
@@ -319,8 +328,8 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
       soloSize();
     } else clock.openSince = now;
     // The reducer walks anyone on the panel back to a cell before the board starts growing.
-    dispatch(on ? { type: "solo", on, random: Math.random() } : { type: "solo", on });
-    rideAlong(TIMING.ride);
+    dispatch(on ? { type: "solo", on, random: WALKERS.map(() => Math.random()) } : { type: "solo", on });
+    rideAlong(motion.ride);
   }
 
   /** The panel blanks, takes the new cell and the light sweeps to it, then the cell's details fill in. */
@@ -341,7 +350,7 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
     clock.lastOpen = now;
     if (board().solo) {
       solo(false);
-      later(() => show(cell), TIMING.unsolo);
+      later(() => show(cell), motion.unsolo);
       return;
     }
     show(cell);
@@ -364,10 +373,12 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
         return;
       }
       if (to.kind === "field") {
-        play(el.fields[to.field], FIELD_PING_KEYFRAMES, { duration: TIMING.ping, easing: FIELD_PING_EASING });
         const now = board();
+        // The panel closed, blanked or went off screen during the walk, or the walker was sent elsewhere.
+        if (!arrivesOnField(now, plan.walker, to.field, stacked())) return;
+        play(el.fields[to.field], FIELD_PING_KEYFRAMES, { duration: TIMING.ping, easing: FIELD_PING_EASING });
         if (to.field === "status" && now.shown !== null) {
-          const shown = now.status ?? now.shown % STATUSES.length;
+          const shown = statusOf(now.shown, now.status, STATUSES.length);
           dispatch({ type: "restatus", status: nextStatus(shown, STATUSES, Math.random) });
         }
         return;
@@ -376,7 +387,7 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
       dispatch({ type: "drop", walker: plan.walker, cell: to.cell });
       const latest = board();
       if (plan.person && to.cell !== latest.focus && personOpens(latest.solo, clock, performance.now())) open(to.cell);
-    }, TIMING.arrive);
+    }, motion.arrive);
   }
 
   /** A document leaves a tool, passes through the node, and lands in a cell (or joins a filled one). */
@@ -454,7 +465,7 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
     resolo = later(() => {
       if (!board().solo) return;
       soloSize();
-      rideAlong(TIMING.ride);
+      rideAlong(motion.ride);
     }, TIMING.soloResize);
   };
   layout();

@@ -23,10 +23,11 @@ export function HeroBoard({ board, boardRef, sheetRef, cellRef }: HeroBoardProps
   return (
     <div
       ref={boardRef}
+      data-testid="hero-board"
       className={`relative z-1 min-w-0 origin-left transition-solo motion-reduce:transition-none max-md:w-full ${board.solo ? "md:translate-y-(--solo-ty) md:scale-(--solo-s)" : ""}`}
     >
-      <i className={`${ghost} translate-x-4.5 -translate-y-4 opacity-45`} />
-      <i className={`${ghost} translate-x-2.25 -translate-y-2 opacity-75`} />
+      <i className={`${ghost} translate-x-hero-stack-x -translate-y-hero-stack-y opacity-45`} />
+      <i className={`${ghost} translate-x-[calc(var(--spacing-hero-stack-x)/2)] translate-y-[calc(var(--spacing-hero-stack-y)/-2)] opacity-75`} />
       <div
         ref={sheetRef}
         className="relative z-1 grid gap-2.5 rounded-16 border border-line-2 bg-panel p-3.5 shadow-card max-md:w-full max-md:gap-1.5 max-md:rounded-10 max-md:p-2.5"
@@ -90,6 +91,7 @@ const Cell = memo(function Cell({ sources, focused, cellRef }: CellProps) {
   return (
     <span
       ref={cellRef}
+      data-testid="hero-cell"
       className={`relative grid h-13 content-start gap-1.25 rounded-8 border p-2.25 transition-[border-color,background-color,opacity,box-shadow] duration-400 max-md:h-7.5 max-md:gap-0.75 max-md:rounded-6 max-md:p-1.5 ${state} ${filled ? "bg-cell" : ""}`}
     >
       <u className={`${sketch} ${filled ? "w-bar-long bg-sketch" : "w-0 bg-line-2"}`} />

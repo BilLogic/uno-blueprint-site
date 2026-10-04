@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { hero } from "@/content/hero";
-import { panelFill, type Board } from "@/lib/hero-picture";
+import { panelFill, statusOf, type Board } from "@/lib/hero-picture";
 import { LANE_COLORS } from "./lanes";
 import { Glyph } from "./Glyph";
 import { ToolIcon } from "./ToolIcon";
@@ -51,6 +51,7 @@ export const HeroPanel = memo(function HeroPanel({
   return (
     <div
       ref={panelRef}
+      data-testid="hero-panel"
       className={`@container relative z-1 grid w-hero-panel min-w-0 grid-cols-1 gap-3 justify-self-start rounded-16 border border-line-2 bg-panel p-3.5 text-left text-12 shadow-hero-panel transition-solo motion-reduce:transition-none max-md:hidden ${away ? "pointer-events-none translate-x-hero-solo-shift opacity-0" : ""}`}
     >
       <div className={`${row} flex items-center gap-1.5 text-faint`}>
@@ -70,13 +71,14 @@ export const HeroPanel = memo(function HeroPanel({
           <span className={label}>{words.status}</span>
           <span
             ref={statusRef}
+            data-testid="hero-field"
             className="inline-flex items-center gap-1.5 justify-self-start rounded-pill border border-line-2 px-2.25 py-0.5 text-11-5 before:size-1.5 before:rounded-full before:bg-brand before:content-['']">
-            {words.statuses[status ?? fill.status]}
+            {words.statuses[statusOf(cell, status, words.statuses.length)]}
           </span>
         </div>
         <div className={field}>
           <span className={label}>{words.owner}</span>
-          <span ref={ownerRef} className="flex items-center gap-1.75">
+          <span ref={ownerRef} data-testid="hero-field" className="flex items-center gap-1.75">
             <i className={`block size-4.5 flex-none rounded-full border border-line-2 ${LANE_COLORS[fill.lane]}`} />
             <span className={`${sketch} max-w-17.5 flex-1 bg-line-2`} />
           </span>

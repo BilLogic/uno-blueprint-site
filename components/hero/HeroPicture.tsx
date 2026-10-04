@@ -44,9 +44,10 @@ export function HeroPicture() {
 
   return (
     <div ref={rim} role="img" aria-label={picture.label} className="relative mt-16 flex rounded-20 rim-light p-px">
-      <div className="relative min-w-0 flex-1 overflow-hidden rounded-20-inset bg-card">
+      <div data-testid="hero-frame" className="relative min-w-0 flex-1 overflow-hidden rounded-20-inset bg-card">
         <div
           ref={stageRef}
+          data-testid="hero-stage"
           className="relative grid grid-cols-(--hero-stage-columns) items-center justify-center gap-x-hero-gap px-hero-stage-x py-hero-stage-y max-md:grid-cols-1 max-md:justify-items-center max-md:gap-7.5 max-md:px-4 max-md:py-6.5"
         >
           <div className="pointer-events-none absolute inset-0 hero-dots" />
@@ -78,7 +79,7 @@ export function HeroPicture() {
             )}
           </svg>
 
-          <div className="relative z-1 flex items-center justify-start gap-hero-gap max-md:flex-col max-md:gap-6.5">
+          <div data-testid="hero-feed" className="relative z-1 flex items-center justify-start gap-hero-gap max-md:flex-col max-md:gap-6.5">
             <div className="relative z-1 grid grid-cols-(--hero-tool-columns) gap-3 max-md:gap-1.75">
               {picture.tools.map((tool, i) => (
                 <Tool key={tool.name} tool={tool} lit={board.lit.includes(i)} tileRef={toolRef(i)} />
@@ -120,6 +121,7 @@ export function HeroPicture() {
             <span
               key={i}
               ref={walkerRef(i)}
+              data-testid="hero-walker"
               className={`pointer-events-none absolute top-0 left-0 z-30 grid size-5.5 place-items-center opacity-0 shadow-walker transition-walk data-placed:opacity-100 motion-reduce:transition-none max-md:size-4 ${
                 kind === "person" ? "rounded-full bg-ink text-bg" : "rounded-8 bg-brand text-on-primary max-md:rounded-6"
               }`}
@@ -140,6 +142,7 @@ const Tool = memo(function Tool({ tool, lit, tileRef }: ToolProps) {
   return (
     <span
       ref={tileRef}
+      data-testid="hero-tool"
       title={tool.name}
       className={`grid size-10.5 place-items-center rounded-12 border bg-panel transition-[border-color,box-shadow] duration-300 max-md:size-7.5 max-md:rounded-8 ${lit ? "border-brand shadow-lit" : "border-line-2 shadow-card"}`}
     >

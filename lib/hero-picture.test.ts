@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   FILLS,
+  arrivesOnField,
+  cssMs,
+  fieldsOpen,
+  motionTimes,
+  statusOf,
   TIMING,
   WALKERS,
   cellOf,
@@ -80,7 +85,7 @@ describe("boardReducer", () => {
   });
 
   it("goes solo: the board alone, the panel blank and its light out", () => {
-    const solo = boardReducer(board, { type: "solo", on: true, random: 0 });
+    const solo = boardReducer(board, { type: "solo", on: true, random: [0, 0, 0, 0] });
     expect(solo).toMatchObject({ solo: true, focus: null, projecting: false, panel: "hidden" });
     // The panel comes back blank; the next cell fills it.
     expect(boardReducer(solo, { type: "solo", on: false })).toMatchObject({ solo: false, panel: "hidden", focus: null });
@@ -92,17 +97,28 @@ describe("boardReducer", () => {
       at: [{ kind: "field", field: "status" }, board.at[1]!, { kind: "field", field: "owner" }, board.at[3]!],
     };
     for (const random of [0, 0.5, 0.999]) {
-      const solo = boardReducer(editing, { type: "solo", on: true, random });
+      const solo = boardReducer(editing, { type: "solo", on: true, random: [random, random, random, random] });
       const pool = filledCells(solo);
       for (const i of [0, 2]) expect(pool).toContain(cellOf(solo.at[i]));
       expect([solo.at[1], solo.at[3]]).toEqual([board.at[1], board.at[3]]);
     }
   });
 
+  it("picks a cell for each walker on the panel, as the prototype does", () => {
+    const editing: Board = {
+      ...board,
+      at: [{ kind: "field", field: "status" }, board.at[1]!, { kind: "field", field: "owner" }, board.at[3]!],
+    };
+    const solo = boardReducer(editing, { type: "solo", on: true, random: [0, 0, 0.999, 0] });
+    const pool = filledCells(solo);
+    expect(solo.at[0]).toEqual(onCell(pool[0]!));
+    expect(solo.at[2]).toEqual(onCell(pool[pool.length - 1]!));
+  });
+
   it("never sends anyone to a panel field while the panel is closed", () => {
     const view = { tools: [0, 1, 2, 3, 4, 5, 6, 7], fields: ["status", "owner"] as const };
     const editing: Board = { ...board, at: [{ kind: "field", field: "owner" }, ...board.at.slice(1)] };
-    const closed = boardReducer(editing, { type: "solo", on: true, random: 0.3 });
+    const closed = boardReducer(editing, { type: "solo", on: true, random: [0.3, 0.3, 0.3, 0.3] });
     expect(closed.at[0]!.kind).toBe("cell");
     // The person on the panel, then every errand roll: a closed panel is never a target.
     for (const errand of [0, 0.1, 0.29, 0.5]) {
@@ -275,6 +291,58 @@ describe("nextStatus", () => {
   });
 });
 
+describe("the panel's fields", () => {
+  const view = { tools: [0, 1, 2, 3, 4, 5, 6, 7], fields: ["status", "owner"] as const };
+  const open = settledBoard(TOOLS);
+  const blank = boardReducer(open, { type: "close" });
+  const between = boardReducer(blank, { type: "focus", cell: 9 });
+
+  it("are open only while the panel shows a cell", () => {
+    expect(fieldsOpen(open)).toBe(true);
+    expect(fieldsOpen(blank)).toBe(false);
+    expect(fieldsOpen(between)).toBe(false);
+    expect(fieldsOpen(boardReducer(between, { type: "reveal" }))).toBe(true);
+    expect(fieldsOpen(boardReducer(open, { type: "solo", on: true, random: [0, 0, 0, 0] }))).toBe(false);
+  });
+
+  it("are never picked while the panel blanks between two cells", () => {
+    // A person, an errand roll that would send them to the panel.
+    for (const board of [blank, between]) {
+      expect(planStep(board, sequence(0, 0.1, 0.6, 0.9), view)!.to.kind).toBe("cell");
+    }
+    expect(planStep(open, sequence(0, 0.1, 0.6, 0.9), view)!.to.kind).toBe("field");
+  });
+
+  it("do nothing for a walk that ends after the panel has gone or the walker was sent elsewhere", () => {
+    const onStatus: Board = { ...open, at: [{ kind: "field", field: "status" }, ...open.at.slice(1)] };
+    expect(arrivesOnField(onStatus, 0, "status", false)).toBe(true);
+    // The panel closed during the walk: the reducer has already sent the walker back to a cell.
+    expect(arrivesOnField(boardReducer(onStatus, { type: "solo", on: true, random: [0, 0, 0, 0] }), 0, "status", false)).toBe(false);
+    // Resized down to a phone during the walk.
+    expect(arrivesOnField(onStatus, 0, "status", true)).toBe(false);
+    // Sent to another field, or the panel blanking for the next cell.
+    expect(arrivesOnField(onStatus, 0, "owner", false)).toBe(false);
+    expect(arrivesOnField(boardReducer(onStatus, { type: "close" }), 0, "status", false)).toBe(false);
+  });
+
+  it("show the status a person set, or the cell's own", () => {
+    expect(statusOf(9, null, 6)).toBe(3);
+    expect(statusOf(9, 4, 6)).toBe(4);
+  });
+});
+
+describe("motion timings", () => {
+  it("read a CSS time token", () => {
+    expect(cssMs("700ms")).toBe(700);
+    expect(cssMs(" 0.65s")).toBe(650);
+    expect(cssMs("")).toBe(0);
+  });
+
+  it("land a walker when its walk ends, and ride a little past the board's resize", () => {
+    expect(motionTimes({ walk: 700, soloMove: 650 })).toEqual({ arrive: 700, ride: 720, unsolo: 760 });
+  });
+});
+
 describe("the loop's clock", () => {
   const clock = { soloAt: 1000, openSince: 2000, lastOpen: 3000 };
 
@@ -297,24 +365,26 @@ describe("the loop's clock", () => {
 });
 
 describe("soloScale", () => {
+  const sheets = { stack: { x: 18, y: 16 } };
+
   it("grows the board into the panel's room, less the stacked sheets behind it, so both sides keep the same padding", () => {
-    const { scale } = soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 1000, sheetHeight: 300 });
+    const { scale } = soloScale({ ...sheets, board: 500, gap: 37, panel: 240, stageHeight: 1000, sheetHeight: 300 });
     expect(scale).toBeCloseTo(777 / 518);
     // The board and the sheets behind it, grown together, end where the panel did.
     expect((500 + 18) * scale).toBeCloseTo(500 + 37 + 240);
   });
 
   it("drops the board by half the sheets' rise, so it sits mid-frame", () => {
-    expect(soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 1000, sheetHeight: 300 }).drop).toBeCloseTo(8 * (777 / 518));
+    expect(soloScale({ ...sheets, board: 500, gap: 37, panel: 240, stageHeight: 1000, sheetHeight: 300 }).drop).toBeCloseTo(8 * (777 / 518));
   });
 
   it("as far as the frame's height allows, and never smaller", () => {
-    expect(soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 400, sheetHeight: 300 }).scale).toBeCloseTo(344 / 318);
-    expect(soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 200, sheetHeight: 300 })).toEqual({ scale: 1, drop: 8 });
+    expect(soloScale({ ...sheets, board: 500, gap: 37, panel: 240, stageHeight: 400, sheetHeight: 300 }).scale).toBeCloseTo(344 / 318);
+    expect(soloScale({ ...sheets, board: 500, gap: 37, panel: 240, stageHeight: 200, sheetHeight: 300 })).toEqual({ scale: 1, drop: 8 });
   });
 
   it("puts the board back at rest on a phone, so a resize from wide to phone while solo clears the drop", () => {
-    const wide = soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 1000, sheetHeight: 300 });
+    const wide = soloScale({ ...sheets, board: 500, gap: 37, panel: 240, stageHeight: 1000, sheetHeight: 300 });
     expect(wide.drop).toBeGreaterThan(0);
     expect(soloScale(null)).toEqual({ scale: 1, drop: 0 });
   });

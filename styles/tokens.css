@@ -274,6 +274,9 @@
   --spacing-hero-panel: clamp(168px, 17vw, 240px);
   /* The panel's content width below which Status and Owner stack and Value proposition steps out. */
   --container-hero-fields: 170px;
+  /* The two sheets stacked behind the hero board stick out this far right and up (the second one half as far); the solo sizing reads them too. */
+  --spacing-hero-stack-x: 18px;
+  --spacing-hero-stack-y: 16px;
   /* Solo: the panel slides this far aside while the board stands alone. */
   --spacing-hero-solo-shift: 28px;
   /* The panel's content width below which its tab row holds only two tabs, then one. */

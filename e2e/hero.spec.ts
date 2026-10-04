@@ -110,9 +110,9 @@ test("each loop opens on the board alone, grown into the panel's room", async ({
   await page.goto("/");
   const image = picture(page);
   await image.scrollIntoViewIfNeeded();
-  const panel = image.locator(".\\@container");
+  const panel = image.getByTestId("hero-panel");
   await expect.poll(() => panel.evaluate((element) => getComputedStyle(element).opacity), { timeout: 8000 }).toBe("0");
-  const board = image.locator(".origin-left");
+  const board = image.getByTestId("hero-board");
   await expect
     .poll(() => board.evaluate((element) => Number(getComputedStyle(element).scale)), { timeout: 2000 })
     .toBeGreaterThan(1.2);
@@ -121,10 +121,10 @@ test("each loop opens on the board alone, grown into the panel's room", async ({
 test("standing alone, the board keeps the same padding on both sides, on load and after a resize", async ({ page }) => {
   const margins = () =>
     picture(page).evaluate((root) => {
-      const frame = root.firstElementChild!.getBoundingClientRect();
-      const stage = root.querySelector(".grid")!;
-      const tools = Array.from(stage.children).find((child) => child.classList.contains("justify-start"))!.getBoundingClientRect();
-      const sheets = Array.from(stage.querySelector(".origin-left")!.children).map((sheet) => sheet.getBoundingClientRect());
+      const frame = root.querySelector("[data-testid=hero-frame]")!.getBoundingClientRect();
+      const stage = root.querySelector("[data-testid=hero-stage]")!;
+      const tools = stage.querySelector("[data-testid=hero-feed]")!.getBoundingClientRect();
+      const sheets = Array.from(stage.querySelector("[data-testid=hero-board]")!.children).map((sheet) => sheet.getBoundingClientRect());
       return {
         left: tools.left - frame.left,
         right: frame.right - Math.max(...sheets.map((sheet) => sheet.right)),
@@ -134,7 +134,7 @@ test("standing alone, the board keeps the same padding on both sides, on load an
     });
   const panelAway = () =>
     expect
-      .poll(() => picture(page).locator(".\\@container").evaluate((panel) => getComputedStyle(panel).opacity), { timeout: 8000 })
+      .poll(() => picture(page).getByTestId("hero-panel").evaluate((panel) => getComputedStyle(panel).opacity), { timeout: 8000 })
       .toBe("0");
   const even = async (label: string) => {
     // The board grows over the solo transition; it settles well within a second.
@@ -155,18 +155,41 @@ test("standing alone, the board keeps the same padding on both sides, on load an
   }
 });
 
+test("with the panel showing, the row keeps the same margins on both sides", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const width of [1280, 1600]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    const image = picture(page);
+    await expect(image.locator("polygon")).toHaveAttribute("points", /\d/);
+    const { left, right, top, bottom } = await image.evaluate((root) => {
+      const frame = root.querySelector("[data-testid=hero-frame]")!.getBoundingClientRect();
+      const feed = root.querySelector("[data-testid=hero-feed]")!.getBoundingClientRect();
+      const panel = root.querySelector("[data-testid=hero-panel]")!.getBoundingClientRect();
+      return {
+        left: feed.left - frame.left,
+        right: frame.right - panel.right,
+        top: panel.top - frame.top,
+        bottom: frame.bottom - panel.bottom,
+      };
+    });
+    expect(Math.abs(left - right), `${width} px: left ${left}, right ${right}`).toBeLessThan(2);
+    expect(Math.abs(top - bottom), `${width} px: top ${top}, bottom ${bottom}`).toBeLessThan(2);
+  }
+});
+
 test("resized from wide to a phone while standing alone, the board goes back to rest", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
   const image = picture(page);
   await image.scrollIntoViewIfNeeded();
-  const solo = (name: string) => image.locator(".grid").first().evaluate((stage, name) => (stage as HTMLElement).style.getPropertyValue(name), name);
+  const solo = (name: string) => image.getByTestId("hero-stage").evaluate((stage, name) => (stage as HTMLElement).style.getPropertyValue(name), name);
   await expect.poll(() => solo("--solo-ty"), { timeout: 8000 }).not.toBe("");
   expect(parseFloat(await solo("--solo-ty"))).toBeGreaterThan(0);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect.poll(() => solo("--solo-ty")).toBe("0.0px");
   expect(await solo("--solo-s")).toBe("1.000");
-  const board = image.locator(".origin-left");
+  const board = image.getByTestId("hero-board");
   // At rest once the transition ends: no scale, no drop.
   await expect
     .poll(() => board.evaluate((element) => element.getBoundingClientRect().width / (element as HTMLElement).offsetWidth))
@@ -184,16 +207,19 @@ for (const width of [1440, 390]) {
     const strays = await image.evaluate(
       (root) =>
         new Promise<string[]>((resolve) => {
-          const stage = root.querySelector(".grid")!;
-          const children = Array.from(stage.children) as HTMLElement[];
-          const walkers = children.filter((child) => child.classList.contains("z-30"));
-          const panel = children.find((child) => child.classList.contains("@container"))!;
+          const stage = root.querySelector("[data-testid=hero-stage]")!;
+          const walkers = Array.from(stage.querySelectorAll<HTMLElement>("[data-testid=hero-walker]"));
+          const panel = stage.querySelector<HTMLElement>("[data-testid=hero-panel]")!;
           const shown = (element: Element) => element.getBoundingClientRect().width > 0;
-          const fields = [panel.querySelector(".rounded-pill")!, panel.querySelector(".gap-1\\.75")!];
+          const fields = Array.from(panel.querySelectorAll("[data-testid=hero-field]"));
           // A field counts only while the panel is open and on screen; standing on one of a closed or hidden panel is a stray.
           const panelOpen = () => shown(panel) && getComputedStyle(panel).opacity === "1";
           const targets = () =>
-            [...stage.querySelectorAll(".h-13"), ...stage.querySelectorAll("span[title]"), ...(panelOpen() ? fields : [])].filter(shown);
+            [
+              ...stage.querySelectorAll("[data-testid=hero-cell]"),
+              ...stage.querySelectorAll("[data-testid=hero-tool]"),
+              ...(panelOpen() ? fields : []),
+            ].filter(shown);
           const overlaps = (a: DOMRect, b: DOMRect) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
           const seen = walkers.map(() => ({ transform: "", since: 0, checked: false }));
           const out: string[] = [];
