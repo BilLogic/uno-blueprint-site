@@ -60,10 +60,11 @@ function OptionBoard({ changes, traced }: { changes: readonly CellChangeAt[]; tr
 }
 
 /**
- * The what-if: the skill tries one option after another. Each gets its own
- * copy of the blueprint; the cells that differ are traced one by one, on the
- * copy and on today's board, while the count runs up; then what it gains and
- * what it costs. When all three are in, the one that disturbs least is suggested.
+ * The what-if: the skill drafts all three options at once, each on its own
+ * copy of the blueprint. Their changed cells are traced side by side while each
+ * count runs up; all three are weighed together, with what each gains and what
+ * it costs; then the one that disturbs least is suggested and marked on today's
+ * board.
  */
 export function WhatIfPicture({ running }: PictureProps) {
   const count = useSteps(TIMES, running);
@@ -103,7 +104,7 @@ export function WhatIfPicture({ running }: PictureProps) {
             const look = best
               ? "border-dashed border-brand bg-brand-wash shadow-card"
               : state.shown
-                ? `bg-panel shadow-card ${frame.current === k ? "border-line-hot" : "border-line-2"}`
+                ? `bg-panel shadow-card ${frame.working ? "border-line-hot" : "border-line-2"}`
                 : "border-dashed border-line-2";
             const resting = frame.suggested !== null && !best;
             return (

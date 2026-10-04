@@ -17,7 +17,8 @@ export const bento = {
   rag: {
     title: "Built for RAG",
     body: "Agents search every step by meaning, then pull only the ones a question needs.",
-    question: "“who approves a refund?”",
+    /** Typed into the search box, letter by letter, while the picture plays. */
+    question: "Who approves a refund?",
   },
   scale: {
     title: "Scalable structure",

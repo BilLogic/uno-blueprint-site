@@ -1,6 +1,7 @@
 /**
  * The map picture as a timeline. Each phrase is read, then its lane and step
- * open on the board, then it lands in its cell; the draft notice comes last.
+ * open on the board, then it lands in its cell. It ends on the finished board,
+ * with the last cell's mark cleared.
  */
 
 /** The gap between one phrase and the next, and when the first is read (ms). */
@@ -8,11 +9,11 @@ export const MAP_PHRASE_GAP = 1150;
 const FIRST_READ = 500;
 const OPEN_AFTER = 460;
 const PLACE_AFTER = 960;
-const DONE_AFTER = 600;
+const END_AFTER = 600;
 
 export type MapStep =
   | { at: number; kind: "read" | "open" | "place"; phrase: number }
-  | { at: number; kind: "done" };
+  | { at: number; kind: "end" };
 
 /** Every step of the picture, in time order, for phrases read in `readOrder`. */
 export function mapSteps(readOrder: readonly number[]): MapStep[] {
@@ -23,7 +24,7 @@ export function mapSteps(readOrder: readonly number[]): MapStep[] {
     steps.push({ at: at + OPEN_AFTER, kind: "open", phrase });
     steps.push({ at: at + PLACE_AFTER, kind: "place", phrase });
   });
-  steps.push({ at: FIRST_READ + readOrder.length * MAP_PHRASE_GAP + DONE_AFTER, kind: "done" });
+  steps.push({ at: FIRST_READ + readOrder.length * MAP_PHRASE_GAP + END_AFTER, kind: "end" });
   return steps;
 }
 
@@ -38,7 +39,6 @@ export type MapFrame = {
   /** Phrases placed in their cells; `latest` is the one just placed, while it is marked. */
   placed: ReadonlySet<number>;
   latest: number | null;
-  done: boolean;
   /** How many times the skill has pinged, so each read can replay the ping. */
   pings: number;
 };
@@ -61,12 +61,10 @@ export function mapFrame(
   const lanes = Array.from({ length: laneCount }, () => stacked);
   const cols = Array.from({ length: stepCount }, () => stacked);
   let latest: number | null = null;
-  let done = false;
   let pings = 0;
   for (const step of steps.slice(0, count)) {
-    if (step.kind === "done") {
+    if (step.kind === "end") {
       latest = null;
-      done = true;
       continue;
     }
     const placement = placements[step.phrase];
@@ -83,7 +81,7 @@ export function mapFrame(
       latest = step.phrase;
     }
   }
-  return { read, lanes, steps: cols, placed, latest, done, pings };
+  return { read, lanes, steps: cols, placed, latest, pings };
 }
 
 /** The board's step columns: an open step takes its share, a closed one none, so a new one widens from nothing. */

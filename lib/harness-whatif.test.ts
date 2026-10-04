@@ -5,20 +5,24 @@ const counts = [3, 2];
 const steps = whatIfSteps(counts);
 
 describe("whatIfSteps", () => {
-  it("tries each option, traces its cells, weighs it, then suggests one", () => {
-    expect(steps.map((s) => `${s.kind}@${s.at}`)).toEqual([
-      "try@900",
-      "trace@1200",
-      "trace@1300",
-      "trace@1400",
-      "weigh@1620",
-      // 900 + 300 + 3 * 100 + 760
-      "try@2260",
-      "trace@2560",
-      "trace@2660",
-      "weigh@2880",
-      "suggest@3520",
+  it("drafts every option at once, traces them side by side, weighs them together, then suggests one", () => {
+    expect(steps.map((s) => ("option" in s ? `${s.kind} ${s.option}.${s.cell}@${s.at}` : `${s.kind}@${s.at}`))).toEqual([
+      "draft@900",
+      // Cell j of every option is traced at the same moment: 900 + 300 + j * 140.
+      "trace 0.0@1200",
+      "trace 1.0@1200",
+      "trace 0.1@1340",
+      "trace 1.1@1340",
+      "trace 0.2@1480",
+      // The longest option sets when they are weighed: 900 + 300 + 3 * 140 + 200.
+      "weigh@1820",
+      "suggest@2920",
     ]);
+  });
+
+  it("is in time order", () => {
+    const times = steps.map((s) => s.at);
+    expect([...times].sort((a, b) => a - b)).toEqual(times);
   });
 });
 
@@ -37,38 +41,45 @@ describe("whatIfFrame", () => {
 
   it("starts with every slot empty", () => {
     expect(frame(0).options.every((o) => !o.shown)).toBe(true);
-    expect(frame(0).current).toBeNull();
+    expect(frame(0).working).toBe(false);
   });
 
-  it("counts cells up while an option is traced", () => {
-    expect(frame(3).current).toBe(0);
-    expect(frame(3).options[0]).toEqual({ shown: true, traced: 2, weighed: false });
-    expect(frame(5).options[0]?.weighed).toBe(true);
+  it("shows every option at once, and pings once", () => {
+    const drafted = frame(1);
+    expect(drafted.options.every((o) => o.shown)).toBe(true);
+    expect(drafted.working).toBe(true);
+    expect(drafted.pings).toBe(1);
   });
 
-  it("pings once per option", () => {
-    expect(frame(6).pings).toBe(2);
+  it("runs each option's count up side by side", () => {
+    expect(frame(3).options.map((o) => o.traced)).toEqual([1, 1]);
+    expect(frame(5).options.map((o) => o.traced)).toEqual([2, 2]);
+    expect(frame(6).options.map((o) => o.traced)).toEqual([3, 2]);
+  });
+
+  it("weighs every option together", () => {
+    expect(frame(6).options.some((o) => o.weighed)).toBe(false);
+    expect(frame(7).options.every((o) => o.weighed)).toBe(true);
+    expect(frame(7).suggested).toBeNull();
   });
 
   it("suggests the gentlest option at the end", () => {
     const end = frame(steps.length);
     expect(end.suggested).toBe(1);
-    expect(end.current).toBeNull();
+    expect(end.working).toBe(false);
+    expect(end.pings).toBe(1);
   });
 });
 
 describe("markedToday", () => {
   const changes = [["a", "b", "c"], ["d", "e"]];
 
-  it("marks the traced cells of the option being tried", () => {
-    expect(markedToday(whatIfFrame(steps, 3, counts), changes)).toEqual(["a", "b"]);
+  it("marks nothing on today's board while the options are traced", () => {
+    expect(markedToday(whatIfFrame(steps, 0, counts), changes)).toEqual([]);
+    expect(markedToday(whatIfFrame(steps, 7, counts), changes)).toEqual([]);
   });
 
   it("marks the suggested option's cells once chosen", () => {
     expect(markedToday(whatIfFrame(steps, steps.length, counts), changes)).toEqual(["d", "e"]);
-  });
-
-  it("marks nothing before the first option", () => {
-    expect(markedToday(whatIfFrame(steps, 0, counts), changes)).toEqual([]);
   });
 });
