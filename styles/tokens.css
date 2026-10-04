@@ -307,7 +307,9 @@
    */
   --shadow-sheet: -7px 7px 0 -1px color-mix(in oklab, var(--color-ink) 5%, transparent);
   --shadow-lift: 0 24px 60px -20px rgba(0, 0, 0, 0.35); /* a panel raised above the board */
+  --shadow-context-card: var(--shadow-card), 0 18px 40px -22px rgba(0, 0, 0, 0.35); /* a card of the opening step */
   --ease-settle: cubic-bezier(0.2, 0.8, 0.2, 1); /* a label sliding to its sheet */
+  --text-10: 10px; /* the status on a context card's ticket */
   --text-11-5: 11.5px;
   --text-14-5: 14.5px;
   --duration-stagger: 70ms; /* between one sheet, or one column, and the next */
