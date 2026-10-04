@@ -31,7 +31,7 @@ type TouchPoints = {
 export const touchPoints = {
   headlineLead: "One blueprint.",
   headline: "Every place you work.",
-  subheadline: "People and agents get the same answer, wherever they ask.",
+  subheadline: "Open it in the app, call it from your coding agent, or bring it into team chat. It plugs into the way your team already works.",
   tabsLabel: "Where agents reach the blueprint",
   tabs: [
     {
