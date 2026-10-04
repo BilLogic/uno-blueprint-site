@@ -23,25 +23,24 @@ type Canvas = {
 
 export const canvas = {
   headline: "Canvas for your team.",
-  subheadline:
-    "One blueprint for the whole service. Read it to get up to speed, edit it to keep it current, present it to bring others along.",
+  subheadline: "See how your whole service works, keep it accurate together, and tailor it for every stakeholder.",
   more: { label: "Try the demo", link: links.demo },
   tabsLabel: "What your team does on the canvas",
   tabs: [
     {
       value: "understand",
-      label: "Understand the service",
-      caption: "See how the whole service runs, step by step, without reading forty docs or the code.",
+      label: "Get up to speed",
+      caption: "New to the service? See it end to end, then open any step for the detail.",
     },
     {
       value: "check",
-      label: "Check and correct",
-      caption: "Open a cell, read it against its sources, and fix it in place. The map stays true.",
+      label: "Keep it current",
+      caption: "Something out of date? Check it against its source and fix it in place.",
     },
     {
       value: "present",
-      label: "Present a view",
-      caption: "Cut the blueprint down to what one audience cares about, and walk them through it.",
+      label: "Tailor it",
+      caption: "Need stakeholders aligned? Cut the map down to what each one needs, and walk them through it.",
     },
   ],
   understand: {

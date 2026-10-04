@@ -11,7 +11,7 @@ Open it straight from disk to compare (`open reference/prototype.html`). Its CSS
 ## What v7.6 changed from v7.5
 
 - Copy: round 5 across the page, from the section sub-headlines to the walkthrough captions, bento cards and canvas tabs; the closing band drops its sub-headline.
-- Walkthrough: a new first step, "Your context", whose six tool cards play into the stack on a scroll threshold and hand over to Services; the walkthrough moves one step at a time; the flat board sits evenly between frame and caption.
+- Walkthrough: a new first step, "Your context", whose six tool cards play into the stack on a scroll threshold and hand over to Services; the walkthrough moves one step at a time, with about half a screen of scroll per step on a desktop and a little more on a phone; the flat board sits evenly between frame and caption.
 - Hero: people and agents walk to tools and panel fields; each loop opens on the board alone, then the panel slides in; anyone on the panel walks back to a cell when it closes; the row keeps one gap and matching margins, and the board alone keeps even padding on every side; a phone never shows the panel.
 - Get started: the agent prompt uses the initialiser, the yarn tab carries the Yarn 1 note, and a new Database step offers a prompt per host.
 - Harness and bento motion: the map picture ends without a sign-off tag, what-if weighs its three options together, Planned turns to Live letter by letter, and the RAG question types itself out.

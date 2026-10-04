@@ -19,7 +19,6 @@ export function ClosingBand() {
               {closing.secondary.label}
             </ButtonLink>
           </div>
-          <p className="max-w-lead text-pretty text-muted">{closing.sub}</p>
         </div>
       </Container>
     </section>

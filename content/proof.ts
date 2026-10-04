@@ -15,7 +15,7 @@ export type ProofMetric = {
 export const proof = {
   lead: "Same agent, same sources.",
   headline: "Better answers with a map.",
-  sub: "Early results from a real service: the same questions, asked with and without the blueprint.",
+  sub: "On a real service, the map more than doubled accuracy and cut what agents read by a third.",
   series: ["Without blueprint", "With blueprint"],
   metrics: [
     {

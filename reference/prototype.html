@@ -2519,7 +2519,7 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
     else{const kw=Math.min(1,cw/1010),avB=av+hh,k1=Math.max(.25,Math.max(kw*.85,Math.min(kw,avB/530)));KS=[k1,k1,k1];H=530*k1}
     root.style.height=H+'px';if(cur===0){cur=-1;set(0)}pose();
     const sh0=sticky.offsetHeight;top=sh0<=innerHeight-72?Math.max(76,64+(innerHeight-64-sh0)/2):Math.min(76,innerHeight-sh0-12);sticky.style.top=top+'px';
-    scr.style.height=RM?'auto':`calc(${(TOT*2/3).toFixed(1)}vh + ${sticky.offsetHeight}px)`};
+    scr.style.height=RM?'auto':`calc(${(TOT*(innerWidth<=760?1:.9)).toFixed(1)}vh + ${sticky.offsetHeight}px)`};
   /* positions are read at the scale the stage has at this instant, which on a phone is still changing while a pose settles */
   const pt=(e,b)=>{const r=e.getBoundingClientRect(),q=b.width/1010||1;return [(r.left-b.left)/q,(r.top-b.top)/q]};
   function lines(){

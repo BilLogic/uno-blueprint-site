@@ -30,7 +30,7 @@ const notCleared: Portrait = { status: "not cleared" };
 
 export const ideas = {
   headline: "Ideas we build on.",
-  sub: "Forty years of service design gave us the map. Context and harness engineering explain why agents need it.",
+  sub: "Uno Blueprint sits where service design meets context and harness engineering.",
   /** Oldest first, alternating left and right of the line. */
   voices: [
     {

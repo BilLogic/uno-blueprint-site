@@ -11,7 +11,7 @@ export const getStarted = {
   id: links.getStarted.href.slice(1),
   titleId: "start-title",
   title: { lead: "Free and open source.", rest: "Uno command to start." },
-  sub: "MIT licensed. Run it locally with no database, then host it on your own database.",
+  sub: "Start with a working template and sample data, then map your own service.",
   copy: { label: "Copy", done: "Copied" },
   install: {
     label: "Install",
@@ -34,7 +34,7 @@ export const getStarted = {
   },
   skills: {
     label: "Skills",
-    sub: "Four skills, run from your coding agent.",
+    sub: "Add the skills to the coding agent you already use.",
     tabsLabel: "Coding agent",
     // The same four skills in every agent; what differs is how the agent gets them and how one is called.
     tabs: [
@@ -79,7 +79,7 @@ export const getStarted = {
   },
   prompts: {
     label: "Prompts",
-    sub: "Or say what you want, and let your agent pick the skill.",
+    sub: "Describe what you want, and let your coding agent do the work.",
     list: [
       {
         title: "Map a service from your docs",
