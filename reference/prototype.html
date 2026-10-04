@@ -2033,7 +2033,7 @@ details:first-child,.qa:first-child{border-top:0}
 /* hero, solo: the board alone and larger while the panel is closed */
 .hv-bp,.hv-cp{transition:transform .65s var(--e-io),opacity .45s var(--e-io)}
 .hv-bp{transform-origin:left center}
-.hv-stage.solo .hv-bp{transform:translateX(var(--solo-tx,0px)) scale(var(--solo-s,1))}
+.hv-stage.solo .hv-bp{transform:translate(var(--solo-tx,0px),var(--solo-ty,0px)) scale(var(--solo-s,1))}
 /* hero row: tools, mark, board and panel sized to their content and spaced by one gap; the row is centred, so the frame's margins match left and right */
 @media (min-width:761px){
   .hv-stage{--hg:clamp(18px,2.6vw,40px);grid-template-columns:auto minmax(0,500px) auto;justify-content:center;column-gap:var(--hg)}
@@ -2362,14 +2362,17 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
   let SOLO=false,HOLD=false,rideId=0,ot=0,soloAt=0,openSince=0;
   function ride(ms){const id=++rideId,end=performance.now()+ms;HOLD=true;
     (function f(){if(id!==rideId)return;layout();place(true);if(focus)project();if(performance.now()<end)requestAnimationFrame(f);else HOLD=false})()}
+  /* the board's size alone: as wide as its own room plus the panel's, less the stacked sheets behind it, and no taller than the frame allows; measured again whenever the window changes */
+  function soloSize(){
+    if(vert()){stage.style.setProperty('--solo-s','1');stage.style.setProperty('--solo-tx','0px');return}
+    const bp=stage.querySelector('.hv-bp'),cs=getComputedStyle(stage),gap=parseFloat(cs.columnGap)||0,room=bp.offsetWidth+gap+cp.offsetWidth,
+      k=Math.max(1,Math.min(room/(bp.offsetWidth+18),(stage.clientHeight-56)/(sheet.offsetHeight+18)));
+    /* the sheets stacked behind rise above the board, so it moves down by half their rise to sit mid-frame */
+    stage.style.setProperty('--solo-s',k.toFixed(3));stage.style.setProperty('--solo-tx','0px');stage.style.setProperty('--solo-ty',(8*k).toFixed(1)+'px')}
+  let srz=0;addEventListener('resize',()=>{clearTimeout(srz);srz=setTimeout(()=>{if(SOLO){soloSize();ride(0)}},140)});
   function solo(on){SOLO=on;
     if(on){if(focus)focus.classList.remove('foc');focus=null;pj.classList.remove('in');clearTimeout(ot);cp.classList.remove('cpsw');cp.classList.add('cpo');
-      /* tools and mark stay put; the board alone grows from its left edge into the panel's room, as far as the frame's height allows,
-         always one gap from the mark, so the spacing reads the same with or without the panel */
-      if(vert()){stage.style.setProperty('--solo-s','1.04');stage.style.setProperty('--solo-tx','0px')}
-      else{const bp=stage.querySelector('.hv-bp'),cs=getComputedStyle(stage),gap=parseFloat(cs.columnGap)||0,room=bp.offsetWidth+gap+cp.offsetWidth,
-        inner=stage.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom),k=Math.max(1,Math.min(room/bp.offsetWidth,(stage.clientHeight-56)/(sheet.offsetHeight+18)));
-        stage.style.setProperty('--solo-s',k.toFixed(3));stage.style.setProperty('--solo-tx','0px')}
+      soloSize();
       soloAt=performance.now()}else openSince=performance.now();
     /* anyone standing on the panel when it closes walks back to a cell, never left on a field that is no longer there */
     if(on){const on2=cells.filter(c=>c.classList.contains('on'));toks.forEach((_,i)=>{if(at[i]&&cp.contains(at[i])&&on2.length)at[i]=pick(on2)})}
