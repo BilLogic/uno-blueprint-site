@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { getStarted } from "@/content/get-started";
 
 test.use({ permissions: ["clipboard-read", "clipboard-write"] });
 
@@ -70,44 +71,45 @@ test.describe("install", () => {
       for (const name of names) heights.push(await height(name));
       expect(new Set(heights).size).toBe(1);
     }
+    // The yarn box at that width: taller than the others, and its note and commands all inside it.
+    const npm = await height("npm");
+    const yarn = await height("yarn");
+    expect(yarn).toBeGreaterThan(npm ?? Infinity);
+    const panel = page.getByRole("tabpanel", { name: "yarn", exact: true });
+    expect(await panel.evaluate((box) => box.scrollHeight - box.clientHeight)).toBeLessThanOrEqual(0);
   });
 });
 
 test.describe("database", () => {
   test("each host's tab copies its own prompt, and keys stay in .env", async ({ page }) => {
     await page.goto("/");
-    const tabs = page.getByRole("tablist", { name: "Database host" });
-    await expect(tabs.getByRole("tab")).toHaveText(["Supabase", "Neon", "Firebase", "Postgres", "Other"]);
-    for (const [host, start] of [
-      ["Supabase", "Connect this Uno Blueprint workspace to a Supabase project"],
-      ["Neon", "Connect this Uno Blueprint workspace to a Neon Postgres database"],
-      ["Firebase", "Connect this Uno Blueprint workspace to Firebase Data Connect"],
-      ["Postgres", "Connect this Uno Blueprint workspace to our own Postgres database"],
-    ] as const) {
-      await tabs.getByRole("tab", { name: host, exact: true }).click();
-      const copied = await copyFrom(page, page.getByRole("tabpanel", { name: host, exact: true }));
-      expect(copied.startsWith(start)).toBe(true);
-      expect(copied).toContain("Keep every key and connection string in .env, never in a tracked file.");
+    const { tabs: hosts, tabsLabel, keepSecrets } = getStarted.database;
+    const tabs = page.getByRole("tablist", { name: tabsLabel });
+    await expect(tabs.getByRole("tab")).toHaveText(hosts.map((host) => host.label));
+    for (const host of hosts) {
+      await tabs.getByRole("tab", { name: host.label, exact: true }).click();
+      const copied = await copyFrom(page, page.getByRole("tabpanel", { name: host.label, exact: true }));
+      expect(copied).toBe(host.prompt);
+      if (host.connects) expect(copied).toContain(keepSecrets);
     }
-    await tabs.getByRole("tab", { name: "Other", exact: true }).click();
-    expect(await copyFrom(page, page.getByRole("tabpanel", { name: "Other", exact: true }))).toMatch(
-      /^I want to run this Uno Blueprint workspace on \[our database\]\. .* propose a plan before you change anything\.$/,
-    );
   });
 
   test("the arrow keys move along the hosts", async ({ page }) => {
     await page.goto("/");
-    const supabase = page.getByRole("tab", { name: "Supabase", exact: true });
-    await expect(supabase).toHaveAttribute("aria-selected", "true");
-    await supabase.focus();
+    const hosts = getStarted.database.tabs;
+    const [{ label: first }, { label: second }] = hosts;
+    const { label: last } = hosts.at(-1) ?? hosts[0];
+    const firstTab = page.getByRole("tab", { name: first, exact: true });
+    await expect(firstTab).toHaveAttribute("aria-selected", "true");
+    await firstTab.focus();
     await page.keyboard.press("ArrowRight");
-    await expect(page.getByRole("tab", { name: "Neon", exact: true })).toBeFocused();
-    await expect(page.getByRole("tabpanel", { name: "Neon", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: second, exact: true })).toBeFocused();
+    await expect(page.getByRole("tabpanel", { name: second, exact: true })).toBeVisible();
     await page.keyboard.press("End");
-    await expect(page.getByRole("tabpanel", { name: "Other", exact: true })).toBeVisible();
+    await expect(page.getByRole("tabpanel", { name: last, exact: true })).toBeVisible();
     await page.keyboard.press("ArrowRight");
-    await expect(supabase).toHaveAttribute("aria-selected", "true");
-    await expect(supabase).toBeFocused();
+    await expect(firstTab).toHaveAttribute("aria-selected", "true");
+    await expect(firstTab).toBeFocused();
   });
 });
 

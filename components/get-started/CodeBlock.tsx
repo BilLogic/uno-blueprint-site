@@ -1,6 +1,6 @@
 import type { ComponentPropsWithoutRef } from "react";
 import type { CodeContent } from "@/content/get-started";
-import { commandText, noteLine } from "@/lib/install-commands";
+import { commandText, noteLine } from "@/lib/get-started";
 import { CopyButton } from "./CopyButton";
 
 type CodeBlockProps = { code: CodeContent } & Omit<ComponentPropsWithoutRef<"div">, "children">;
