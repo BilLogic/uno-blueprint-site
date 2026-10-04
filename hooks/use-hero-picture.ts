@@ -294,23 +294,30 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
     step();
   }
 
-  /** The board alone, larger, with the panel away; or the board giving the panel its room back. */
-  function solo(on: boolean) {
-    const now = performance.now();
-    if (on) {
-      clock.soloAt = now;
-      clearTimeout(reveal);
-      const { stage, board: picture, sheet, panel } = el;
-      if (stage && picture && sheet && panel && !stacked()) {
-        const scale = soloScale({
+  /** Sizes the board for standing alone: grown into the panel's room, and dropped to sit mid-frame. A phone keeps it as it is. */
+  function soloSize() {
+    const { stage, board: picture, sheet, panel } = el;
+    if (!stage || !picture || !sheet || !panel) return;
+    const { scale, drop } = stacked()
+      ? { scale: 1, drop: 0 }
+      : soloScale({
           board: picture.offsetWidth,
           gap: parseFloat(getComputedStyle(stage).columnGap) || 0,
           panel: panel.offsetWidth,
           stageHeight: stage.clientHeight,
           sheetHeight: sheet.offsetHeight,
         });
-        stage.style.setProperty("--solo-scale", scale.toFixed(3));
-      }
+    stage.style.setProperty("--solo-scale", scale.toFixed(3));
+    stage.style.setProperty("--solo-drop", `${drop.toFixed(1)}px`);
+  }
+
+  /** The board alone, larger, with the panel away; or the board giving the panel its room back. */
+  function solo(on: boolean) {
+    const now = performance.now();
+    if (on) {
+      clock.soloAt = now;
+      clearTimeout(reveal);
+      soloSize();
     } else clock.openSince = now;
     // The reducer walks anyone on the panel back to a cell before the board starts growing.
     dispatch(on ? { type: "solo", on, random: Math.random() } : { type: "solo", on });
@@ -439,9 +446,17 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
 
   let live = true;
   let resizing: number | undefined;
+  let resolo: number | undefined;
   const onResize = () => {
     clearTimeout(resizing);
+    clearTimeout(resolo);
     resizing = later(layout, TIMING.relayout);
+    // Standing alone, the board is sized again for the new frame, and everyone on it follows.
+    resolo = later(() => {
+      if (!board().solo) return;
+      soloSize();
+      rideAlong(TIMING.ride);
+    }, TIMING.soloResize);
   };
   layout();
   void document.fonts?.ready.then(() => live && layout());

@@ -118,6 +118,43 @@ test("each loop opens on the board alone, grown into the panel's room", async ({
     .toBeGreaterThan(1.2);
 });
 
+test("standing alone, the board keeps the same padding on both sides, on load and after a resize", async ({ page }) => {
+  const margins = () =>
+    picture(page).evaluate((root) => {
+      const frame = root.firstElementChild!.getBoundingClientRect();
+      const stage = root.querySelector(".grid")!;
+      const tools = Array.from(stage.children).find((child) => child.classList.contains("justify-start"))!.getBoundingClientRect();
+      const sheets = Array.from(stage.querySelector(".origin-left")!.children).map((sheet) => sheet.getBoundingClientRect());
+      return {
+        left: tools.left - frame.left,
+        right: frame.right - Math.max(...sheets.map((sheet) => sheet.right)),
+        top: Math.min(...sheets.map((sheet) => sheet.top)) - frame.top,
+        bottom: frame.bottom - Math.max(...sheets.map((sheet) => sheet.bottom)),
+      };
+    });
+  const panelAway = () =>
+    expect
+      .poll(() => picture(page).locator(".\\@container").evaluate((panel) => getComputedStyle(panel).opacity), { timeout: 8000 })
+      .toBe("0");
+  const even = async (label: string) => {
+    // The board grows over the solo transition; it settles well within a second.
+    await page.waitForTimeout(900);
+    const { left, right, top, bottom } = await margins();
+    expect(Math.abs(left - right), `${label}: left ${left}, right ${right}`).toBeLessThan(2);
+    expect(Math.abs(top - bottom), `${label}: top ${top}, bottom ${bottom}`).toBeLessThan(2);
+  };
+  for (const width of [960, 1280, 1600]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    await picture(page).scrollIntoViewIfNeeded();
+    await panelAway();
+    await even(`${width} px on load`);
+    const resized = width === 1600 ? 1100 : width + 240;
+    await page.setViewportSize({ width: resized, height: 900 });
+    await even(`${width} px resized to ${resized} px`);
+  }
+});
+
 for (const width of [1440, 390]) {
   test(`at ${width} px the people and agents only stop on a cell, a tool or a panel field`, async ({ page }) => {
     test.setTimeout(60_000);

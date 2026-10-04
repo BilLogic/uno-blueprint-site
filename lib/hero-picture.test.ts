@@ -297,13 +297,20 @@ describe("the loop's clock", () => {
 });
 
 describe("soloScale", () => {
-  it("grows the board into the panel's room", () => {
-    expect(soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 1000, sheetHeight: 300 })).toBeCloseTo(1.554);
+  it("grows the board into the panel's room, less the stacked sheets behind it, so both sides keep the same padding", () => {
+    const { scale, drop } = soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 1000, sheetHeight: 300 });
+    expect(scale).toBeCloseTo(777 / 518);
+    // The board and the sheets behind it, grown together, end where the panel did.
+    expect((500 + 18) * scale).toBeCloseTo(500 + 37 + 240);
+  });
+
+  it("drops the board by half the sheets' rise, so it sits mid-frame", () => {
+    expect(soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 1000, sheetHeight: 300 }).drop).toBeCloseTo(8 * (777 / 518));
   });
 
   it("as far as the frame's height allows, and never smaller", () => {
-    expect(soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 400, sheetHeight: 300 })).toBeCloseTo(344 / 318);
-    expect(soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 200, sheetHeight: 300 })).toBe(1);
+    expect(soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 400, sheetHeight: 300 }).scale).toBeCloseTo(344 / 318);
+    expect(soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 200, sheetHeight: 300 })).toEqual({ scale: 1, drop: 8 });
   });
 });
 

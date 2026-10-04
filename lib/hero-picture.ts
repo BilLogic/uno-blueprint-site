@@ -79,6 +79,8 @@ export const TIMING = {
   ride: 720,
   /** Leaving solo, the board gives its room back for this long before the cell opens. */
   unsolo: 760,
+  /** While the board stands alone, it is measured again this long after the window stops resizing. */
+  soloResize: 140,
   /** A new cell opens at most this often, so the last one has time to be read. */
   cooldown: 2600,
   /** A round's board stands alone at least this long before a person opens the panel. */
@@ -365,15 +367,22 @@ export const personOpens = (solo: boolean, clock: Clock, now: number) => !(solo 
 /** The panel has been open long enough, and the board goes solo again. */
 export const panelExpired = (solo: boolean, clock: Clock, now: number) => !solo && now - clock.openSince > TIMING.panelLife;
 
+/** How far the two sheets stacked behind the board reach past it: 18 px to the right, 16 px up. */
+const STACK_OFFSET = 18;
+const STACK_RISE = 16;
+
 /**
- * How much the board grows when it stands alone: from its left edge into the
- * panel's room (its gap and its width), as far as the frame's height allows,
- * and never smaller than it is.
+ * How the board grows when it stands alone: from its left edge into its own
+ * room plus the panel's (gap and width), less the stacked sheets behind it, so
+ * the frame keeps the same padding on both sides; and no taller than the
+ * frame allows, never smaller than it is. `drop` moves it down by half the
+ * sheets' rise, so it sits mid-frame. A phone never grows the board.
  */
 export function soloScale(size: { board: number; gap: number; panel: number; stageHeight: number; sheetHeight: number }) {
-  const room = (size.board + size.gap + size.panel) / size.board;
-  const tall = (size.stageHeight - 56) / (size.sheetHeight + 18);
-  return Math.max(1, Math.min(room, tall));
+  const room = (size.board + size.gap + size.panel) / (size.board + STACK_OFFSET);
+  const tall = (size.stageHeight - 56) / (size.sheetHeight + STACK_OFFSET);
+  const scale = Math.max(1, Math.min(room, tall));
+  return { scale, drop: (STACK_RISE / 2) * scale };
 }
 
 /** Where a document goes and which free tool sends it; null when an extra finds no cell to join. */
