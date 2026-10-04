@@ -2,8 +2,17 @@
 
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, type ActionDispatch } from "react";
 import { useInView } from "./use-in-view";
+import { hero } from "@/content/hero";
 import {
   BEAM_EASING,
+  FIELDS,
+  WALKERS,
+  arrivesOnField,
+  cssMs,
+  motionTimes,
+  statusOf,
+  FIELD_PING_EASING,
+  FIELD_PING_KEYFRAMES,
   HIT_KEYFRAMES,
   PING_KEYFRAMES,
   TIMING,
@@ -11,18 +20,27 @@ import {
   beamOf,
   beamPaths,
   boardReducer,
+  mayOpen,
+  nextStatus,
+  panelExpired,
+  personOpens,
   planFeed,
   planRound,
   planStep,
   projection,
+  rehome,
   relativeTo,
   runKeyframes,
   settledBoard,
   slotsOf,
+  soloScale,
   walkerSpot,
   type Board,
   type BoardAction,
+  type Clock,
   type FeedEvent,
+  type Field,
+  type Place,
 } from "@/lib/hero-picture";
 
 const REDUCED = "(prefers-reduced-motion: reduce)";
@@ -34,8 +52,10 @@ type Elements = {
   stage: HTMLDivElement | null;
   node: HTMLElement | null;
   ping: HTMLElement | null;
+  board: HTMLElement | null;
   sheet: HTMLElement | null;
   panel: HTMLElement | null;
+  fields: Partial<Record<Field, HTMLElement | null>>;
   tools: (HTMLElement | null)[];
   cells: (HTMLElement | null)[];
   walkers: (HTMLElement | null)[];
@@ -65,8 +85,10 @@ function createElements() {
     stage: null,
     node: null,
     ping: null,
+    board: null,
     sheet: null,
     panel: null,
+    fields: {},
     tools: [],
     cells: [],
     walkers: [],
@@ -80,7 +102,10 @@ function createElements() {
     stageRef: (element: HTMLDivElement | null) => void (el.stage = element),
     nodeRef: (element: HTMLElement | null) => void (el.node = element),
     pingRef: (element: HTMLElement | null) => void (el.ping = element),
+    boardRef: (element: HTMLElement | null) => void (el.board = element),
     sheetRef: (element: HTMLElement | null) => void (el.sheet = element),
+    statusRef: (element: HTMLElement | null) => void (el.fields.status = element),
+    ownerRef: (element: HTMLElement | null) => void (el.fields.owner = element),
     panelRef: (element: HTMLElement | null) => void (el.panel = element),
     toBoardRef: (element: SVGPathElement | null) => void (el.toBoard = element),
     lightRef: (element: SVGSVGElement | null) => void (el.light = element),
@@ -100,17 +125,33 @@ export type Beams = { feeds: string[]; toBoard: string };
 
 const box = (element: Element) => element.getBoundingClientRect();
 
-/** Stands each walker on its cell; `jump` skips the walk, as on a new round or a resize. */
+/** The element a walker stands on. */
+function target(el: Elements, place: Place | null) {
+  if (!place) return null;
+  if (place.kind === "cell") return el.cells[place.cell] ?? null;
+  if (place.kind === "tool") return el.tools[place.tool] ?? null;
+  return el.fields[place.field] ?? null;
+}
+
+/** Stands each walker on its spot; `jump` skips the walk, as on a new round, a resize or while the board resizes. */
 function placeWalkers(el: Elements, at: Board["at"], jump: boolean) {
+  const { stage, panel } = el;
+  if (!stage) return;
   const slots = slotsOf(at);
   // Every read before any write, so placing four walkers costs one layout.
+  const stageBox = box(stage);
+  const frame = { width: stage.offsetWidth, height: stage.offsetHeight };
   const spots = el.walkers.map((walker, i) => {
-    const cell = at[i] == null ? null : el.cells[at[i]];
-    if (!walker || !cell) return null;
+    const place = at[i] ?? null;
+    const element = target(el, place);
+    if (!walker || !element) return null;
+    const panelRight = place?.kind === "field" && panel ? box(panel).right - stageBox.left : null;
     return walkerSpot(
-      { left: cell.offsetLeft, top: cell.offsetTop, width: cell.offsetWidth },
+      relativeTo(stageBox, box(element)),
       slots[i] ?? 0,
       { width: walker.offsetWidth, height: walker.offsetHeight },
+      frame,
+      panelRight,
     );
   });
   el.walkers.forEach((walker, i) => {
@@ -119,9 +160,11 @@ function placeWalkers(el: Elements, at: Board["at"], jump: boolean) {
     if (jump) walker.style.transition = "none";
     walker.style.transform = `translate(${spot.x}px,${spot.y}px)`;
     walker.dataset.placed = "";
+    // What it stands on (cell, tool or field), for the behaviour tests.
+    walker.dataset.on = at[i]?.kind ?? "";
   });
   if (!jump) return;
-  void el.stage?.offsetWidth;
+  void stage.offsetWidth;
   for (const walker of el.walkers) if (walker) walker.style.transition = "";
 }
 
@@ -137,7 +180,7 @@ function project(el: Elements, focus: number | null, animate: boolean) {
     delete projector.dataset.on;
     return;
   }
-  const geometry = projection(box(stage), box(cell), box(panel), matchMedia(STACKED).matches);
+  const geometry = projection(box(stage), box(cell), box(panel));
   const [quad, ...edges] = projector.children;
   quad?.setAttribute("points", geometry.points);
   edges.forEach((edge, i) => {
@@ -153,7 +196,7 @@ function project(el: Elements, focus: number | null, animate: boolean) {
   }
   light.style.clipPath = geometry.from;
   void getComputedStyle(light).clipPath;
-  light.style.transition = "clip-path 0.5s var(--ease-io)";
+  light.style.transition = "clip-path var(--duration-hero-sweep) var(--ease-io)";
   light.style.clipPath = geometry.to;
 }
 
@@ -169,6 +212,8 @@ type Timeline = {
   onRound: () => void;
 };
 
+const STATUSES = hero.picture.panel.statuses;
+
 /**
  * The prototype's timeline, as timers. Measures the picture, then (without
  * reduced motion) empties the board to a few cells and fills it again on a
@@ -176,12 +221,23 @@ type Timeline = {
  */
 function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRound }: Timeline) {
   const reduced = matchMedia(REDUCED).matches;
+  // The timings that follow a CSS transition come from its token, so the two never drift.
+  const token = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name);
+  const motion = motionTimes({ walk: cssMs(token("--duration-walk")), soloMove: cssMs(token("--duration-solo-move")) });
+  const stacked = () => matchMedia(STACKED).matches;
   const timers = new Set<number>();
   const animations = new Set<Animation>();
   const busy = new Set<number>();
+  const clock: Clock = { soloAt: 0, openSince: 0, lastOpen: -Infinity };
+  const allTools = Array.from({ length: toolCount }, (_, tool) => tool);
   let queue: FeedEvent[] = [];
   let ticks = 0;
   let reveal: number | undefined;
+  /** While the board resizes nobody sets off; `ride` keeps everything on it frame by frame. */
+  let hold = false;
+  let ride = 0;
+  let frame: number | undefined;
+  let lastBeams = "";
 
   const later = (run: () => void, ms: number) => {
     const id = window.setTimeout(() => {
@@ -205,42 +261,140 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
       path.animate(runKeyframes(Number(path.dataset.dash), Number(path.dataset.length)), { duration, easing: BEAM_EASING }),
     );
 
-  function layout() {
+  /** The beams, the walkers and the projection, measured again where the picture now stands. */
+  function measure() {
     const stageBox = el.stage && box(el.stage);
-    if (!stageBox?.width || !el.node || !el.sheet) return;
+    if (!stageBox?.width || !el.node || !el.sheet) return false;
     const toolBoxes = el.tools.flatMap((tool) => (tool ? [relativeTo(stageBox, box(tool))] : []));
-    const toNode = relativeTo(stageBox, box(el.node));
-    setBeams(beamPaths(toolBoxes, toNode, relativeTo(stageBox, box(el.sheet)), matchMedia(STACKED).matches));
-    busy.clear();
+    const beams = beamPaths(toolBoxes, relativeTo(stageBox, box(el.node)), relativeTo(stageBox, box(el.sheet)), stacked());
+    const key = JSON.stringify(beams);
+    if (key !== lastBeams) {
+      lastBeams = key;
+      setBeams(beams);
+    }
     placeWalkers(el, board().at, true);
     const { focus, projecting } = board();
     project(el, projecting ? focus : null, false);
+    return true;
   }
 
-  function open(cell: number) {
+  function layout() {
+    if (!measure()) return;
+    busy.clear();
+    // A phone shows no panel: anyone standing in it goes back to the board.
+    const at = rehome(board(), Math.random, !stacked());
+    if (at) dispatch({ type: "move", at });
+  }
+
+  /** Keeps the walkers, the beams and the light on the board while it grows or shrinks. */
+  function rideAlong(ms: number) {
+    const id = ++ride;
+    const end = performance.now() + ms;
+    hold = true;
+    if (frame !== undefined) cancelAnimationFrame(frame);
+    const step = () => {
+      frame = undefined;
+      if (id !== ride) return;
+      measure();
+      if (performance.now() < end) frame = requestAnimationFrame(step);
+      else hold = false;
+    };
+    step();
+  }
+
+  /** Sizes the board for standing alone: grown into the panel's room, and dropped to sit mid-frame. A phone keeps it as it is. */
+  function soloSize() {
+    const { stage, board: picture, sheet, panel } = el;
+    if (!stage || !picture || !sheet || !panel) return;
+    const size = {
+      board: picture.offsetWidth,
+      gap: parseFloat(getComputedStyle(stage).columnGap) || 0,
+      panel: panel.offsetWidth,
+      stageHeight: stage.clientHeight,
+      sheetHeight: sheet.offsetHeight,
+      stack: { x: parseFloat(token("--spacing-hero-stack-x")) || 0, y: parseFloat(token("--spacing-hero-stack-y")) || 0 },
+    };
+    const { scale, drop } = soloScale(stacked() ? null : size);
+    stage.style.setProperty("--solo-s", scale.toFixed(3));
+    stage.style.setProperty("--solo-ty", `${drop.toFixed(1)}px`);
+  }
+
+  /** The board alone, larger, with the panel away; or the board giving the panel its room back. */
+  function solo(on: boolean) {
+    const now = performance.now();
+    if (on) {
+      clock.soloAt = now;
+      clearTimeout(reveal);
+      soloSize();
+    } else clock.openSince = now;
+    // The reducer walks anyone on the panel back to a cell before the board starts growing.
+    dispatch(on ? { type: "solo", on, random: WALKERS.map(() => Math.random()) } : { type: "solo", on });
+    rideAlong(motion.ride);
+  }
+
+  /** The panel blanks, takes the new cell and the light sweeps to it, then the cell's details fill in. */
+  function show(cell: number) {
     dispatch({ type: "close" });
     clearTimeout(reveal);
     later(() => {
+      if (board().solo) return;
       dispatch({ type: "focus", cell });
       reveal = later(() => dispatch({ type: "reveal" }), TIMING.reveal);
     }, TIMING.close);
   }
 
+  /** On a phone the hero is the board alone, so nothing opens there. */
+  function open(cell: number) {
+    const now = performance.now();
+    if (stacked() || !mayOpen(clock, now)) return;
+    clock.lastOpen = now;
+    if (board().solo) {
+      solo(false);
+      later(() => show(cell), motion.unsolo);
+      return;
+    }
+    show(cell);
+  }
+
   function step() {
-    const plan = planStep(board(), Math.random);
+    if (hold) return;
+    if (panelExpired(board().solo, clock, performance.now())) {
+      solo(true);
+      return;
+    }
+    const plan = planStep(board(), Math.random, { tools: allTools, fields: stacked() ? [] : FIELDS });
     if (!plan) return;
-    dispatch({ type: "move", at: plan.at });
+    dispatch({ type: "move", at: plan.at, carry: plan.carry });
     later(() => {
-      hit(plan.to);
-      if (plan.person && plan.to !== board().focus) open(plan.to);
-    }, TIMING.arrive);
+      const { to } = plan;
+      if (to.kind === "tool") {
+        dispatch({ type: "light", tool: to.tool, on: true });
+        later(() => dispatch({ type: "light", tool: to.tool, on: false }), TIMING.toolLit);
+        return;
+      }
+      if (to.kind === "field") {
+        const now = board();
+        // The panel closed, blanked or went off screen during the walk, or the walker was sent elsewhere.
+        if (!arrivesOnField(now, plan.walker, to.field, stacked())) return;
+        play(el.fields[to.field], FIELD_PING_KEYFRAMES, { duration: TIMING.ping, easing: FIELD_PING_EASING });
+        if (to.field === "status" && now.shown !== null) {
+          const shown = statusOf(now.shown, now.status, STATUSES.length);
+          dispatch({ type: "restatus", status: nextStatus(shown, STATUSES, Math.random) });
+        }
+        return;
+      }
+      hit(to.cell);
+      dispatch({ type: "drop", walker: plan.walker, cell: to.cell });
+      const latest = board();
+      if (plan.person && to.cell !== latest.focus && personOpens(latest.solo, clock, performance.now())) open(to.cell);
+    }, motion.arrive);
   }
 
   /** A document leaves a tool, passes through the node, and lands in a cell (or joins a filled one). */
   function feed(event: FeedEvent) {
-    const stacked = matchMedia(STACKED).matches;
-    const free = Array.from({ length: toolCount }, (_, tool) => tool).filter(
-      (tool) => !busy.has(beamOf(tool, stacked)) && measured(el.feeds[beamOf(tool, stacked)]),
+    const vertical = stacked();
+    const free = allTools.filter(
+      (tool) => !busy.has(beamOf(tool, vertical)) && measured(el.feeds[beamOf(tool, vertical)]),
     );
     const down = el.toBoard;
     if (!free.length || !measured(down)) {
@@ -249,7 +403,7 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
     }
     const plan = planFeed(board(), event, free, Math.random);
     if (!plan) return;
-    const beam = beamOf(plan.tool, stacked);
+    const beam = beamOf(plan.tool, vertical);
     const path = el.feeds[beam]!;
     busy.add(beam);
     dispatch({ type: "light", tool: plan.tool, on: true });
@@ -264,13 +418,14 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
     };
   }
 
+  /** A new round opens on the board alone. */
   function reset() {
     const round = planRound(Math.random, toolCount);
     queue = round.queue;
     ticks = 0;
     onRound();
     dispatch({ type: "reset", landed: round.landed, at: round.at });
-    open(round.at[0]!);
+    solo(true);
   }
 
   /** The board fades out and a new round starts. */
@@ -301,9 +456,17 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
 
   let live = true;
   let resizing: number | undefined;
+  let resolo: number | undefined;
   const onResize = () => {
     clearTimeout(resizing);
+    clearTimeout(resolo);
     resizing = later(layout, TIMING.relayout);
+    // Standing alone, the board is sized again for the new frame, and everyone on it follows.
+    resolo = later(() => {
+      if (!board().solo) return;
+      soloSize();
+      rideAlong(motion.ride);
+    }, TIMING.soloResize);
   };
   layout();
   void document.fonts?.ready.then(() => live && layout());
@@ -314,6 +477,8 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
 
   return () => {
     live = false;
+    ride++;
+    if (frame !== undefined) cancelAnimationFrame(frame);
     removeEventListener("resize", onResize);
     for (const id of timers) clearTimeout(id);
     for (const animation of animations) animation.cancel();
@@ -346,8 +511,10 @@ function afterLoad(start: () => void) {
  * Runs the hero picture. The page renders the finished picture, which is what
  * reduced motion keeps; otherwise the board empties to a few cells and fills
  * again on a loop: a tool lights, a document runs to the node and on to a cell,
- * walkers step between filled cells, and the cell a person stops on opens in
- * the panel. The loop waits while the picture is off screen.
+ * walkers step between filled cells, fetch sources from the tools and stop on
+ * the panel's fields. Each round opens on the board alone; the first cell a
+ * person stops on brings the panel back. The loop waits while the picture is
+ * off screen.
  */
 export function useHeroPicture(toolCount: number) {
   const [board, dispatch] = useReducer(boardReducer, toolCount, settledBoard);
@@ -378,7 +545,8 @@ export function useHeroPicture(toolCount: number) {
     if (!started.current) return;
     placeWalkers(el, board.at, jumpNext.current);
     jumpNext.current = false;
-  }, [el, board.at]);
+    // A new status changes the pill's width, so a person standing on it steps to its new corner.
+  }, [el, board.at, board.status]);
 
   useLayoutEffect(() => {
     if (!started.current) return;
