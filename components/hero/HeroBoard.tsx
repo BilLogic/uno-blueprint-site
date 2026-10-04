@@ -1,7 +1,7 @@
 import { Fragment, memo } from "react";
 import { hero } from "@/content/hero";
 import type { HeroPictureRefs } from "@/hooks/use-hero-picture";
-import { COLS, WALKERS, cellAt, type Board } from "@/lib/hero-picture";
+import { COLS, cellAt, type Board } from "@/lib/hero-picture";
 import { LANE_COLORS } from "./lanes";
 import { Glyph } from "./Glyph";
 import { ToolIcon } from "./ToolIcon";
@@ -11,15 +11,23 @@ const { picture } = hero;
 
 const ghost = "absolute inset-0 block rounded-16 border border-line-2 bg-panel";
 
-/** The blueprint the documents land on, with two more of the stack peeking out behind it. */
-type HeroBoardProps = { board: Board } & Pick<HeroPictureRefs, "sheetRef" | "cellRef" | "walkerRef">;
+/**
+ * The blueprint the documents land on, with two more of the stack peeking out
+ * behind it. Standing alone (solo) it grows from its left edge into the
+ * panel's room, by the scale the timeline measures; never on a phone.
+ */
+type HeroBoardProps = { board: Board } & Pick<HeroPictureRefs, "boardRef" | "sheetRef" | "cellRef">;
 
-export function HeroBoard({ board, sheetRef, cellRef, walkerRef }: HeroBoardProps) {
+export function HeroBoard({ board, boardRef, sheetRef, cellRef }: HeroBoardProps) {
   const { breadcrumb } = picture;
   return (
-    <div className="relative z-1 min-w-0 max-md:w-full">
-      <i className={`${ghost} translate-x-4.5 -translate-y-4 opacity-45`} />
-      <i className={`${ghost} translate-x-2.25 -translate-y-2 opacity-75`} />
+    <div
+      ref={boardRef}
+      data-testid="hero-board"
+      className={`relative z-1 min-w-0 origin-left transition-solo motion-reduce:transition-none max-md:w-full ${board.solo ? "md:translate-y-(--solo-ty) md:scale-(--solo-s)" : ""}`}
+    >
+      <i className={`${ghost} translate-x-hero-stack-x -translate-y-hero-stack-y opacity-45`} />
+      <i className={`${ghost} translate-x-[calc(var(--spacing-hero-stack-x)/2)] translate-y-[calc(var(--spacing-hero-stack-y)/-2)] opacity-75`} />
       <div
         ref={sheetRef}
         className="relative z-1 grid gap-2.5 rounded-16 border border-line-2 bg-panel p-3.5 shadow-card max-md:w-full max-md:gap-1.5 max-md:rounded-10 max-md:p-2.5"
@@ -58,17 +66,6 @@ export function HeroBoard({ board, sheetRef, cellRef, walkerRef }: HeroBoardProp
               {row < picture.lanes.length - 1 && <div className="my-px ml-4 h-0 border-t border-line max-md:ml-2.25" />}
             </Fragment>
           ))}
-          {WALKERS.map((kind, i) => (
-            <span
-              key={i}
-              ref={walkerRef(i)}
-              className={`pointer-events-none absolute top-0 left-0 z-3 grid size-5.5 place-items-center opacity-0 shadow-walker transition-walk data-placed:opacity-100 motion-reduce:transition-none max-md:size-4 ${
-                kind === "person" ? "rounded-full bg-ink text-bg" : "rounded-8 bg-brand text-on-primary max-md:rounded-6"
-              }`}
-            >
-              <Glyph name={kind} className="size-3.25 max-md:size-2.5" />
-            </span>
-          ))}
         </div>
       </div>
     </div>
@@ -94,6 +91,7 @@ const Cell = memo(function Cell({ sources, focused, cellRef }: CellProps) {
   return (
     <span
       ref={cellRef}
+      data-testid="hero-cell"
       className={`relative grid h-13 content-start gap-1.25 rounded-8 border p-2.25 transition-[border-color,background-color,opacity,box-shadow] duration-400 max-md:h-7.5 max-md:gap-0.75 max-md:rounded-6 max-md:p-1.5 ${state} ${filled ? "bg-cell" : ""}`}
     >
       <u className={`${sketch} ${filled ? "w-bar-long bg-sketch" : "w-0 bg-line-2"}`} />
