@@ -367,22 +367,29 @@ export const personOpens = (solo: boolean, clock: Clock, now: number) => !(solo 
 /** The panel has been open long enough, and the board goes solo again. */
 export const panelExpired = (solo: boolean, clock: Clock, now: number) => !solo && now - clock.openSince > TIMING.panelLife;
 
-/** How far the two sheets stacked behind the board reach past it: 18 px to the right, 16 px up. */
-const STACK_OFFSET = 18;
-const STACK_RISE = 16;
+/** How far the sheets stacked behind the board stick out past it. */
+const STACK = 18;
+/** How far the board drops per unit of scale: half of how far those sheets rise above it, so it sits mid-frame. */
+const RISE = 8;
+/** The frame's own room above and below the board. */
+const FRAME = 56;
 
 /**
  * How the board grows when it stands alone: from its left edge into its own
  * room plus the panel's (gap and width), less the stacked sheets behind it, so
  * the frame keeps the same padding on both sides; and no taller than the
  * frame allows, never smaller than it is. `drop` moves it down by half the
- * sheets' rise, so it sits mid-frame. A phone never grows the board.
+ * sheets' rise, so it sits mid-frame. A phone (`null`) never grows or moves
+ * the board, so both go back to rest.
  */
-export function soloScale(size: { board: number; gap: number; panel: number; stageHeight: number; sheetHeight: number }) {
-  const room = (size.board + size.gap + size.panel) / (size.board + STACK_OFFSET);
-  const tall = (size.stageHeight - 56) / (size.sheetHeight + STACK_OFFSET);
+export function soloScale(
+  size: { board: number; gap: number; panel: number; stageHeight: number; sheetHeight: number } | null,
+) {
+  if (!size) return { scale: 1, drop: 0 };
+  const room = (size.board + size.gap + size.panel) / (size.board + STACK);
+  const tall = (size.stageHeight - FRAME) / (size.sheetHeight + STACK);
   const scale = Math.max(1, Math.min(room, tall));
-  return { scale, drop: (STACK_RISE / 2) * scale };
+  return { scale, drop: RISE * scale };
 }
 
 /** Where a document goes and which free tool sends it; null when an extra finds no cell to join. */

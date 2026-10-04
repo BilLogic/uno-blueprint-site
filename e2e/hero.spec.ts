@@ -155,6 +155,25 @@ test("standing alone, the board keeps the same padding on both sides, on load an
   }
 });
 
+test("resized from wide to a phone while standing alone, the board goes back to rest", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  const image = picture(page);
+  await image.scrollIntoViewIfNeeded();
+  const solo = (name: string) => image.locator(".grid").first().evaluate((stage, name) => (stage as HTMLElement).style.getPropertyValue(name), name);
+  await expect.poll(() => solo("--solo-ty"), { timeout: 8000 }).not.toBe("");
+  expect(parseFloat(await solo("--solo-ty"))).toBeGreaterThan(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(() => solo("--solo-ty")).toBe("0.0px");
+  expect(await solo("--solo-s")).toBe("1.000");
+  const board = image.locator(".origin-left");
+  // At rest once the transition ends: no scale, no drop.
+  await expect
+    .poll(() => board.evaluate((element) => element.getBoundingClientRect().width / (element as HTMLElement).offsetWidth))
+    .toBeCloseTo(1, 3);
+  expect(["none", "0px", "0px 0px"]).toContain(await board.evaluate((element) => getComputedStyle(element).translate));
+});
+
 for (const width of [1440, 390]) {
   test(`at ${width} px the people and agents only stop on a cell, a tool or a panel field`, async ({ page }) => {
     test.setTimeout(60_000);

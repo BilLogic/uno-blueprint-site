@@ -23,7 +23,7 @@ export function HeroBoard({ board, boardRef, sheetRef, cellRef }: HeroBoardProps
   return (
     <div
       ref={boardRef}
-      className={`relative z-1 min-w-0 origin-left transition-solo motion-reduce:transition-none max-md:w-full ${board.solo ? "md:translate-y-(--solo-drop) md:scale-(--solo-scale)" : ""}`}
+      className={`relative z-1 min-w-0 origin-left transition-solo motion-reduce:transition-none max-md:w-full ${board.solo ? "md:translate-y-(--solo-ty) md:scale-(--solo-s)" : ""}`}
     >
       <i className={`${ghost} translate-x-4.5 -translate-y-4 opacity-45`} />
       <i className={`${ghost} translate-x-2.25 -translate-y-2 opacity-75`} />

@@ -298,17 +298,16 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
   function soloSize() {
     const { stage, board: picture, sheet, panel } = el;
     if (!stage || !picture || !sheet || !panel) return;
-    const { scale, drop } = stacked()
-      ? { scale: 1, drop: 0 }
-      : soloScale({
-          board: picture.offsetWidth,
-          gap: parseFloat(getComputedStyle(stage).columnGap) || 0,
-          panel: panel.offsetWidth,
-          stageHeight: stage.clientHeight,
-          sheetHeight: sheet.offsetHeight,
-        });
-    stage.style.setProperty("--solo-scale", scale.toFixed(3));
-    stage.style.setProperty("--solo-drop", `${drop.toFixed(1)}px`);
+    const size = {
+      board: picture.offsetWidth,
+      gap: parseFloat(getComputedStyle(stage).columnGap) || 0,
+      panel: panel.offsetWidth,
+      stageHeight: stage.clientHeight,
+      sheetHeight: sheet.offsetHeight,
+    };
+    const { scale, drop } = soloScale(stacked() ? null : size);
+    stage.style.setProperty("--solo-s", scale.toFixed(3));
+    stage.style.setProperty("--solo-ty", `${drop.toFixed(1)}px`);
   }
 
   /** The board alone, larger, with the panel away; or the board giving the panel its room back. */

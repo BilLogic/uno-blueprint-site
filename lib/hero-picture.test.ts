@@ -298,7 +298,7 @@ describe("the loop's clock", () => {
 
 describe("soloScale", () => {
   it("grows the board into the panel's room, less the stacked sheets behind it, so both sides keep the same padding", () => {
-    const { scale, drop } = soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 1000, sheetHeight: 300 });
+    const { scale } = soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 1000, sheetHeight: 300 });
     expect(scale).toBeCloseTo(777 / 518);
     // The board and the sheets behind it, grown together, end where the panel did.
     expect((500 + 18) * scale).toBeCloseTo(500 + 37 + 240);
@@ -311,6 +311,12 @@ describe("soloScale", () => {
   it("as far as the frame's height allows, and never smaller", () => {
     expect(soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 400, sheetHeight: 300 }).scale).toBeCloseTo(344 / 318);
     expect(soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 200, sheetHeight: 300 })).toEqual({ scale: 1, drop: 8 });
+  });
+
+  it("puts the board back at rest on a phone, so a resize from wide to phone while solo clears the drop", () => {
+    const wide = soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 1000, sheetHeight: 300 });
+    expect(wide.drop).toBeGreaterThan(0);
+    expect(soloScale(null)).toEqual({ scale: 1, drop: 0 });
   });
 });
 
