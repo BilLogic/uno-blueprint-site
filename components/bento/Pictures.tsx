@@ -105,7 +105,7 @@ export function RagPicture() {
   );
 }
 
-/** Scalable structure: one team's flow in the middle; the stacks fill to every service. */
+/** The scale card: one team's flow in the middle; the stacks fill to every service. */
 export function ScalePicture() {
   return (
     <div className={styles.scale}>

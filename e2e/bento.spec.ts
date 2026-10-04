@@ -1,11 +1,12 @@
 import { devices, expect, test, type Page } from "@playwright/test";
+import { bento } from "@/content/bento";
 
 const titles = [
-  "Uno map, duo users",
-  "Built for RAG",
-  "Scalable structure",
-  "Product context, built in",
-  "Sources stay attached",
+  bento.duo.title,
+  bento.rag.title,
+  bento.scale.title,
+  bento.context.title,
+  bento.sources.title,
 ] as const;
 
 const panel = (page: Page, title: (typeof titles)[number]) =>
@@ -13,7 +14,7 @@ const panel = (page: Page, title: (typeof titles)[number]) =>
 
 /** The product-context picture's status reads "Planned" at rest and "Live" while it plays. */
 const live = (page: Page) =>
-  panel(page, "Product context, built in").getByText("Live", { exact: true });
+  panel(page, bento.context.title).getByText("Live", { exact: true });
 
 test.describe("bento", () => {
   test("panels arrive as they scroll into view, one beat apart along a row", async ({ page }) => {
@@ -50,10 +51,10 @@ test.describe("bento", () => {
     page,
   }) => {
     await page.goto("/");
-    await panel(page, "Product context, built in").scrollIntoViewIfNeeded();
+    await panel(page, bento.context.title).scrollIntoViewIfNeeded();
     await expect(live(page)).toHaveCSS("opacity", "0");
 
-    await panel(page, "Product context, built in").hover();
+    await panel(page, bento.context.title).hover();
     await expect(live(page)).toHaveCSS("opacity", "1");
 
     await page.mouse.move(0, 0);
@@ -80,7 +81,7 @@ test.describe("bento", () => {
     for (const title of titles) await expect(panel(page, title)).toHaveCSS("opacity", "1");
 
     // A picture shows how it ends at once, with nothing in between.
-    await panel(page, "Product context, built in").hover();
+    await panel(page, bento.context.title).hover();
     await expect(live(page)).toHaveCSS("opacity", "1", { timeout: 100 });
   });
 
@@ -89,7 +90,7 @@ test.describe("bento", () => {
     // Reduced motion: the panel is in place, not still rising.
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
-    const duo = panel(page, "Uno map, duo users");
+    const duo = panel(page, bento.duo.title);
     await duo.scrollIntoViewIfNeeded();
     await expect(duo).toBeInViewport();
 
@@ -119,7 +120,7 @@ test.describe("bento on a touch screen", () => {
 
   test("a picture plays in the middle of the screen, rests, and plays again", async ({ page }) => {
     await page.goto("/");
-    const context = panel(page, "Product context, built in");
+    const context = panel(page, bento.context.title);
     await context.evaluate((p) => p.scrollIntoView({ block: "center" }));
 
     await expect(live(page)).toHaveCSS("opacity", "1");

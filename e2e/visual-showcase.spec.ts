@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { canvas } from "@/content/canvas";
+import { touchPoints } from "@/content/touch-points";
 import { showOnly } from "./isolate";
 
 // Baselines are rendered on Linux (CI, or the Playwright image locally): font
@@ -13,9 +15,9 @@ const schemes = ["light", "dark"] as const;
 /** Each showcase, by its headline, with the tab its snapshot shows. */
 const showcases = [
   // The first canvas tab shows the whole board, and on a phone its cells as bars.
-  { name: "canvas", headline: "Canvas for your team.", tab: "Get up to speed" },
+  { name: "canvas", headline: canvas.headline, tab: canvas.tabs[0].label },
   // The coding agent tab shows every kind of marked cell and the terminal.
-  { name: "touch-points", headline: "Every place you work.", tab: "With your coding agent" },
+  { name: "touch-points", headline: "Every place you work.", tab: touchPoints.tabs[1].label },
 ] as const;
 
 for (const width of widths) {

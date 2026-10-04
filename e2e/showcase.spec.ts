@@ -1,15 +1,24 @@
 import { expect, test, type Page } from "@playwright/test";
+import { canvas } from "@/content/canvas";
+import { touchPoints } from "@/content/touch-points";
+
+/** A showcase's three tab labels, in order. */
+function labels(tabs: readonly { label: string }[]): readonly [string, string, string] {
+  const [first, second, third] = tabs.map((tab) => tab.label);
+  if (!first || !second || !third || tabs.length !== 3) throw new Error("a showcase has three tabs");
+  return [first, second, third];
+}
 
 const rows = [
   {
     name: "canvas",
-    label: "What your team does on the canvas",
-    tabs: ["Get up to speed", "Keep it current", "Tailor it"],
+    label: canvas.tabsLabel,
+    tabs: labels(canvas.tabs),
   },
   {
     name: "touch points",
-    label: "Where agents reach the blueprint",
-    tabs: ["In the app", "With your coding agent", "In your team Slack"],
+    label: touchPoints.tabsLabel,
+    tabs: labels(touchPoints.tabs),
   },
 ] as const;
 
@@ -72,10 +81,10 @@ for (const row of rows) {
 
 test("the canvas's side link sits beside the headline, and on a phone under the sub-headline", async ({ page }) => {
   const section = page.locator("section", {
-    has: page.getByRole("heading", { name: "Canvas for your team." }),
+    has: page.getByRole("heading", { name: canvas.headline }),
   });
-  const sub = section.getByText("See how your whole service works,", { exact: false });
-  const link = section.getByRole("link", { name: "Try the demo" });
+  const sub = section.getByText(canvas.subheadline, { exact: true });
+  const link = section.getByRole("link", { name: canvas.more.label });
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
