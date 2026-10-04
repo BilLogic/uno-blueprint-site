@@ -2,12 +2,15 @@ import { expect, test, type Page } from "@playwright/test";
 import { canvas } from "@/content/canvas";
 import { touchPoints } from "@/content/touch-points";
 
-/** A showcase's three tab labels, in order. */
-function labels(tabs: readonly { label: string }[]): readonly [string, string, string] {
-  const [first, second, third] = tabs.map((tab) => tab.label);
-  if (!first || !second || !third || tabs.length !== 3) throw new Error("a showcase has three tabs");
-  return [first, second, third];
+/** A showcase's tab labels, in order: the first, the second, then the rest. */
+function labels(tabs: readonly { label: string }[]): readonly [string, string, string, ...string[]] {
+  const [first, second, third, ...rest] = tabs.map((tab) => tab.label);
+  if (!first || !second || !third) throw new Error("a showcase has at least three tabs");
+  return [first, second, third, ...rest];
 }
+
+/** The last tab's label, where End lands and ArrowLeft wraps to. */
+const last = (tabs: readonly [string, ...string[]]) => tabs[tabs.length - 1] ?? tabs[0];
 
 const rows = [
   {
@@ -56,15 +59,15 @@ for (const row of rows) {
       await expect(caption(page, row.tabs[0])).toHaveCount(0);
 
       await page.keyboard.press("End");
-      await expect(list.getByRole("tab", { name: row.tabs[2] })).toBeFocused();
-      await expect(caption(page, row.tabs[2])).toBeVisible();
+      await expect(list.getByRole("tab", { name: last(row.tabs) })).toBeFocused();
+      await expect(caption(page, last(row.tabs))).toBeVisible();
 
       await page.keyboard.press("ArrowRight");
       await expect(list.getByRole("tab", { name: row.tabs[0] })).toBeFocused();
       await expect(caption(page, row.tabs[0])).toBeVisible();
 
       await page.keyboard.press("ArrowLeft");
-      await expect(caption(page, row.tabs[2])).toBeVisible();
+      await expect(caption(page, last(row.tabs))).toBeVisible();
 
       await page.keyboard.press("Home");
       await expect(caption(page, row.tabs[0])).toBeVisible();
@@ -78,6 +81,34 @@ for (const row of rows) {
     });
   });
 }
+
+test("the touch points end on the phone, which claims reading and jumping, and its stage keeps the same size", async ({
+  page,
+}) => {
+  const phone = touchPoints.tabs[3];
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
+  await expect(list.getByRole("tab")).toHaveCount(4);
+  await expect(list.getByRole("tab").last()).toHaveText(phone.label);
+
+  const stage = (tab: string) => page.getByRole("tabpanel", { name: tab }).locator("> div").first();
+  const before = await stage(touchPoints.tabs[0].label).boundingBox();
+  await list.getByRole("tab", { name: phone.label }).click();
+  const panel = page.getByRole("tabpanel", { name: phone.label });
+  await expect(panel.getByText(phone.caption)).toBeVisible();
+  const after = await stage(phone.label).boundingBox();
+  // Clicking may scroll the tab into view, so only the size is compared.
+  expect([after!.width, after!.height]).toEqual([before!.width, before!.height]);
+
+  // The phone frame fills the stage's height and stays inside it.
+  const frame = await stage(phone.label).locator("[aria-hidden]").first().boundingBox();
+  expect(frame!.y).toBeGreaterThanOrEqual(after!.y);
+  expect(frame!.y + frame!.height).toBeLessThanOrEqual(after!.y + after!.height + 0.5);
+  expect(frame!.x).toBeGreaterThanOrEqual(after!.x);
+  expect(frame!.x + frame!.width).toBeLessThanOrEqual(after!.x + after!.width);
+  expect(frame!.height).toBeGreaterThan(after!.height * 0.75);
+});
 
 test("the canvas's side link sits beside the headline, and on a phone under the sub-headline", async ({ page }) => {
   const section = page.locator("section", {

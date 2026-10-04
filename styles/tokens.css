@@ -296,6 +296,14 @@
   --radius-lane-dot: 0.2em;
   --spacing-bubble-x: 0.9em;
   --spacing-bubble-y: 0.7em;
+  /* The phone placeholder: a handset standing on the stage's foot, its screen a journey reader. */
+  --aspect-phone: 9 / 17;
+  --radius-phone: 1.8em; /* the handset's corners */
+  --spacing-phone-top: 6%; /* the stage above the handset */
+  --spacing-phone-bezel: 0.45em; /* the rim round the screen */
+  --radius-phone-screen: calc(var(--radius-phone) - var(--spacing-phone-bezel)); /* inside that rim */
+  --spacing-phone-speaker: 2.6em; /* the speaker slot at the top */
+  --spacing-phone-step: 1.6em; /* a step's number disc */
   /* A cell on a phone draws its words as two bars. */
   --text-0: 0px; /* the words themselves take no room */
   --text-0--line-height: 0;
