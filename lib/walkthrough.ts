@@ -11,6 +11,9 @@ export const STAGE_WIDTH = 1010;
 export const STAGE_HEIGHT = 530;
 const STAGE_CENTRE = STAGE_WIDTH / 2;
 
+/** The step where one cell is picked out and then opens in its panel. */
+const CELL_STEP = 14;
+
 /** The steps where the picture changes kind. */
 export const STEP = {
   /** The cards of a team's context, before they become the stack. */
@@ -19,10 +22,10 @@ export const STEP = {
   blueprint: 5,
   /** The columns are read. */
   steps: 13,
-  /** One cell is picked out. */
-  cell: 14,
-  /** That cell opens in its panel. */
-  open: 15,
+  /** One cell is picked out, and opens in its panel a beat later (see `cellOpensLate`). */
+  cell: CELL_STEP,
+  /** The cell's panel is open: the same step, once its beat has passed. */
+  open: CELL_STEP,
 } as const;
 
 /** Timing for the script-driven motion, in ms. */
@@ -47,6 +50,18 @@ export const TIMING = {
   flatten: 1250,
   /** The hold after the cell opens in its panel, or closes: the beam's delay and sweep, then the panel opening. */
   openCell: 950,
+  /** How long the picked cell shows lit on the flat board before it opens, arriving from above. */
+  cellBeat: 700,
+  /** How long the page must be still before the next downward gesture counts (see `gateHold`). */
+  gateIdle: 260,
+  /**
+   * A scroll that starts this soon after a wheel, a touch or a scrolling key is
+   * that gesture's; later, nothing the reader did set it going. Generous, so a
+   * busy page that reads the scroll a few frames late still gates it.
+   */
+  gestureInput: 600,
+  /** How long the page holds where the walkthrough lets go before a new swipe may carry it on. */
+  gateExit: 450,
 } as const;
 
 /** How far into the opening step's scroll, as a fraction of it, the morph plays. */
@@ -82,7 +97,19 @@ export const beamClip = (to: number) => `inset(-60px ${STAGE_WIDTH - to}px -60px
 /** The stack of sheets, the flat blueprint, and the blueprint with its panel. */
 export type Pose = 0 | 1 | 2;
 
-export const poseOf = (step: number): Pose => (step >= STEP.open ? 2 : step >= STEP.blueprint ? 1 : 0);
+/** Whether the panel is open at `step`, given whether the cell's beat has passed (see `cellOpensLate`). */
+const panelOpen = (step: number, opened: boolean) => step >= STEP.open && opened;
+
+/** The pose at `step`; `opened` says whether the cell has opened, which waits for its beat. */
+export const poseOf = (step: number, opened = true): Pose =>
+  panelOpen(step, opened) ? 2 : step >= STEP.blueprint ? 1 : 0;
+
+/**
+ * Whether arriving at `step` from `previous` (-1 on first paint) lights the
+ * cell first and opens it `TIMING.cellBeat` later: only when the cell step is
+ * reached from above. Leaving it, it closes at once.
+ */
+export const cellOpensLate = (step: number, previous: number) => step >= STEP.open && previous < STEP.open;
 
 /** Each step's end, as a fraction of the whole scroll, from the scroll length each step gets. */
 export function stepEdges(lengths: readonly number[]): number[] {
@@ -143,13 +170,109 @@ export function nextStep(current: number, goal: number, stackFormed: boolean): n
   return current + (goal > current ? 1 : -1);
 }
 
-/** How long a step is held, after moving `from` one step `to` another, before the next move. */
+/**
+ * How long a step is held, after moving `from` one step `to` another, before
+ * the next move. On the way down the cell's beat comes first, so the cell
+ * lights, opens, and is then held as long as any opening.
+ */
 export function stepHold(from: number, to: number): number {
   const flat = (step: number) => step >= STEP.blueprint;
   const open = (step: number) => step >= STEP.open;
   if (flat(from) !== flat(to)) return TIMING.flatten;
-  if (open(from) !== open(to)) return TIMING.openCell;
+  if (open(from) !== open(to)) return TIMING.openCell + (cellOpensLate(to, from) ? TIMING.cellBeat : 0);
   return TIMING.step;
+}
+
+/** How far into the next step, as a fraction of it, a held gesture rests. */
+const GATE_LAND = 0.15;
+/** A gesture that starts this close to where the walkthrough lets go, in px, is free: it absorbs the rounding of the held position. */
+const GATE_END_SLACK = 2;
+
+/**
+ * How long a step the gate holds the page on must show before a new swipe may
+ * carry the page on: the hold the walkthrough gives that step, or a short beat
+ * where the walkthrough lets go. `to` is the step held on; `steps` how many there are.
+ */
+export function showFor(to: number, steps: number): number {
+  if (to >= steps) return TIMING.gateExit;
+  if (to === STEP.context + 1) return TIMING.morph;
+  return stepHold(to - 1, to);
+}
+
+/**
+ * A running gesture: the step it counts from (`null`: free), when a step it
+ * holds may be let go (0 while nothing is held), and since when a new swipe
+ * counts (when it was counted, then when it was first held), in ms.
+ */
+export type GateGesture = { base: number | null; freeAt: number; since: number };
+
+/**
+ * Whether a running gesture counts afresh from where the page is, at `now`:
+ * a new swipe began (`newSwipeAt`) since it was counted or held, and any step
+ * it holds has had time to show. So scrolling on after a step has shown is
+ * never fought, one hard flick still moves one step, and a swipe that follows
+ * one let go mid-way is not pulled back to the step that one reached.
+ */
+export const gateReleases = ({ base, freeAt, since }: GateGesture, now: number, newSwipeAt: number) =>
+  base !== null && now >= freeAt && newSwipeAt > since;
+
+/**
+ * Telling a new wheel swipe from the last one still coasting: the deltas'
+ * size, whether they have been falling, the last event's time, and when the
+ * latest swipe began (ms).
+ */
+export type WheelState = { previous: number; falling: boolean; lastAt: number; newAt: number };
+export const WHEEL_START: WheelState = { previous: 0, falling: false, lastAt: -Infinity, newAt: 0 };
+
+/** A delta this much larger than the last, after they had been falling, is a new swipe: a trackpad speeding up again. */
+const SWIPE_RISE = 1.3;
+const SWIPE_RISE_SLACK = 2;
+
+/**
+ * The wheel state after an event of `delta` px at `time` ms. A swipe begins on
+ * a delta that rises clear of the last after the deltas had been falling, or
+ * on any event after the page has been still for `TIMING.gateIdle`.
+ */
+export function noteWheel(state: WheelState, delta: number, time: number): WheelState {
+  const size = Math.abs(delta);
+  let falling = state.falling || size < state.previous;
+  let newAt = state.newAt;
+  if ((falling && size > state.previous * SWIPE_RISE + SWIPE_RISE_SLACK) || time - state.lastAt > TIMING.gateIdle) {
+    newAt = time;
+    falling = false;
+  }
+  return { previous: size, falling, lastAt: time, newAt };
+}
+
+/** The pinned scroll on the page: where it starts, as a scroll position, and how long it runs, in px. */
+export type GateScroll = { start: number; travel: number };
+
+/**
+ * The step a downward gesture counts from: the one the page was on before it
+ * moved, so a flick that starts on a step's edge still stops at the next one.
+ * From above the walkthrough that is the first step. `null` when the gesture
+ * is free: it starts where the walkthrough lets go, or past it.
+ */
+export function gestureBase(from: number, { start, travel }: GateScroll, edges: readonly number[]): number | null {
+  if (from - start >= travel - GATE_END_SLACK) return null;
+  return Math.max(0, edges.findIndex((edge) => (from - start) / travel < edge));
+}
+
+/**
+ * Where a downward gesture that counts from step `base` must be held, now
+ * that the page has scrolled to `y`, or `null` to let it be. It may run
+ * anywhere into the next step; past it, it rests just inside that step. The
+ * gesture that leaves the last step rests where the walkthrough lets go, so
+ * one flick never carries the page on past the open cell.
+ */
+export function gateHold(base: number, y: number, { start, travel }: GateScroll, edges: readonly number[]): number | null {
+  const to = base + 1;
+  if (to > edges.length) return null;
+  const last = to === edges.length;
+  if ((y - start) / travel < (last ? 1 : edges[to]!)) return null;
+  if (last) return Math.round(start + travel);
+  const from = edges[to - 1]!;
+  return Math.round(start + (from + (edges[to]! - from) * GATE_LAND) * travel);
 }
 
 /** The section's scroll length in viewport heights, from its steps' total. */
@@ -357,12 +480,14 @@ const LINES = 3;
  * first paint). The sheets leave first and the board follows; coming back,
  * the board tips away first and the sheets return after it. The flat board is
  * moved down by `lift` stage px (see `flatLift`) while the panel is closed.
+ * On the cell step the panel opens only once `opened`: the cell lights on the
+ * flat board first (see `cellOpensLate`).
  */
-export function sceneAt(step: number, previous: number, lift = 0): Scene {
+export function sceneAt(step: number, previous: number, lift = 0, opened = true): Scene {
   const e = depthAt(step);
   const intro = step === STEP.context;
   const flat = step >= STEP.blueprint;
-  const open = step >= STEP.open;
+  const open = panelOpen(step, opened);
   const wasFlat = previous >= STEP.blueprint;
   const goFlat = flat && !wasFlat;
   const goIso = !flat && wasFlat;
@@ -398,7 +523,7 @@ export function sceneAt(step: number, previous: number, lift = 0): Scene {
 
   return {
     intro,
-    pose: poseOf(step),
+    pose: poseOf(step, opened),
     flat,
     open,
     named: flat && !open,

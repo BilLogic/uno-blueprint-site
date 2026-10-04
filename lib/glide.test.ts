@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { easeInOut, glideDuration, glideEnd, glideJumps, inPageTarget, keyStopsGlide, onGlidePath } from "./glide";
+import { easeInOut, glideDuration, glideEnd, glideJumps, inPageTarget, keyScrollsPage, keyStopsGlide, onGlidePath } from "./glide";
 
 describe("glideDuration", () => {
   const screen = 1000;
@@ -101,5 +101,13 @@ describe("keyStopsGlide", () => {
   it("leaves other keys alone", () => {
     expect(keyStopsGlide("Tab")).toBe(false);
     expect(keyStopsGlide("a")).toBe(false);
+  });
+});
+
+describe("keyScrollsPage", () => {
+  it("is the same set of keys that stops a glide, so Tab moving focus is not a scroll gesture", () => {
+    expect(keyScrollsPage("PageDown")).toBe(true);
+    expect(keyScrollsPage(" ")).toBe(true);
+    expect(keyScrollsPage("Tab")).toBe(false);
   });
 });

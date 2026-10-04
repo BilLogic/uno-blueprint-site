@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useReducedMotion } from "@/hooks/use-media-query";
-import { useScrollStep, type Morph } from "@/hooks/use-scroll-step";
+import { useScrollStep, type Morph, type StepChange } from "@/hooks/use-scroll-step";
 import {
   STAGE_WIDTH,
   STEP,
@@ -10,6 +10,7 @@ import {
   TIMING,
   beamClip,
   availableStageHeight,
+  cellOpensLate,
   fitStage,
   flatLift,
   poseOf,
@@ -61,8 +62,10 @@ function setLine(line: Element | undefined, [x1, y1]: readonly number[], [x2, y2
  * headline and frame are held together in the middle of the screen, and the
  * section gets the scroll length its steps add up to (a little less on a
  * desktop). The opening cards are drawn here, wherever their morph into the
- * stack has got to, and re-measured on a resize. With reduced motion nothing
- * is pinned and the last step shows.
+ * stack has got to, and re-measured on a resize. Arriving at the cell from
+ * above, it lights on the flat board and opens `TIMING.cellBeat` later; `open`
+ * says whether it has. With reduced motion nothing is pinned and the last step
+ * shows, open.
  *
  * `edges` end each step (see `stepEdges`); `scrollLength` is their total in
  * viewport heights. Attach the returned refs to the matching elements.
@@ -77,10 +80,15 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
 
   const reduced = useReducedMotion();
   const morph = useRef<Morph>({ progress: 0, draw: () => {} });
-  const { step, previous } = useScrollStep(scroller, sticky, edges, reduced, morph);
+  const change = useScrollStep(scroller, sticky, edges, reduced, morph);
+  const { step, previous } = change;
   const [layout, setLayout] = useState<StageLayout>({ narrow: false, lift: 0 });
-  const pose = poseOf(step);
-  const open = step >= STEP.open;
+  // The step change whose cell beat has run out, so its cell may open. Matched by identity:
+  // `useScrollStep` makes a new change object for each move, so a later arrival waits afresh.
+  const [beatOver, setBeatOver] = useState<StepChange | null>(null);
+  const beat = cellOpensLate(step, previous);
+  const open = step >= STEP.open && (!beat || beatOver === change);
+  const pose = poseOf(step, open);
 
   const fit = useRef<StageFit | null>(null);
   const currentPose = useRef(pose);
@@ -302,6 +310,13 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
     return () => cancelAnimationFrame(frame);
   }, [step, pose, reduced]);
 
+  // Arriving at the cell from above, it shows lit for a beat, then opens. Leaving it closes it at once.
+  useEffect(() => {
+    if (!beat) return;
+    const timer = window.setTimeout(() => setBeatOver(change), TIMING.cellBeat);
+    return () => clearTimeout(timer);
+  }, [beat, change]);
+
   // The beam is switched on at the cell and sweeps right until it meets the panel, which then opens the same way.
   useEffect(() => {
     currentOpen.current = open;
@@ -330,5 +345,5 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
     return () => clearTimeout(timer);
   }, [open, reduced]);
 
-  return { refs: { scroller, sticky, head, stage, world, caption }, step, previous, layout };
+  return { refs: { scroller, sticky, head, stage, world, caption }, step, previous, open, layout };
 }
