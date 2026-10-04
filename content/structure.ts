@@ -18,8 +18,7 @@ export const structure = {
     { title: "Line of internal interaction", caption: "Where your team hands off to the systems and partners behind it.", scroll: 30 },
     { title: "Support", caption: "The tools, data and partners every step relies on.", scroll: 36 },
     { title: "Steps", caption: "Each column is one moment in time, read down every lane at once.", scroll: 42 },
-    { title: "Cells", caption: "Where a lane meets a step: what one participant does at one moment.", scroll: 46 },
-    { title: "Inside a cell", caption: "Each cell carries the detail: owner, status, value, dependencies and the sources behind it.", scroll: 120 },
+    { title: "Cells", caption: "Where a lane meets a step, one cell holds the detail: owner, status, value, dependencies and the sources behind it.", scroll: 46 },
   ],
   /**
    * The opening step's six cards, one per place a product team's context

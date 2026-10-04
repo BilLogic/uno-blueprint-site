@@ -311,6 +311,9 @@
   --shadow-sheet: -7px 7px 0 -1px color-mix(in oklab, var(--color-ink) 5%, transparent);
   --shadow-lift: 0 24px 60px -20px rgba(0, 0, 0, 0.35); /* a panel raised above the board */
   --shadow-context-card: var(--shadow-card), 0 18px 40px -22px rgba(0, 0, 0, 0.35); /* a card of the opening step */
+  --spacing-stage-foot: 80px; /* how far past the stage's foot the open cell's shadow may run */
+  --spacing-dots-fade-in: 56px; /* the dotted field fades in over its top */
+  --spacing-dots-fade-out: 72px; /* and out over its bottom */
   --ease-settle: cubic-bezier(0.2, 0.8, 0.2, 1); /* a label sliding to its sheet */
   --text-10: 10px; /* the status on a context card's ticket */
   --text-11-5: 11.5px;

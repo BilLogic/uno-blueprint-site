@@ -2,10 +2,29 @@
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { isGliding } from "@/hooks/glide-signal";
+import { keyScrollsPage } from "@/lib/glide";
 import { advanceMorph } from "@/lib/walkthrough-morph";
-import { STEP, TIMING, goalStep, introTriggered, morphHeading, nextStep, scrollProgress, stepHold } from "@/lib/walkthrough";
+import {
+  STEP,
+  TIMING,
+  gateHold,
+  gestureBase,
+  goalStep,
+  introTriggered,
+  morphHeading,
+  nextStep,
+  scrollProgress,
+  stepHold,
+} from "@/lib/walkthrough";
 
 export type StepChange = { step: number; previous: number };
+
+/**
+ * A scroll that starts this soon after a wheel, a touch or a scrolling key, in
+ * ms, is that gesture's; later, nothing the reader did set it going. Generous,
+ * so a busy page that reads the scroll a few frames late still gates it.
+ */
+const GESTURE_INPUT_WINDOW = 600;
 
 /** The opening morph's progress (0 to 1), and how to draw the cards at a progress. */
 export type Morph = { progress: number; draw: (progress: number) => void };
@@ -24,6 +43,13 @@ export type Morph = { progress: number; draw: (progress: number) => void };
  * (see `morphHeading`). While `held`, scrolling is ignored and the last step
  * shows. While an in-page link glides past (see `isGliding`), the scroll is not
  * read; the glide announces a scroll as it ends, and the walkthrough reads it then.
+ *
+ * A downward gesture (a wheel, a touch or a scrolling key, and the scroll it
+ * sets going, until the page has been still for `TIMING.gateIdle`) moves the
+ * walkthrough one step, however hard the flick: the page is held just inside
+ * the next step (see `gestureBase` and `gateHold`). Scrolling up is free, and
+ * so is a scroll no gesture made (a jump to an anchor, focus moving), so the
+ * page can always be taken anywhere.
  */
 export function useScrollStep(
   scroller: RefObject<HTMLElement | null>,
@@ -43,6 +69,48 @@ export function useScrollStep(
     let settle = 0;
     let hold = 0;
     let goal = current.current;
+
+    // The gesture gate: where the page was at the last read, when the reader last
+    // touched the page, and the step the running gesture counts from (`null`: free).
+    let lastY = scrollY;
+    let lastInput = -Infinity;
+    let gesturing = false;
+    let base: number | null = null;
+    let still = 0;
+    // Set while a glide skips the reads, so the first read after it starts afresh from where it ended.
+    let glided = false;
+    const touched = () => {
+      lastInput = performance.now();
+    };
+    const keyed = (event: KeyboardEvent) => {
+      if (keyScrollsPage(event.key)) touched();
+    };
+    const gate = (section: HTMLElement, pinned: HTMLElement, stickyTop: number) => {
+      const y = scrollY;
+      const was = lastY;
+      lastY = y;
+      if (glided) {
+        glided = false;
+        return;
+      }
+      clearTimeout(still);
+      still = window.setTimeout(() => {
+        gesturing = false;
+      }, TIMING.gateIdle);
+      const rect = section.getBoundingClientRect();
+      const scroll = { start: rect.top + y - stickyTop, travel: rect.height - pinned.offsetHeight };
+      if (scroll.travel <= 0) return;
+      if (!gesturing) {
+        if (performance.now() - lastInput > GESTURE_INPUT_WINDOW) return;
+        gesturing = true;
+        base = gestureBase(was, scroll, edges);
+      }
+      if (base === null || y <= was) return;
+      const hold = gateHold(base, y, scroll, edges);
+      if (hold === null) return;
+      scrollTo({ top: hold, behavior: "instant" });
+      lastY = hold;
+    };
 
     // One step toward the goal, then a hold before the next.
     const advance = () => {
@@ -86,9 +154,11 @@ export function useScrollStep(
       const section = scroller.current;
       const pinned = sticky.current;
       if (!section || !pinned) return;
+      const stickyTop = parseFloat(getComputedStyle(pinned).top) || 0;
+      gate(section, pinned, stickyTop);
       const rect = section.getBoundingClientRect();
       const progress = scrollProgress({
-        stickyTop: parseFloat(getComputedStyle(pinned).top) || 0,
+        stickyTop,
         sectionTop: rect.top,
         sectionHeight: rect.height,
         stickyHeight: pinned.offsetHeight,
@@ -99,7 +169,8 @@ export function useScrollStep(
     };
     // Hoisted, so the stepping and the morph's clock above can ask for a fresh read.
     function schedule() {
-      if (!frame && !isGliding()) frame = requestAnimationFrame(read);
+      if (isGliding()) glided = true;
+      else if (!frame) frame = requestAnimationFrame(read);
     }
     // A resize refits the frame first (after TIMING.resizeSettle), so the step is read just after that.
     const onResize = () => {
@@ -109,13 +180,20 @@ export function useScrollStep(
     schedule();
     addEventListener("scroll", schedule, { passive: true });
     addEventListener("resize", onResize);
+    addEventListener("wheel", touched, { passive: true });
+    addEventListener("touchmove", touched, { passive: true });
+    addEventListener("keydown", keyed);
     return () => {
       cancelAnimationFrame(frame);
       cancelAnimationFrame(morphFrame);
       clearTimeout(settle);
       clearTimeout(hold);
+      clearTimeout(still);
       removeEventListener("scroll", schedule);
       removeEventListener("resize", onResize);
+      removeEventListener("wheel", touched);
+      removeEventListener("touchmove", touched);
+      removeEventListener("keydown", keyed);
     };
   }, [scroller, sticky, edges, held, morph]);
 

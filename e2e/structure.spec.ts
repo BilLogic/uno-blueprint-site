@@ -1,9 +1,18 @@
 import { expect, test, type Page } from "@playwright/test";
 import { structure } from "../content/structure";
+import { TIMING, stepAt, stepEdges } from "../lib/walkthrough";
 import { scrollToStep } from "./walkthrough-scroll";
 
 const heading = `${structure.heading.lead} ${structure.heading.main}`;
 const titles = structure.steps.map((step) => step.title);
+const edges = stepEdges(structure.steps.map((step) => step.scroll));
+
+/** A hard flick: this many wheel notches of this many px, a frame apart. */
+const FLICK_NOTCHES = 10;
+const FLICK_NOTCH = 300;
+const NOTCH_EVERY = 16;
+/** After a flick, long enough for the page to come to rest and the gesture to end. */
+const FLICK_SETTLE = TIMING.gateIdle + 400;
 
 /** Long enough for the morph and every step's hold, one at a time, with room to spare. */
 const WALK_TIMEOUT = 30_000;
@@ -57,16 +66,40 @@ async function range(page: Page) {
   return { top, end: top + box.height };
 }
 
-/** Wheels from above the section to past its end, `delta` px a notch, a notch every `every` ms. */
-async function wheelThrough(page: Page, delta: number, every: number) {
-  const { top, end } = await range(page);
-  await page.evaluate((y) => window.scrollTo(0, y), top - 300);
-  await page.mouse.move(400, 400);
-  for (let y = top - 300; y < end; y += delta) {
-    await page.mouse.wheel(0, delta);
-    await page.waitForTimeout(every);
-  }
+/** The pinned scroll on the page: where it starts and how far it runs, in px. */
+const pinnedScroll = (page: Page) =>
+  section(page).evaluate((el) => {
+    const pinned = [...el.querySelectorAll<HTMLElement>("*")].find((n) => getComputedStyle(n).position === "sticky")!;
+    const scroller = pinned.parentElement!;
+    const start = scroller.getBoundingClientRect().top + scrollY - parseFloat(getComputedStyle(pinned).top);
+    return { start, travel: scroller.offsetHeight - pinned.offsetHeight, y: scrollY };
+  });
+
+/** How far through the pinned scroll the page is: below 0 above it, above 1 past it. */
+async function progress(page: Page) {
+  const { start, travel, y } = await pinnedScroll(page);
+  return (y - start) / travel;
 }
+
+/** One hard wheel flick, down (`direction` 1) or up (-1), then a wait until the page is still. */
+async function flick(page: Page, direction: 1 | -1 = 1) {
+  const size = page.viewportSize()!;
+  await page.mouse.move(size.width / 2, size.height / 2);
+  for (let i = 0; i < FLICK_NOTCHES; i++) {
+    await page.mouse.wheel(0, direction * FLICK_NOTCH);
+    await page.waitForTimeout(NOTCH_EVERY);
+  }
+  await page.waitForTimeout(FLICK_SETTLE);
+}
+
+/** Whether the stage shows the cell lit, and whether its panel is open, as `[lit, open]`. */
+const cellState = (page: Page) =>
+  section(page)
+    .locator("[data-board]")
+    .evaluate((board) => {
+      const classes = [...board.closest("[aria-hidden]")!.classList];
+      return [classes.some((c) => c.endsWith("cellPicked")), classes.some((c) => /(^|__)open$/.test(c))];
+    });
 
 /** Waits until the walkthrough has caught up with the scroll and shows `title`. */
 const settlesOn = (page: Page, title: string) =>
@@ -75,21 +108,94 @@ const settlesOn = (page: Page, title: string) =>
 test.describe("structure walkthrough", () => {
   test.describe.configure({ timeout: 90_000 });
 
-  for (const [speed, delta, every] of [
-    ["slowly", 60, 60],
-    ["at a normal pace", 120, 30],
-    ["fast", 400, 16],
-  ] as const) {
-    test(`wheeling down ${speed} shows every step in order, with no card jumping`, async ({ page }) => {
-      await page.setViewportSize({ width: 1440, height: 900 });
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    test(`at ${viewport.width} px each hard flick down moves exactly one step, and the one after Cells holds, then leaves`, async ({
+      page,
+    }) => {
+      test.setTimeout(120_000);
+      await page.setViewportSize(viewport);
       await page.goto("/");
       await watch(page);
-      await wheelThrough(page, delta, every);
+      await scrollToStep(section(page), 0, 0.1);
+      await nextFrame(page);
+      for (let step = 1; step < titles.length; step++) {
+        await flick(page);
+        expect(stepAt(await progress(page), edges), `flick ${step}`).toBe(step);
+      }
+      // The flick after Cells holds where the walkthrough lets go.
+      await flick(page);
+      expect(await progress(page)).toBeCloseTo(1, 2);
       await settlesOn(page, titles.at(-1)!);
       expect(await seen(page)).toEqual(titles);
       expect(await jumps(page)).toBe(0);
+      // The flick after that is free, and leaves the section.
+      await flick(page);
+      expect(await progress(page)).toBeGreaterThan(1.05);
     });
   }
+
+  test("one hard flick up goes back several steps", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    await scrollToStep(section(page), titles.length - 1, 0.5);
+    await settlesOn(page, titles.at(-1)!);
+    await flick(page, -1);
+    expect(stepAt(await progress(page), edges)).toBeLessThan(titles.length - 3);
+  });
+
+  test("arriving at Cells, the cell lights first and opens about a beat later; scrolling up closes it", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    const steps = titles.indexOf("Steps");
+    await scrollToStep(section(page), steps, 0.5);
+    await settlesOn(page, "Steps");
+    expect(await cellState(page)).toEqual([false, false]);
+    // Note when the cell lights, and when it opens.
+    await section(page)
+      .locator("[data-board]")
+      .evaluate((board) => {
+        const stage = board.closest("[aria-hidden]")!;
+        const w = window as unknown as { lit?: number; opened?: number };
+        const check = () => {
+          const classes = [...stage.classList];
+          if (w.lit === undefined && classes.some((c) => c.endsWith("cellPicked"))) w.lit = performance.now();
+          if (w.opened === undefined && classes.some((c) => /(^|__)open$/.test(c))) w.opened = performance.now();
+          requestAnimationFrame(check);
+        };
+        requestAnimationFrame(check);
+      });
+    await flick(page);
+    await settlesOn(page, "Cells");
+    await expect.poll(() => cellState(page), { timeout: 5000 }).toEqual([true, true]);
+    const { lit, opened } = await page.evaluate(() => {
+      const w = window as unknown as { lit: number; opened: number };
+      return { lit: w.lit, opened: w.opened };
+    });
+    expect(opened - lit).toBeGreaterThan(TIMING.cellBeat - 100);
+    expect(opened - lit).toBeLessThan(TIMING.cellBeat + 300);
+
+    // Back up: the panel closes at once, with the step.
+    await scrollToStep(section(page), steps, 0.5);
+    await settlesOn(page, "Steps");
+    expect(await cellState(page)).toEqual([false, false]);
+  });
+
+  test("the stage clips its sides and top only, so the open cell's shadow is not cut at its foot", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    const stage = section(page).locator("[data-board]").locator("xpath=ancestor::*[@aria-hidden][1]");
+    const style = await stage.evaluate((el) => {
+      const computed = getComputedStyle(el);
+      return { overflow: computed.overflow, clipPath: computed.clipPath };
+    });
+    expect(style.overflow).toBe("visible");
+    expect(style.clipPath).toBe("inset(0px 0px -80px)");
+  });
 
   test("on a phone the walkthrough reads the same steps, with nothing wider than the screen", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });

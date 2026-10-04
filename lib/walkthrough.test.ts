@@ -4,8 +4,11 @@ import {
   TIMING,
   availableStageHeight,
   beamClip,
+  cellBeat,
   fitStage,
   flatLift,
+  gateHold,
+  gestureBase,
   goalStep,
   introTriggered,
   morphHeading,
@@ -136,7 +139,27 @@ describe("poseTransform", () => {
 
 describe("poseOf", () => {
   it("shows the stack, then the flat blueprint, then the blueprint with its panel", () => {
-    expect([0, 1, 4, 5, 14, 15].map(poseOf)).toEqual([0, 0, 0, 1, 1, 2]);
+    expect([0, 1, 4, 5, 13, 14].map((step) => poseOf(step))).toEqual([0, 0, 0, 1, 1, 2]);
+  });
+
+  it("keeps the flat blueprint on the cell step until the cell has opened", () => {
+    expect(poseOf(STEP.cell, false)).toBe(1);
+    expect(poseOf(STEP.cell, true)).toBe(2);
+  });
+});
+
+describe("cellBeat", () => {
+  it("lights the cell first, and opens it a beat later, only when the cell step is reached from above", () => {
+    expect(cellBeat(STEP.cell, STEP.steps)).toBe(true);
+    expect(cellBeat(STEP.cell, -1)).toBe(true);
+    expect(cellBeat(STEP.cell, STEP.cell)).toBe(false);
+    expect(cellBeat(STEP.steps, STEP.cell)).toBe(false);
+    expect(cellBeat(STEP.steps, STEP.steps - 1)).toBe(false);
+  });
+
+  it("is the step that both picks the cell and opens it", () => {
+    expect(STEP.open).toBe(STEP.cell);
+    expect(STEP.cell).toBe(STEP.steps + 1);
   });
 });
 
@@ -181,7 +204,7 @@ describe("sceneAt", () => {
     const scene = sceneAt(STEP.blueprint, 4, 22);
     expect(scene.board.transform).toBe("translate(0px,22px) rotateX(0deg) rotateZ(0deg) scale(1.1)");
     expect(scene.ghosts[0]).toBe("translate(13px,11px) rotateX(0deg) rotateZ(0deg) scale(1.1)");
-    expect(sceneAt(STEP.open, STEP.cell, 22).board.transform).toBe(
+    expect(sceneAt(STEP.open, STEP.open, 22).board.transform).toBe(
       "translate(-215px,0px) rotateX(0deg) rotateZ(0deg) scale(0.62)",
     );
   });
@@ -211,13 +234,23 @@ describe("sceneAt", () => {
   });
 
   it("shrinks the board beside the open panel and turns its words back to bars", () => {
-    const scene = sceneAt(STEP.open, STEP.cell);
+    const scene = sceneAt(STEP.open, STEP.open);
     expect(scene.open).toBe(true);
     expect(scene.cell).toBe(true);
     expect(scene.named).toBe(false);
     expect(scene.rows.every((r) => !r.named)).toBe(true);
     expect(scene.board.transform).toBe("translate(-215px,0px) rotateX(0deg) rotateZ(0deg) scale(0.62)");
     expect(scene.ghosts[0]).toBe("translate(-202px,-11px) rotateX(0deg) rotateZ(0deg) scale(0.62)");
+  });
+
+  it("lights the cell on the flat board while it waits to open", () => {
+    const scene = sceneAt(STEP.cell, STEP.steps, 22, false);
+    expect(scene.cell).toBe(true);
+    expect(scene.open).toBe(false);
+    expect(scene.pose).toBe(1);
+    expect(scene.named).toBe(true);
+    expect(scene.board.transform).toBe("translate(0px,22px) rotateX(0deg) rotateZ(0deg) scale(1.1)");
+    expect(sceneAt(STEP.cell, STEP.steps, 22, true).open).toBe(true);
   });
 });
 
@@ -306,9 +339,65 @@ describe("stepHold", () => {
     expect(stepHold(1, 2)).toBe(TIMING.step);
     expect(stepHold(4, 5)).toBe(TIMING.flatten);
     expect(stepHold(5, 4)).toBe(TIMING.flatten);
-    expect(stepHold(14, 15)).toBe(TIMING.openCell);
-    expect(stepHold(15, 14)).toBe(TIMING.openCell);
+    expect(stepHold(STEP.cell, STEP.steps)).toBe(TIMING.openCell);
     expect([TIMING.step, TIMING.flatten, TIMING.openCell, TIMING.morph]).toEqual([560, 1250, 950, 1700]);
+  });
+
+  it("adds the cell's beat on the way down, so the cell lights, opens, then holds", () => {
+    expect(stepHold(STEP.steps, STEP.cell)).toBe(TIMING.openCell + TIMING.cellBeat);
+    expect(TIMING.openCell + TIMING.cellBeat).toBe(1650);
+  });
+});
+
+describe("the gesture gate", () => {
+  // A section whose pinned scroll starts at 1000 px and runs 1000 px, over steps of 40%, 40% and 20%.
+  const edges = stepEdges([40, 40, 20]);
+  const scroll = { start: 1000, travel: 1000 };
+
+  it("counts a gesture from the step the page was on before it moved", () => {
+    expect(gestureBase(1000, scroll, edges)).toBe(0);
+    expect(gestureBase(1399, scroll, edges)).toBe(0);
+    // A flick that starts on a step's edge counts from the step it starts in.
+    expect(gestureBase(1400, scroll, edges)).toBe(1);
+    expect(gestureBase(1850, scroll, edges)).toBe(2);
+  });
+
+  it("counts a gesture from above the walkthrough from its first step", () => {
+    expect(gestureBase(0, scroll, edges)).toBe(0);
+  });
+
+  it("frees a gesture that starts where the walkthrough lets go, within 2 px, or past it", () => {
+    expect(gestureBase(1997, scroll, edges)).toBe(2);
+    expect(gestureBase(1998, scroll, edges)).toBeNull();
+    expect(gestureBase(2000, scroll, edges)).toBeNull();
+    expect(gestureBase(5000, scroll, edges)).toBeNull();
+  });
+
+  it("lets a gesture run anywhere into the next step", () => {
+    expect(gateHold(0, 1200, scroll, edges)).toBeNull();
+    expect(gateHold(0, 1799, scroll, edges)).toBeNull();
+  });
+
+  it("holds a gesture that runs past the next step just inside it, 15% in", () => {
+    expect(gateHold(0, 1800, scroll, edges)).toBe(1460);
+    expect(gateHold(0, 9000, scroll, edges)).toBe(1460);
+    expect(gateHold(1, 1950, scroll, edges)).toBeNull();
+    expect(gateHold(1, 2000, scroll, edges)).toBe(1830);
+  });
+
+  it("holds the gesture that leaves the last step where the walkthrough lets go", () => {
+    expect(gateHold(2, 1999, scroll, edges)).toBeNull();
+    expect(gateHold(2, 2000, scroll, edges)).toBe(2000);
+    expect(gateHold(2, 2600, scroll, edges)).toBe(2000);
+  });
+
+  it("holds on whole pixels", () => {
+    expect(gateHold(0, 2000, { start: 1000.4, travel: 1000 }, edges)).toBe(1460);
+    expect(gateHold(2, 2600, { start: 1000.6, travel: 1000 }, edges)).toBe(2001);
+  });
+
+  it("waits for the page to be still this long before the next gesture counts", () => {
+    expect(TIMING.gateIdle).toBe(260);
   });
 });
 

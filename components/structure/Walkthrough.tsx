@@ -17,14 +17,14 @@ const SCROLL_LENGTH = LENGTHS.reduce((sum, length) => sum + length, 0);
  * scroll. Six cards (a PRD, a thread, a design, a ticket, a funnel, a diff)
  * become the stack; sheets for services, phases, scenarios and paths stack
  * and leave; the blueprint turns to face the reader; its lanes and lines are
- * read one at a time, then its steps and its cells; and one cell is projected
+ * read one at a time, then its steps; and one cell lights, then is projected
  * into its panel. The headline stays pinned with the frame, and the caption
  * changes with each step.
  */
 export function Walkthrough() {
-  const { refs, step, previous, layout } = useWalkthrough(EDGES, SCROLL_LENGTH);
+  const { refs, step, previous, open, layout } = useWalkthrough(EDGES, SCROLL_LENGTH);
   const { scroller, sticky, head, stage, world, caption } = refs;
-  const scene = sceneAt(step, previous, layout.lift);
+  const scene = sceneAt(step, previous, layout.lift, open);
   const frame = useRef<HTMLDivElement>(null);
   usePointerGlow(frame);
 
