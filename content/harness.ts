@@ -150,7 +150,7 @@ export const whatif = {
 export const harness = {
   headline: "Harness for your agents.",
   subheadline:
-    "Four skills your agents run on the blueprint: map it, slice it, audit it, and trace a change before you make it.",
+    "Four skills teach your agents to build the map from your docs, keep it accurate, and test changes against it.",
   more: { label: "Read the skills", link: links.github },
   tabsLabel: "The four skills",
   replay: "Play again",

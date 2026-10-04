@@ -4,7 +4,7 @@ const rows = [
   {
     name: "canvas",
     label: "What your team does on the canvas",
-    tabs: ["Understand the service", "Check and correct", "Present a view"],
+    tabs: ["Get up to speed", "Keep it current", "Tailor it"],
   },
   {
     name: "touch points",
@@ -74,7 +74,7 @@ test("the canvas's side link sits beside the headline, and on a phone under the 
   const section = page.locator("section", {
     has: page.getByRole("heading", { name: "Canvas for your team." }),
   });
-  const sub = section.getByText("One blueprint for the whole service.", { exact: false });
+  const sub = section.getByText("See how your whole service works,", { exact: false });
   const link = section.getByRole("link", { name: "Try the demo" });
 
   await page.setViewportSize({ width: 1440, height: 900 });

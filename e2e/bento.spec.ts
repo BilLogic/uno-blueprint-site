@@ -3,7 +3,7 @@ import { devices, expect, test, type Page } from "@playwright/test";
 const titles = [
   "Uno map, duo users",
   "Built for RAG",
-  "Uno team or every team",
+  "Scalable structure",
   "Product context, built in",
   "Sources stay attached",
 ] as const;

@@ -13,7 +13,7 @@ const schemes = ["light", "dark"] as const;
 /** Each showcase, by its headline, with the tab its snapshot shows. */
 const showcases = [
   // The first canvas tab shows the whole board, and on a phone its cells as bars.
-  { name: "canvas", headline: "Canvas for your team.", tab: "Understand the service" },
+  { name: "canvas", headline: "Canvas for your team.", tab: "Get up to speed" },
   // The coding agent tab shows every kind of marked cell and the terminal.
   { name: "touch-points", headline: "Every place you work.", tab: "With your coding agent" },
 ] as const;
