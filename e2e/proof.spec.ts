@@ -11,6 +11,9 @@ async function scrollPlotTo(page: Page, fromTop: number) {
   }, fromTop);
 }
 
+/** Long enough for any reveal a scroll might set off to have played. */
+const REVEAL_SETTLE_MS = 1000;
+
 /** The height of the bar a value label sits on. */
 const barHeight = (page: Page, text: string) =>
   value(page, text).evaluate((label) => label.parentElement!.getBoundingClientRect().height);
@@ -18,27 +21,23 @@ const barHeight = (page: Page, text: string) =>
 test.describe("on a wide screen", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test("the bars grow with the scroll and show their values once grown", async ({ page }) => {
+  test("the chart is revealed whole, once", async ({ page }) => {
     await page.goto("/");
     await scrollPlotTo(page, 900);
     await expect.poll(() => barHeight(page, "71%")).toBeLessThan(2);
     await expect(value(page, "71%")).toHaveCSS("opacity", "0");
 
-    // Partway up the screen: partly grown, values still hidden.
-    await scrollPlotTo(page, 400);
-    await expect.poll(() => barHeight(page, "71%")).toBeGreaterThan(60);
-    expect(await barHeight(page, "71%")).toBeLessThan(150);
-    await expect(value(page, "71%")).toHaveCSS("opacity", "0");
-
-    // High enough: full, 71% of the full height, with the values showing.
-    await scrollPlotTo(page, 100);
+    // Well into view: every pair grows in full and shows its values.
+    await scrollPlotTo(page, 300);
     await expect.poll(() => barHeight(page, "71%")).toBeCloseTo(0.71 * 230, 0);
+    await expect.poll(() => barHeight(page, "108k")).toBeCloseTo((108 / 180) * 230, 0);
     await expect(value(page, "71%")).toHaveCSS("opacity", "1");
     await expect(value(page, "108k")).toHaveCSS("opacity", "1");
 
-    // And they shrink again on the way back down.
+    // Scrolling back does not hide it again.
     await scrollPlotTo(page, 900);
-    await expect.poll(() => barHeight(page, "71%")).toBeLessThan(2);
+    await page.waitForTimeout(REVEAL_SETTLE_MS);
+    expect(await barHeight(page, "71%")).toBeCloseTo(0.71 * 230, 0);
   });
 
   test("each measure explains itself on hover and on focus", async ({ page }) => {
@@ -75,7 +74,7 @@ test.describe("on a phone", () => {
 
     // Scrolling back does not hide it again.
     await scrollPlotTo(page, 844);
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(REVEAL_SETTLE_MS);
     expect(await barHeight(page, "71%")).toBeCloseTo(0.71 * 160, 0);
   });
 });

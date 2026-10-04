@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type RefObject } from "react";
+import { isGliding } from "@/hooks/glide-signal";
 import { advanceMorph } from "@/lib/walkthrough-morph";
 import { STEP, TIMING, goalStep, introTriggered, morphHeading, nextStep, scrollProgress, stepHold } from "@/lib/walkthrough";
 
@@ -21,7 +22,8 @@ export type Morph = { progress: number; draw: (progress: number) => void };
  * opening step is left only once it has finished. Above the buffer it plays
  * back, but only once the walkthrough has walked back to the opening step
  * (see `morphHeading`). While `held`, scrolling is ignored and the last step
- * shows.
+ * shows. While an in-page link glides past (see `isGliding`), the scroll is not
+ * read; the glide announces a scroll as it ends, and the walkthrough reads it then.
  */
 export function useScrollStep(
   scroller: RefObject<HTMLElement | null>,
@@ -97,7 +99,7 @@ export function useScrollStep(
     };
     // Hoisted, so the stepping and the morph's clock above can ask for a fresh read.
     function schedule() {
-      if (!frame) frame = requestAnimationFrame(read);
+      if (!frame && !isGliding()) frame = requestAnimationFrame(read);
     }
     // A resize refits the frame first (after TIMING.resizeSettle), so the step is read just after that.
     const onResize = () => {

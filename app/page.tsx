@@ -12,6 +12,7 @@ import { ProofSection } from "@/components/proof/ProofSection";
 import { Questions } from "@/components/questions/Questions";
 import { StructureSection } from "@/components/structure/StructureSection";
 import { TouchPointsSection } from "@/components/touch-points/TouchPointsSection";
+import { InPageGlide } from "@/components/ui/InPageGlide";
 
 export default function Home() {
   return (
@@ -33,6 +34,7 @@ export default function Home() {
       </main>
       <AgentView />
       <Footer />
+      <InPageGlide />
     </>
   );
 }

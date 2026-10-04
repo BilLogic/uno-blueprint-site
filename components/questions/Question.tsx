@@ -8,19 +8,21 @@ type QuestionProps = { question: string; answer: string };
  * One question that opens to its answer (the WAI-ARIA disclosure pattern).
  * The answer's row grows from nothing on the prototype's curve; once it has
  * closed it is hidden outright, so a closed answer is neither read nor focused.
+ * A rule runs under every question and none above the first, whose text sits
+ * level with the section heading's first line instead.
  */
 export function Question({ question, answer }: QuestionProps) {
   const [open, setOpen] = useState(false);
   const answerId = useId();
   return (
-    <div data-open={open || undefined} className="group border-b border-line first:border-t">
+    <div data-open={open || undefined} className="group border-b border-line">
       <h3>
         <button
           type="button"
           aria-expanded={open}
           aria-controls={answerId}
           onClick={() => setOpen((wasOpen) => !wasOpen)}
-          className="flex w-full cursor-pointer items-center justify-between gap-4 py-4.5 text-left font-medium transition-[color] duration-t-1 ease-plain hover:text-brand focus-visible:rounded-6 focus-visible:outline-brand"
+          className="flex w-full cursor-pointer items-center justify-between gap-4 py-4.5 text-left group-first:pt-0 md:group-first:pt-question-lead font-medium transition-[color] duration-t-1 ease-plain hover:text-brand focus-visible:rounded-6 focus-visible:outline-brand"
         >
           {question}
           <PlusMinus />

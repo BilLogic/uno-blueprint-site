@@ -16,7 +16,7 @@ export function CodeBlock({ code, className = "", ...props }: CodeBlockProps) {
   return (
     <div
       {...props}
-      className={`relative rounded-12 bg-term py-4 pr-14 pl-4.5 font-mono text-13 leading-command text-term-ink wrap-anywhere ${className}`}
+      className={`relative rounded-12 bg-term py-4 shadow-term pr-14 pl-4.5 font-mono text-13 leading-command text-term-ink wrap-anywhere ${className}`}
     >
       {code.kind === "commands" ? (
         <code className="block">

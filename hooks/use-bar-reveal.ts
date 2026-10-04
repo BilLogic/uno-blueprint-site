@@ -1,19 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { barProgress, isBarFull, phoneReveal, phoneRevealDue } from "@/lib/proof-chart";
-import { useReducedMotion, useWide } from "./use-media-query";
-
-const sameFlags = (a: readonly boolean[], b: readonly boolean[]) =>
-  a.length === b.length && a.every((flag, i) => flag === b[i]);
+import { pairReveal, revealDue } from "@/lib/proof-chart";
+import { useReducedMotion } from "./use-media-query";
 
 /**
- * Grows a bar chart's pairs as the reader scrolls. Each pair (an element with
- * `data-pair`, holding its baseline as `data-baseline`) gets `--p`, how far its
- * bars have grown, and `--d`, how long they wait before growing. On a wide
- * screen `--p` follows each baseline up the screen; on a phone the chart is
- * revealed whole, once, pair after pair. Returns, per pair, whether it has grown
- * enough to show its values.
+ * Reveals a bar chart whole, once, when it is well into view (see `revealDue`).
+ * Each pair (an element with `data-pair`) gets `--p`, how far its bars have
+ * grown, and `--d`, how long they wait before growing. Returns, per pair,
+ * whether it has grown enough to show its values.
  */
 export function useBarReveal<T extends HTMLElement>(
   pairs: number,
@@ -21,22 +16,21 @@ export function useBarReveal<T extends HTMLElement>(
   const [chart, setChart] = useState<T | null>(null);
   const [full, setFull] = useState<readonly boolean[]>(() => Array<boolean>(pairs).fill(false));
   const reduced = useReducedMotion();
-  const phone = !useWide();
 
   useEffect(() => {
     if (!chart) return;
     const root = chart;
     const groups = [...root.querySelectorAll<HTMLElement>("[data-pair]")];
-    const baselines = groups.map((group) => group.querySelector<HTMLElement>("[data-baseline]"));
     const timers: number[] = [];
     let frame = 0;
 
     function revealOnce() {
-      if (!reduced && !phoneRevealDue(root.getBoundingClientRect().top, innerHeight)) return;
-      // Revealed for good: nothing left to follow.
+      frame = 0;
+      if (!reduced && !revealDue(root.getBoundingClientRect(), innerHeight)) return;
+      // Revealed for good: stop reading the scroll.
       stopListening();
       groups.forEach((group, i) => {
-        const { growDelayMs, valuesAtMs } = reduced ? { growDelayMs: 0, valuesAtMs: 0 } : phoneReveal(i);
+        const { growDelayMs, valuesAtMs } = reduced ? { growDelayMs: 0, valuesAtMs: 0 } : pairReveal(i);
         group.style.setProperty("--d", `${growDelayMs}ms`);
         group.style.setProperty("--p", "1");
         timers.push(
@@ -45,24 +39,8 @@ export function useBarReveal<T extends HTMLElement>(
       });
     }
 
-    function follow() {
-      const next = groups.map((group, i) => {
-        const baseline = baselines[i]?.getBoundingClientRect().bottom ?? innerHeight;
-        const progress = reduced ? 1 : barProgress(baseline, innerHeight);
-        group.style.setProperty("--d", "0s");
-        group.style.setProperty("--p", progress.toFixed(3));
-        return isBarFull(progress);
-      });
-      setFull((was) => (sameFlags(was, next) ? was : next));
-    }
-
-    const update = () => {
-      frame = 0;
-      if (phone) revealOnce();
-      else follow();
-    };
     const schedule = () => {
-      if (!frame) frame = requestAnimationFrame(update);
+      if (!frame) frame = requestAnimationFrame(revealOnce);
     };
 
     function stopListening() {
@@ -78,7 +56,7 @@ export function useBarReveal<T extends HTMLElement>(
       cancelAnimationFrame(frame);
       for (const timer of timers) clearTimeout(timer);
     };
-  }, [chart, phone, reduced]);
+  }, [chart, reduced]);
 
   const ref = useCallback((node: T | null) => setChart(node), []);
   return [ref, full];

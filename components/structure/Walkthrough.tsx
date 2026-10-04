@@ -43,8 +43,8 @@ export function Walkthrough() {
     .join(" ");
 
   return (
-    <div ref={scroller} className={s.scroller}>
-      <div ref={sticky} className={s.sticky}>
+    <div ref={scroller} data-pin className={s.scroller}>
+      <div ref={sticky} data-pin-frame className={s.sticky}>
         <div
           ref={head}
           className="mb-7 flex items-end justify-between gap-6 max-md:mb-4.5 max-md:flex-col max-md:items-start max-md:gap-3.5"
