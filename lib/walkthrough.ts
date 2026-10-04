@@ -217,6 +217,37 @@ export const gateReleases = ({ base, freeAt, since }: GateGesture, now: number, 
   base !== null && now >= freeAt && newSwipeAt > since;
 
 /**
+ * What the gate does with the gesture at `now`, given the running one
+ * (`null` when none runs), when the latest swipe began and when the reader
+ * last touched the page (ms): `"count"` a gesture afresh from where the page
+ * is (the reader has just touched a page no gesture holds, or a running one
+ * that holds nothing sees a new swipe), `"release"` a held step and count
+ * afresh (see `gateReleases`), or `"carry on"` as it is.
+ */
+export function gestureStart(
+  gesture: GateGesture | null,
+  now: number,
+  newSwipeAt: number,
+  lastInput: number,
+): "count" | "release" | "carry on" {
+  if (!gesture) return now - lastInput <= TIMING.gestureInput ? "count" : "carry on";
+  if (!gateReleases(gesture, now, newSwipeAt)) return "carry on";
+  return gesture.freeAt ? "release" : "count";
+}
+
+/** An element's scroll: how far down it is, how tall its content, how tall its box, in px. */
+export type ScrollBox = { scrollTop: number; scrollHeight: number; clientHeight: number };
+
+/** Short of the end by less than this, in px, is the end: scroll positions come in fractions. */
+const SCROLL_END_SLACK = 1;
+
+/** Whether `box` can still scroll the way a wheel of `delta` goes (down when positive). */
+export function scrollsFurther({ scrollTop, scrollHeight, clientHeight }: ScrollBox, delta: number): boolean {
+  if (delta > 0) return scrollTop + clientHeight < scrollHeight - SCROLL_END_SLACK;
+  return scrollTop > 0;
+}
+
+/**
  * Telling a new wheel swipe from the last one still coasting: the deltas'
  * size, whether they have been falling, the last event's time, and when the
  * latest swipe began (ms).

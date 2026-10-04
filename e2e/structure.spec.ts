@@ -140,6 +140,11 @@ async function hardFlick(page: Page) {
 
 /** Where on Cells a gesture into the stop after it starts: where the gesture before it rests. */
 const CELLS_REST = 0.15;
+/** For the nested scroller: how far above where the walkthrough lets go the page sits, the scroller's box and content, and how many notches go to it (all within its content). */
+const NEAR_THE_END = 50;
+const NESTED_BOX = 300;
+const NESTED_CONTENT = 3000;
+const NESTED_NOTCHES = 10;
 /** A move of the section smaller than this, in px, is rounding, not a reversal. */
 const REVERSAL_SLACK = 1;
 
@@ -269,6 +274,38 @@ test.describe("structure walkthrough", () => {
       });
     }
   }
+
+  test("a wheel over a scroller inside the page scrolls that, even where the page would be stopped", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    await scrollToStep(section(page), titles.length - 1, CELLS_REST);
+    await settlesOn(page, titles.at(-1)!);
+    // Just above where the walkthrough lets go, so a wheel down on the page would be stopped there.
+    const { start, travel } = await pinnedScroll(page);
+    const before = Math.round(start + travel - NEAR_THE_END);
+    await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), before);
+    await page.waitForTimeout(FLICK_SETTLE);
+    await page.evaluate(
+      ([box, content]) => {
+        const scroller = document.createElement("div");
+        scroller.id = "nested-scroller";
+        scroller.style.cssText = `position:fixed;inset:50% auto auto 50%;translate:-50% -50%;width:${box}px;height:${box}px;overflow:auto;z-index:1000;background:#fff`;
+        scroller.innerHTML = `<div style="height:${content}px"></div>`;
+        document.body.append(scroller);
+      },
+      [NESTED_BOX, NESTED_CONTENT],
+    );
+    const size = page.viewportSize()!;
+    await page.mouse.move(size.width / 2, size.height / 2);
+    for (let i = 0; i < NESTED_NOTCHES; i++) {
+      await page.mouse.wheel(0, HARD_NOTCH);
+      await page.waitForTimeout(NOTCH_EVERY);
+    }
+    await page.waitForTimeout(FLICK_SETTLE);
+    const scrolled = await page.locator("#nested-scroller").evaluate((el) => el.scrollTop);
+    expect(scrolled).toBe(NESTED_NOTCHES * HARD_NOTCH);
+    expect((await pinnedScroll(page)).y).toBe(before);
+  });
 
   test("one hard flick up goes back several steps", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });

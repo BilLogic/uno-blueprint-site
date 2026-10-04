@@ -11,6 +11,8 @@ import {
   gateHold,
   gateReleases,
   gestureBase,
+  gestureStart,
+  scrollsFurther,
   wheelPixels,
   wheelStop,
   noteWheel,
@@ -437,6 +439,50 @@ describe("the gesture gate", () => {
 
   it("waits for the page to be still this long before the next gesture counts", () => {
     expect(TIMING.gateIdle).toBe(260);
+  });
+});
+
+describe("gestureStart", () => {
+  const held = { base: 3, freeAt: 1000, since: 400 };
+  const counted = { base: 3, freeAt: 0, since: 400 };
+
+  it("starts a gesture on input this recent, and leaves the page free otherwise", () => {
+    expect(gestureStart(null, 1000, 0, 1000 - TIMING.gestureInput)).toBe("count");
+    expect(gestureStart(null, 1000, 0, 1000)).toBe("count");
+    expect(gestureStart(null, 1000, 0, 999 - TIMING.gestureInput)).toBe("carry on");
+  });
+
+  it("releases a held step once it has shown and a new swipe began", () => {
+    expect(gestureStart(held, 1000, 500, 1000)).toBe("release");
+  });
+
+  it("carries on with a held step that is still showing, or whose swipe is still coasting", () => {
+    expect(gestureStart(held, 999, 500, 999)).toBe("carry on");
+    expect(gestureStart(held, 2000, 400, 2000)).toBe("carry on");
+  });
+
+  it("counts a running gesture that holds nothing afresh on a new swipe", () => {
+    expect(gestureStart(counted, 1000, 500, 1000)).toBe("count");
+    expect(gestureStart(counted, 1000, 400, 1000)).toBe("carry on");
+  });
+});
+
+describe("scrollsFurther", () => {
+  const box = { scrollTop: 100, scrollHeight: 500, clientHeight: 200 };
+
+  it("says an element can scroll on down until its foot shows, and up until its top does", () => {
+    expect(scrollsFurther(box, 40)).toBe(true);
+    expect(scrollsFurther(box, -40)).toBe(true);
+    expect(scrollsFurther({ ...box, scrollTop: 300 }, 40)).toBe(false);
+    expect(scrollsFurther({ ...box, scrollTop: 0 }, -40)).toBe(false);
+  });
+
+  it("counts a fraction of a pixel short of the end as the end", () => {
+    expect(scrollsFurther({ ...box, scrollTop: 299.5 }, 40)).toBe(false);
+  });
+
+  it("says an element whose content fits cannot scroll", () => {
+    expect(scrollsFurther({ scrollTop: 0, scrollHeight: 200, clientHeight: 200 }, 40)).toBe(false);
   });
 });
 

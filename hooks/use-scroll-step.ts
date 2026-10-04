@@ -9,14 +9,15 @@ import {
   TIMING,
   WHEEL_START,
   gateHold,
-  gateReleases,
   gestureBase,
+  gestureStart,
   goalStep,
   introTriggered,
   morphHeading,
   nextStep,
   noteWheel,
   scrollProgress,
+  scrollsFurther,
   showFor,
   stepHold,
   wheelStop,
@@ -26,6 +27,21 @@ import {
 } from "@/lib/walkthrough";
 
 export type StepChange = { step: number; previous: number };
+
+/**
+ * Whether a wheel of `delta` on `target` scrolls something inside the page
+ * rather than the page: an element around it that scrolls on its own (as the
+ * agent view's markdown does) and can still go that way.
+ */
+function scrollsInside(target: EventTarget | null, delta: number): boolean {
+  const page = document.scrollingElement;
+  for (let el = target instanceof Element ? target : null; el && el !== page && el !== document.body; el = el.parentElement) {
+    if (!scrollsFurther(el, delta)) continue;
+    const { overflowY } = getComputedStyle(el);
+    if (overflowY === "auto" || overflowY === "scroll") return true;
+  }
+  return false;
+}
 
 
 /** The opening morph's progress (0 to 1), and how to draw the cards at a progress. */
@@ -115,16 +131,22 @@ export function useScrollStep(
       lastInput = now;
       wheel = noteWheel(wheel, event.deltaY, now);
       swipeAt = Math.max(swipeAt, wheel.newAt);
-      // A pinch zooms the page (a wheel with ctrl held); only a scroll down is stopped.
-      if (event.deltaY <= 0 || event.ctrlKey || glided || isGliding()) return;
+      // A pinch zooms the page (a wheel with ctrl held), and a wheel over a scroller inside the page scrolls that; only the page going down is stopped.
+      if (event.deltaY <= 0 || event.ctrlKey || glided || isGliding() || scrollsInside(event.target, event.deltaY)) return;
       const scroll = pinnedScroll();
       if (!scroll) return;
       const y = scrollY;
       // A wheel starts a gesture, or counts a running one afresh, from where the page is before it moves (see `gate`).
-      if (!gesturing || gateReleases(gesture, now, swipeAt)) {
+      const start = gestureStart(gesturing ? gesture : null, now, swipeAt, lastInput);
+      if (start !== "carry on") {
         gesturing = true;
         gesture = { base: gestureBase(y, scroll, edges), freeAt: 0, since: now };
         lastY = y;
+      }
+      // The wheel that lets a held step go goes through: the gesture counts from here, and the next wheel is the one checked.
+      if (start === "release") {
+        heldY = -1;
+        return;
       }
       if (gesture.base === null) return;
       const rest = wheelStop(gesture.base, y, wheelPixels(event.deltaY, event.deltaMode, innerHeight), scroll, edges);
@@ -150,7 +172,7 @@ export function useScrollStep(
       lastInput = performance.now();
       if (!event.repeat) swipeAt = lastInput;
     };
-    const gate = (section: HTMLElement, pinned: HTMLElement, stickyTop: number) => {
+    const gate = () => {
       const y = scrollY;
       const was = lastY;
       lastY = y;
@@ -162,14 +184,15 @@ export function useScrollStep(
       }
       // The page's own jump back to a held step is not the reader scrolling, so it does not keep the gesture alive.
       if (Math.round(y) !== heldY) keepGesture();
-      const rect = section.getBoundingClientRect();
-      const scroll = { start: rect.top + y - stickyTop, travel: rect.height - pinned.offsetHeight };
-      if (scroll.travel <= 0) return;
+      const scroll = pinnedScroll();
+      if (!scroll) return;
       const now = performance.now();
-      // A gesture starts, or a running one counts afresh from where the page was (see `gateReleases`).
-      if (gesturing ? gateReleases(gesture, now, swipeAt) : now - lastInput <= TIMING.gestureInput) {
+      // A gesture starts, or a running one counts afresh from where the page was (see `gestureStart`).
+      const start = gestureStart(gesturing ? gesture : null, now, swipeAt, lastInput);
+      if (start !== "carry on") {
         gesturing = true;
         gesture = { base: gestureBase(was, scroll, edges), freeAt: 0, since: now };
+        if (start === "release") heldY = -1;
       }
       if (!gesturing || gesture.base === null || y <= was) return;
       const to = gesture.base + 1;
@@ -224,7 +247,7 @@ export function useScrollStep(
       const pinned = sticky.current;
       if (!section || !pinned) return;
       const stickyTop = parseFloat(getComputedStyle(pinned).top) || 0;
-      gate(section, pinned, stickyTop);
+      gate();
       const rect = section.getBoundingClientRect();
       const progress = scrollProgress({
         stickyTop,
