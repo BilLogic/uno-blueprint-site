@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useReducedMotion } from "@/hooks/use-media-query";
-import { useScrollStep } from "@/hooks/use-scroll-step";
+import { useScrollStep, type Morph } from "@/hooks/use-scroll-step";
 import {
   STAGE_WIDTH,
   STEP,
@@ -10,11 +10,21 @@ import {
   beamClip,
   availableStageHeight,
   fitStage,
+  flatLift,
   poseOf,
   poseTransform,
+  scrollLength as scrollLengthFor,
+  stackLayers,
   stickyTopFor,
   type StageFit,
 } from "@/lib/walkthrough";
+import {
+  CARD_PLACES,
+  cardTransform,
+  morphFrame,
+  type CardRest,
+  type LayerBox,
+} from "@/lib/walkthrough-morph";
 
 /** The pose is centred this far above the caption's first line, in px. */
 const CAPTION_GAP = 12;
@@ -29,6 +39,12 @@ function stagePoint(element: Element, world: DOMRect): [number, number] {
   const scale = world.width / STAGE_WIDTH || 1;
   return [(rect.left - world.left) / scale, (rect.top - world.top) / scale];
 }
+
+/** The inline styles the morph writes on a card, cleared to put it back at rest. */
+const CARD_STYLES = ["left", "top", "width", "height", "transform", "border-radius", "z-index", "--co"] as const;
+
+/** How the stage is laid out at this width: a phone frame or not, and the flat board's lift (see `flatLift`). */
+export type StageLayout = { narrow: boolean; lift: number };
 
 function setLine(line: Element | undefined, [x1, y1]: readonly number[], [x2, y2]: readonly number[]) {
   if (!line) return;
@@ -46,8 +62,10 @@ function setLine(line: Element | undefined, [x1, y1]: readonly number[], [x2, y2
  *
  * The stage is scaled to what the viewport leaves under the headline, the
  * headline and frame are held together in the middle of the screen, and the
- * section gets exactly the scroll length its steps add up to. With reduced
- * motion nothing is pinned and the last step shows.
+ * section gets the scroll length its steps add up to (a little less on a
+ * desktop). The opening cards are drawn here, wherever their morph into the
+ * stack has got to, and re-measured on a resize. With reduced motion nothing
+ * is pinned and the last step shows.
  *
  * `edges` end each step (see `stepEdges`); `scrollLength` is their total in
  * viewport heights. Attach the returned refs to the matching elements.
@@ -61,7 +79,9 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
   const caption = useRef<HTMLDivElement>(null);
 
   const reduced = useReducedMotion();
-  const { step, previous } = useScrollStep(scroller, sticky, edges, reduced);
+  const morph = useRef<Morph>({ progress: 0, draw: () => {} });
+  const { step, previous } = useScrollStep(scroller, sticky, edges, reduced, morph);
+  const [layout, setLayout] = useState<StageLayout>({ narrow: false, lift: flatLift(false, 1) });
   const pose = poseOf(step);
   const open = step >= STEP.open;
 
@@ -71,6 +91,7 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
   const beamEnds = useRef<[number, number]>([0, 0]);
   const placePose = useRef(() => {});
   const draw = useRef(() => {});
+  const remorph = useRef(() => {});
 
   useLayoutEffect(() => {
     // On a phone the caption sits at the foot of the frame, and the pose is centred above its first line.
@@ -94,12 +115,17 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
       const headEl = head.current;
       const headHeight = headEl ? headEl.offsetHeight + (parseFloat(getComputedStyle(headEl).marginBottom) || 0) : 0;
       const captionHeight = caption.current?.offsetHeight || CAPTION_FALLBACK;
-      fit.current = fitStage(stageEl.clientWidth, availableStageHeight(innerHeight, headHeight, captionHeight));
+      const fitted = fitStage(stageEl.clientWidth, availableStageHeight(innerHeight, headHeight, captionHeight), headHeight);
+      fit.current = fitted;
+      const lift = flatLift(fitted.narrow, fitted.scales[1]);
+      setLayout((was) => (was.narrow === fitted.narrow && was.lift === lift ? was : { narrow: fitted.narrow, lift }));
       // Whole pixels, so everything below the section sits on the pixel grid.
-      stageEl.style.height = `${Math.round(fit.current.height)}px`;
+      stageEl.style.height = `${Math.round(fitted.height)}px`;
       placePose.current();
       stickyEl.style.top = `${stickyTopFor(innerHeight, stickyEl.offsetHeight)}px`;
-      scrollerEl.style.height = reduced ? "auto" : `calc(${scrollLength}vh + ${stickyEl.offsetHeight}px)`;
+      scrollerEl.style.height = reduced
+        ? "auto"
+        : `calc(${scrollLengthFor(scrollLength, innerWidth)}vh + ${stickyEl.offsetHeight}px)`;
     };
 
     // The lines between lanes sit halfway between one lane and the next.
@@ -153,9 +179,65 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
       beamEnds.current = [topRight[0], x];
     };
 
+    // The opening cards: where each rests and how big it is, and the six layers of the stack they become.
+    let cards: CardRest[] = [];
+    let layers: LayerBox[] = [];
+    const cardEls = () => [...(world.current?.querySelectorAll<HTMLElement>("[data-card]") ?? [])];
+    const atRest = (el: HTMLElement) => CARD_STYLES.forEach((name) => el.style.removeProperty(name));
+    const measureMorph = () => {
+      const worldEl = world.current;
+      if (!worldEl) return;
+      const narrow = fit.current?.narrow ?? false;
+      const places = narrow ? CARD_PLACES.narrow : CARD_PLACES.wide;
+      cards = cardEls().map((el, i) => {
+        atRest(el);
+        const [x, y, r] = places[i]!;
+        return { x, y, r, w: el.offsetWidth, h: el.offsetHeight };
+      });
+      const layerEls = [
+        ...worldEl.querySelectorAll<HTMLElement>("[data-sheet]"),
+        worldEl.querySelector<HTMLElement>("[data-board]"),
+        worldEl.querySelector<HTMLElement>('[data-ghost="0"]'),
+        worldEl.querySelector<HTMLElement>('[data-ghost="1"]'),
+      ];
+      const places3d = stackLayers(STEP.context);
+      layers = layerEls.map((el, i) => ({
+        x: el?.offsetLeft ?? 0,
+        y: el?.offsetTop ?? 0,
+        w: el?.offsetWidth ?? 0,
+        h: el?.offsetHeight ?? 0,
+        ...places3d[i]!,
+      }));
+    };
+    morph.current.draw = (progress) => {
+      const els = cardEls();
+      const frames = morphFrame(progress, cards, layers, fit.current?.narrow ?? false);
+      if (!frames.length) {
+        els.forEach(atRest);
+        return;
+      }
+      frames.forEach((frame, i) => {
+        const style = els[i]?.style;
+        if (!style) return;
+        style.left = `${frame.left}px`;
+        style.top = `${frame.top}px`;
+        style.width = `${frame.width}px`;
+        style.height = `${frame.height}px`;
+        style.transform = cardTransform(frame);
+        style.borderRadius = `${frame.radius}px`;
+        style.zIndex = String(frame.zIndex);
+        style.setProperty("--co", frame.contentOpacity.toFixed(3));
+      });
+    };
+    remorph.current = () => {
+      measureMorph();
+      morph.current.draw(morph.current.progress);
+    };
+
     refit();
     placeLaneLines();
     draw.current();
+    remorph.current();
 
     // Lines follow the sheets while they move, and settle again when each move ends.
     const worldEl = world.current;
@@ -169,6 +251,7 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
       clearTimeout(settle);
       settle = window.setTimeout(() => {
         refit();
+        remorph.current();
         placeLaneLines();
         draw.current();
         const beam = world.current?.querySelector<SVGElement>("[data-beam]");
@@ -184,6 +267,7 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
     document.fonts?.ready.then(() => {
       if (!alive) return;
       refit();
+      remorph.current();
       placeLaneLines();
       draw.current();
     });
@@ -195,6 +279,11 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
       worldEl?.removeEventListener("transitionend", onTransitionEnd);
     };
   }, [reduced, scrollLength]);
+
+  // A phone frame rests the cards elsewhere and at another width: measure them again once it applies.
+  useLayoutEffect(() => {
+    remorph.current();
+  }, [layout.narrow]);
 
   // Each step: pose the stage for it, then let the lines follow the sheets for as long as they move.
   useLayoutEffect(() => {
@@ -242,5 +331,5 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
     return () => clearTimeout(timer);
   }, [open, reduced]);
 
-  return { refs: { scroller, sticky, head, stage, world, caption }, step, previous };
+  return { refs: { scroller, sticky, head, stage, world, caption }, step, previous, layout };
 }

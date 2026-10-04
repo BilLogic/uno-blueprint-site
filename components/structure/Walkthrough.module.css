@@ -4,7 +4,7 @@
  * The walkthrough's stage: a 1010 by 530 box in its own px, scaled to the
  * frame by script. Lengths inside it are the stage's geometry, so they stay
  * in px; colour, type and motion come from the tokens. State classes on the
- * stage (.flat, .named, .steps, .cell, .open) are set per step.
+ * stage (.intro, .narrow, .flat, .named, .steps, .cell, .open) are set per step.
  */
 
 .scroller {
@@ -54,6 +54,200 @@
   background-size: 20px 20px;
   mask-image: radial-gradient(ellipse 62% 72% at 50% 50%, #000 15%, transparent 78%);
   pointer-events: none;
+}
+
+/*
+ * The opening step: six cards, one per place a product team's context lives.
+ * Script draws them while they become the six layers of the stack.
+ */
+
+.context {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.card {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: 168px;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: grid;
+  gap: 7px;
+  align-content: start;
+  padding: 10px 11px 12px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-12);
+  box-shadow: var(--shadow-context-card);
+  transform: rotate(var(--r));
+}
+
+/* A card's content fades as it tilts, so what lands is a bare layer. */
+.card > * {
+  opacity: var(--co, 1);
+}
+
+.stage.narrow .card {
+  left: var(--nx);
+  top: var(--ny);
+  width: 176px;
+  transform: rotate(var(--nr));
+}
+
+/* The cards and the stack they became cross-fade on one curve. */
+.context.done .card {
+  opacity: 0;
+  transition: opacity var(--duration-shade) var(--ease-io);
+}
+
+.stage.intro :is(.sheet, .board, .ghost) {
+  opacity: 0;
+}
+
+.stage:not(.intro) :is(.sheet, .board, .ghost) {
+  animation: arrive var(--duration-shade) var(--ease-io);
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+  }
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font: 500 var(--text-11-5) / 1.2 var(--font-sans);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.cardMark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-6);
+  border: 1px solid var(--color-line);
+  background: var(--color-card);
+}
+
+.cardMark svg {
+  width: 12px;
+  height: 12px;
+  fill: var(--color-muted);
+}
+
+.card .bar {
+  height: 5px;
+}
+
+.card p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.message i {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-card-2);
+}
+
+.message.mine i {
+  background: color-mix(in oklab, var(--color-brand) 45%, var(--color-card-2));
+}
+
+.card .message .bar {
+  height: 14px;
+  border-radius: 7px;
+  background: var(--color-card-2);
+}
+
+.figmaFrame {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 4px;
+  height: 46px;
+  padding: 5px;
+  border: 1px dashed color-mix(in oklab, var(--color-brand) 55%, transparent);
+  border-radius: var(--radius-6);
+}
+
+.figmaFrame i {
+  border-radius: 3px;
+  background: var(--color-card-2);
+}
+
+.figmaFrame i:first-child {
+  grid-row: span 2;
+  background: color-mix(in oklab, var(--color-brand) 18%, var(--color-card-2));
+}
+
+.ticket {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.status {
+  padding: 3px 7px;
+  border: 1px solid color-mix(in oklab, var(--color-brand) 45%, transparent);
+  border-radius: var(--radius-pill);
+  font: 500 var(--text-10) / 1 var(--font-sans);
+  color: var(--color-brand);
+  white-space: nowrap;
+}
+
+.funnel {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 38px;
+}
+
+.funnel i {
+  flex: 1;
+  height: var(--h);
+  border-radius: 3px 3px 1px 1px;
+  background: color-mix(in oklab, var(--color-brand) 40%, var(--color-card-2));
+}
+
+.funnel i:first-child {
+  background: var(--color-brand);
+}
+
+.card .code {
+  gap: 5px;
+}
+
+.card .code.indent {
+  padding-left: 12px;
+}
+
+.card .code .keyword {
+  background: color-mix(in oklab, var(--color-brand) 55%, var(--color-card-2));
+}
+
+.card .code.added {
+  margin: 0 -5px;
+  padding: 3px 5px 3px 17px;
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--color-brand) 14%, transparent);
+}
+
+.card .code.added .bar {
+  background: color-mix(in oklab, var(--color-brand) 45%, var(--color-card-2));
 }
 
 /* Sheets: services, phases, scenarios. */

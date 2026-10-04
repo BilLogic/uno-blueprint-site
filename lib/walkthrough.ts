@@ -1,8 +1,10 @@
 /**
- * The structure walkthrough's maths: which step a scroll position shows, how
- * each pose is scaled and placed in the frame, and where every sheet, the
- * board and its ghosts sit at a step. Geometry is in the stage's own
- * coordinates, a 1010 by 530 box that is scaled to fit the frame.
+ * The structure walkthrough's maths: which step a scroll position asks for,
+ * how the walkthrough steps toward it one step at a time, how each pose is
+ * scaled and placed in the frame, and where every sheet, the board and its
+ * ghosts sit at a step. Geometry is in the stage's own coordinates, a 1010 by
+ * 530 box that is scaled to fit the frame. The opening cards' morph into the
+ * stack is in `walkthrough-morph.ts`.
  */
 
 export const STAGE_WIDTH = 1010;
@@ -11,14 +13,16 @@ const STAGE_CENTRE = STAGE_WIDTH / 2;
 
 /** The steps where the picture changes kind. */
 export const STEP = {
+  /** The cards of a team's context, before they become the stack. */
+  context: 0,
   /** One blueprint, flat and facing the reader. */
-  blueprint: 4,
+  blueprint: 5,
   /** The columns are read. */
-  steps: 12,
+  steps: 13,
   /** One cell is picked out. */
-  cell: 13,
+  cell: 14,
   /** That cell opens in its panel. */
-  open: 14,
+  open: 15,
 } as const;
 
 /** Timing for the script-driven motion, in ms. */
@@ -29,12 +33,40 @@ export const TIMING = {
   follow: 2400,
   /** A resize is acted on once it has paused this long. */
   resizeSettle: 120,
+  /** The opening cards becoming the stack: timed, not scrubbed by the scroll. */
+  morph: 1700,
+  /** The longest frame the morph advances by, so a stalled tab does not jump it to the end. */
+  morphFrameCap: 64,
+  /** The hold on a step before the walkthrough moves on toward the scroll. */
+  step: 560,
+  /** The hold after the stack folds flat, or stands back up: its choreography is longer. */
+  flatten: 1250,
+  /** The hold after the cell opens in its panel, or closes. */
+  openCell: 950,
 } as const;
+
+/** How far into the opening step's scroll, as a fraction of it, the morph plays. */
+const INTRO_TRIGGER = 0.42;
+/** The widest viewport that scrolls like a phone, in px. */
+const PHONE_MAX_WIDTH = 760;
+/** A desktop gets this share of each step's scroll; a phone gets all of it. */
+const DESKTOP_SCROLL_SHARE = 0.9;
 
 /** The fixed nav's height, and the margin kept above and below the pinned frame, in px. */
 const NAV_HEIGHT = 64;
 const FRAME_MARGIN = 32;
 const MIN_STICKY_TOP = 76;
+/** A frame taller than the screen less this is pinned higher, with its foot this far above the bottom. */
+const TALL_FRAME_SLACK = 72;
+const TALL_FRAME_FOOT = 12;
+/** On a wide frame the stage never scales below this share of what its width allows. */
+const MIN_WIDE_SHARE = 0.85;
+/** A phone frame is this share of its width tall, and never less than this share of that. */
+const NARROW_HEIGHT = 0.95;
+const MIN_NARROW_SHARE = 0.85;
+const MIN_NARROW_HEIGHT = 220;
+/** The flat board sits this far below the stage's middle on a wide frame, and above it on a phone, in screen px. */
+const FLAT_LIFT = { wide: 22, narrow: -7 } as const;
 
 /**
  * The beam's clip, open from the stage's left edge to `to` in stage px. The
@@ -55,13 +87,59 @@ export function stepEdges(lengths: readonly number[]): number[] {
   return lengths.map((length) => (reached += length) / total);
 }
 
-/** The step showing at `progress` (0 at the start of the section's scroll, 1 at its end). */
+// Just short of 1, so the last step holds to the very end.
+const clampProgress = (progress: number) => Math.min(0.9999, Math.max(0, progress));
+
+/** The step under `progress` (0 at the start of the section's scroll, 1 at its end). */
 export function stepAt(progress: number, edges: readonly number[]): number {
-  // Just short of 1, so the last step holds to the very end.
-  const t = Math.min(0.9999, Math.max(0, progress));
+  const t = clampProgress(progress);
   const step = edges.findIndex((edge) => t < edge);
   return step === -1 ? edges.length - 1 : step;
 }
+
+/**
+ * Whether the reader is far enough into the opening step for its cards to
+ * become the stack: a buffer into the step, not on arrival.
+ */
+export function introTriggered(progress: number, edges: readonly number[]): boolean {
+  const t = clampProgress(progress);
+  const first = edges[0] ?? 1;
+  return t >= first || t / first > INTRO_TRIGGER;
+}
+
+/**
+ * The step the scroll asks for. Past the trigger, the opening step hands on to
+ * the next one as soon as `stackFormed`, so the reader need not scroll its
+ * whole length.
+ */
+export function goalStep(progress: number, edges: readonly number[], stackFormed: boolean): number {
+  const step = stepAt(progress, edges);
+  return step === STEP.context && stackFormed && introTriggered(progress, edges) ? STEP.context + 1 : step;
+}
+
+/**
+ * The next step on the way from `current` to `goal`: one at a time, however
+ * fast the page scrolls, so no step is skipped. The opening step is left only
+ * once its cards have become the stack.
+ */
+export function nextStep(current: number, goal: number, stackFormed: boolean): number {
+  if (current === goal) return current;
+  if (current === STEP.context && goal > current && !stackFormed) return current;
+  return current + (goal > current ? 1 : -1);
+}
+
+/** How long a step is held, after moving `from` one step `to` another, before the next move. */
+export function stepHold(from: number, to: number): number {
+  const flat = (step: number) => step >= STEP.blueprint;
+  const open = (step: number) => step >= STEP.open;
+  if (flat(from) !== flat(to)) return TIMING.flatten;
+  if (open(from) !== open(to)) return TIMING.openCell;
+  return TIMING.step;
+}
+
+/** The section's scroll length in viewport heights, from its steps' total. */
+export const scrollLength = (totalVh: number, viewportWidth: number) =>
+  Number((totalVh * (viewportWidth <= PHONE_MAX_WIDTH ? 1 : DESKTOP_SCROLL_SHARE)).toFixed(1));
 
 type ScrollGeometry = {
   /** Where the pinned frame sticks, from the top of the viewport. */
@@ -79,9 +157,17 @@ export function scrollProgress({ stickyTop, sectionTop, sectionHeight, stickyHei
   return Math.min(1, Math.max(0, (stickyTop - sectionTop) / travel));
 }
 
-/** Where the frame sticks: in the middle of the screen under the nav, never above 76 px. */
-export const stickyTopFor = (viewportHeight: number, stickyHeight: number) =>
-  Math.max(MIN_STICKY_TOP, NAV_HEIGHT + (viewportHeight - NAV_HEIGHT - stickyHeight) / 2);
+/**
+ * Where the frame sticks: in the middle of the screen under the nav, never
+ * above 76 px. A frame too tall for that sits higher, its foot just above the
+ * bottom of the screen.
+ */
+export function stickyTopFor(viewportHeight: number, stickyHeight: number): number {
+  if (stickyHeight > viewportHeight - TALL_FRAME_SLACK) {
+    return Math.min(MIN_STICKY_TOP, viewportHeight - stickyHeight - TALL_FRAME_FOOT);
+  }
+  return Math.max(MIN_STICKY_TOP, NAV_HEIGHT + (viewportHeight - NAV_HEIGHT - stickyHeight) / 2);
+}
 
 /** The viewport height the stage may use once the nav, its margins, the headline and the caption are placed. */
 export const availableStageHeight = (viewportHeight: number, headHeight: number, captionHeight: number) =>
@@ -98,12 +184,15 @@ export type StageFit = {
 
 /**
  * Scales the stage to the frame. On a wide frame the three poses share one
- * scale; on a phone each gets the scale that fills the frame.
+ * scale, which may use the headline's height too (`headHeight`), so a short
+ * screen does not shrink the picture below 85% of what the width allows; on a
+ * phone each pose gets the scale that fills the frame.
  */
-export function fitStage(frameWidth: number, availableHeight: number): StageFit {
+export function fitStage(frameWidth: number, availableHeight: number, headHeight: number): StageFit {
   const width = frameWidth || STAGE_WIDTH;
   if (width < 700) {
-    const height = Math.max(220, Math.min(availableHeight, width * 0.95));
+    const full = width * NARROW_HEIGHT;
+    const height = Math.max(MIN_NARROW_HEIGHT, Math.min(full, Math.max(availableHeight, full * MIN_NARROW_SHARE)));
     return {
       narrow: true,
       height,
@@ -114,7 +203,9 @@ export function fitStage(frameWidth: number, availableHeight: number): StageFit 
       ],
     };
   }
-  const k = Math.max(0.25, Math.min(1, width / STAGE_WIDTH, availableHeight / STAGE_HEIGHT));
+  const byWidth = Math.min(1, width / STAGE_WIDTH);
+  const byHeight = (availableHeight + headHeight) / STAGE_HEIGHT;
+  const k = Math.max(0.25, byWidth * MIN_WIDE_SHARE, Math.min(byWidth, byHeight));
   return { narrow: false, height: STAGE_HEIGHT * k, scales: [k, k, k] };
 }
 
@@ -138,10 +229,53 @@ export function poseTransform(fit: StageFit, pose: Pose, room: number): string {
   return `translate(${x}px,${y}px) scale(${k})`;
 }
 
+/**
+ * How far the flat board is moved down (up, if negative) in stage px, so the
+ * space above it matches the space between it and the caption. `scale` is the
+ * flat pose's.
+ */
+export const flatLift = (narrow: boolean, scale: number) =>
+  (narrow ? FLAT_LIFT.narrow : FLAT_LIFT.wide) / (scale || 1);
+
+const SHEETS = 3;
+const GHOSTS = 2;
 const ISO = "rotateX(58deg) rotateZ(-45deg)";
 const FLAT = "rotateX(0deg) rotateZ(0deg)";
 const SHEET_GAP = 100;
+/** Once the paths join the stack, its sheets close up to this gap. */
+const FULL_STACK_GAP = 86;
+/** How far the stack is lowered at each depth, so it reads centred as it grows. */
+const STACK_DROP = [0, 0, 8, 22] as const;
 const STACK_CENTRE = 255;
+const BOARD_STACK_SCALE = 0.5;
+/** The paths behind the board, each this much further down the stack. */
+const GHOST_STEP = 10;
+
+/** How many sheets are stacked at `step`, less one: services is 0, paths is 3. */
+const depthAt = (step: number) => Math.min(Math.max(step - 1, 0), 3);
+
+/** The stage px from the stage's top to sheet `i`, with the stack `depth` deep. */
+function sheetY(depth: number, i: number): number {
+  const gap = depth === 3 ? FULL_STACK_GAP : SHEET_GAP;
+  const below = i <= depth ? i * gap : depth * gap + (i - depth) * 8;
+  return STACK_CENTRE - 95 - (depth * gap) / 2 + STACK_DROP[depth as 0 | 1 | 2 | 3] + below;
+}
+
+/** A layer of the stack: where it is moved to and how it is scaled, in stage px. */
+export type LayerPlace = { tx: number; ty: number; scale: number };
+
+/**
+ * The six layers of the stack at `step` (before it folds flat): the three
+ * sheets, the board, and the two paths behind it, nearest first.
+ */
+export function stackLayers(step: number): LayerPlace[] {
+  const depth = depthAt(step);
+  const boardY = sheetY(depth, 3) + 95 - STACK_CENTRE;
+  return [
+    ...Array.from({ length: SHEETS }, (_, i) => ({ tx: 0, ty: sheetY(depth, i), scale: 1 })),
+    ...Array.from({ length: GHOSTS + 1 }, (_, n) => ({ tx: 0, ty: boardY + n * GHOST_STEP, scale: BOARD_STACK_SCALE })),
+  ];
+}
 
 export type SheetState = { transform: string; gone: boolean; out: boolean; delay: number };
 export type RowState = { current: boolean; dim: boolean; named: boolean };
@@ -149,6 +283,8 @@ export type LineState = { on: boolean; current: boolean };
 export type TagState = { top: number; in: boolean; current: boolean };
 
 export type Scene = {
+  /** The opening cards show and the stack is hidden. */
+  intro: boolean;
   pose: Pose;
   flat: boolean;
   open: boolean;
@@ -166,18 +302,18 @@ export type Scene = {
   tags: TagState[];
 };
 
-const SHEETS = 3;
-const GHOSTS = 2;
 const LANES = 4;
 const LINES = 3;
 
 /**
  * Everything the stage shows at `step`, having come from `previous` (-1 on
  * first paint). The sheets leave first and the board follows; coming back,
- * the board tips away first and the sheets return after it.
+ * the board tips away first and the sheets return after it. The flat board is
+ * moved down by `lift` stage px (see `flatLift`) while the panel is closed.
  */
-export function sceneAt(step: number, previous: number): Scene {
-  const e = Math.min(step, 3);
+export function sceneAt(step: number, previous: number, lift = 0): Scene {
+  const e = depthAt(step);
+  const intro = step === STEP.context;
   const flat = step >= STEP.blueprint;
   const open = step >= STEP.open;
   const wasFlat = previous >= STEP.blueprint;
@@ -185,12 +321,13 @@ export function sceneAt(step: number, previous: number): Scene {
   const goIso = !flat && wasFlat;
 
   // The stack stays centred on the stage as it grows.
-  const ty = (i: number) => STACK_CENTRE - 95 - (e * SHEET_GAP) / 2 + (i <= e ? i * SHEET_GAP : e * SHEET_GAP + (i - e) * 8);
+  const ty = (i: number) => sheetY(e, i);
   const boardY = ty(3) + 95 - STACK_CENTRE;
   const boardX = open ? -215 : 0;
+  const boardLift = open ? 0 : lift;
   const boardScale = open ? 0.62 : 1.1;
   // The followed tiles stay lit while the sheets fly off, as they were on the last stacked step.
-  const lit = flat ? (wasFlat ? 3 : Math.min(Math.max(previous, 0), 3)) : e;
+  const lit = flat ? (wasFlat ? 3 : depthAt(previous)) : e;
 
   const sheets = Array.from({ length: SHEETS }, (_, i): SheetState => ({
     transform: flat
@@ -213,6 +350,7 @@ export function sceneAt(step: number, previous: number): Scene {
   });
 
   return {
+    intro,
     pose: poseOf(step),
     flat,
     open,
@@ -222,7 +360,7 @@ export function sceneAt(step: number, previous: number): Scene {
     sheets,
     board: {
       transform: flat
-        ? `translate(${boardX}px,0px) ${FLAT} scale(${boardScale})`
+        ? `translate(${boardX}px,${boardLift}px) ${FLAT} scale(${boardScale})`
         : `translate(0px,${boardY}px) ${ISO} scale(.5)`,
       delay: goFlat ? 460 : 0,
     },
@@ -230,12 +368,12 @@ export function sceneAt(step: number, previous: number): Scene {
     ghosts: Array.from({ length: GHOSTS }, (_, j) => {
       const n = j + 1;
       return flat
-        ? `translate(${boardX + n * 13}px,${-n * 11}px) ${FLAT} scale(${boardScale})`
-        : `translate(0px,${boardY + n * 10}px) ${ISO} scale(.5)`;
+        ? `translate(${boardX + n * 13}px,${-n * 11 + boardLift}px) ${FLAT} scale(${boardScale})`
+        : `translate(0px,${boardY + n * GHOST_STEP}px) ${ISO} scale(.5)`;
     }),
     rows,
     lines,
     links: Array.from({ length: SHEETS }, (_, i) => !flat && i < e),
-    tags: Array.from({ length: 4 }, (_, i): TagState => ({ top: ty(i) + 95, in: !flat && i <= e, current: i === e })),
+    tags: Array.from({ length: 4 }, (_, i): TagState => ({ top: ty(i) + 95, in: !flat && !intro && i <= e, current: i === e })),
   };
 }
