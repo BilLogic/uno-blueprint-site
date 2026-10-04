@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   FILLS,
+  TIMING,
   WALKERS,
+  cellOf,
+  mayOpen,
+  nextStatus,
+  onCell,
+  panelExpired,
+  personOpens,
+  rehome,
+  soloScale,
   beamDash,
   beamOf,
   beamPaths,
@@ -46,9 +55,10 @@ describe("settledBoard", () => {
     expect(board.sources[cellAt(0, 2)]).toEqual([]);
   });
 
-  it("opens the first person's cell in the panel", () => {
+  it("opens the first person's cell in the panel, with the board beside it", () => {
     const board = settledBoard(TOOLS);
-    expect(board.at[0]).toBe(cellAt(0, 1));
+    expect(board.at[0]).toEqual(onCell(cellAt(0, 1)));
+    expect(board.solo).toBe(false);
     expect(board.focus).toBe(cellAt(0, 1));
     expect(board.shown).toBe(cellAt(0, 1));
     expect(board.panel).toBe("shown");
@@ -58,12 +68,47 @@ describe("settledBoard", () => {
 describe("boardReducer", () => {
   const board = settledBoard(TOOLS);
 
-  it("starts a round from the cells it lands, with nothing in focus", () => {
-    const next = boardReducer(board, { type: "reset", landed: [[cellAt(1, 1), 3]], at: [7, 7, 7, 7] });
+  it("starts a round from the cells it lands, with nothing in focus and nobody carrying", () => {
+    const carrying: Board = { ...board, carry: [null, 4, null, null] };
+    const next = boardReducer(carrying, { type: "reset", landed: [[cellAt(1, 1), 3]], at: [7, 7, 7, 7] });
     expect(filledCells(next)).toEqual([cellAt(1, 1)]);
     expect(next.sources[cellAt(1, 1)]).toEqual([3]);
     expect(next).toMatchObject({ focus: null, projecting: false });
+    expect(next.at).toEqual([onCell(7), onCell(7), onCell(7), onCell(7)]);
+    expect(next.carry).toEqual([null, null, null, null]);
     expect(next.shown).toBe(board.shown);
+  });
+
+  it("goes solo: the board alone, the panel blank and its light out", () => {
+    const solo = boardReducer(board, { type: "solo", on: true });
+    expect(solo).toMatchObject({ solo: true, focus: null, projecting: false, panel: "hidden" });
+    // The panel comes back blank; the next cell fills it.
+    expect(boardReducer(solo, { type: "solo", on: false })).toMatchObject({ solo: false, panel: "hidden", focus: null });
+  });
+
+  it("going solo, walks anyone in the panel back to the cell they were editing", () => {
+    const editing: Board = { ...board, at: [{ kind: "field", field: "status" }, ...board.at.slice(1)] };
+    const solo = boardReducer(editing, { type: "solo", on: true });
+    expect(solo.at[0]).toEqual(onCell(board.focus!));
+    expect(solo.at.slice(1)).toEqual(board.at.slice(1));
+  });
+
+  it("drops a carried source into a cell with room, and nothing into a full one", () => {
+    const carrying: Board = { ...board, carry: [null, 5, null, null] };
+    const dropped = boardReducer(carrying, { type: "drop", walker: 1, cell: cellAt(0, 0) });
+    expect(dropped.sources[cellAt(0, 0)]).toEqual([0, 5]);
+    expect(dropped.carry[1]).toBeNull();
+    const full = boardReducer(dropped, { type: "drop", walker: 1, cell: cellAt(0, 0) });
+    expect(full.sources[cellAt(0, 0)]).toEqual([0, 5]);
+    const again = boardReducer({ ...dropped, carry: [null, 6, null, null] }, { type: "drop", walker: 1, cell: cellAt(0, 0) });
+    expect(again.sources[cellAt(0, 0)]).toEqual([0, 5]);
+    expect(again.carry[1]).toBeNull();
+  });
+
+  it("lets a person change the open cell's status, until another cell opens", () => {
+    const changed = boardReducer(board, { type: "restatus", status: 4 });
+    expect(changed.status).toBe(4);
+    expect(boardReducer(changed, { type: "focus", cell: 9 }).status).toBeNull();
   });
 
   it("adds a source to a cell", () => {
@@ -123,26 +168,124 @@ describe("nearCells", () => {
 });
 
 describe("planStep", () => {
+  const view = { tools: [0, 1, 2, 3, 4, 5, 6, 7], fields: ["status", "owner"] as const };
+
   it("waits until three cells are filled", () => {
     const board: Board = { ...settledBoard(TOOLS), sources: settledBoard(TOOLS).sources.map((_, i) => (i < 2 ? [0] : [])) };
-    expect(planStep(board, Math.random)).toBeNull();
+    expect(planStep(board, Math.random, view)).toBeNull();
   });
 
   it("moves one walker to a nearby filled cell", () => {
     const board = settledBoard(TOOLS);
-    // Walker 1 (an agent), the first nearby cell, no pair.
-    const plan = planStep(board, sequence(0.3, 0, 0.9))!;
-    expect(plan.at[1]).toBe(plan.to);
-    expect(plan.at.filter((cell, i) => cell !== board.at[i])).toHaveLength(1);
+    // Walker 1 (an agent), no errand, the first nearby cell, no pair.
+    const plan = planStep(board, sequence(0.3, 0.9, 0, 0.9), view)!;
+    expect(plan.walker).toBe(1);
+    expect(plan.to.kind).toBe("cell");
+    expect(plan.at[1]).toEqual(plan.to);
+    expect(plan.at.filter((place, i) => place !== board.at[i])).toHaveLength(1);
     expect(plan.person).toBe(false);
   });
 
   it("sends a person and an agent together now and then, and a person opens the cell", () => {
     const board = settledBoard(TOOLS);
-    const plan = planStep(board, sequence(0.3, 0, 0.1))!;
-    expect(plan.at[1]).toBe(plan.to);
-    expect(plan.at[0]).toBe(plan.to);
+    const plan = planStep(board, sequence(0.3, 0.9, 0, 0.1), view)!;
+    expect(plan.at[1]).toEqual(plan.to);
+    expect(plan.at[0]).toEqual(plan.to);
     expect(plan.person).toBe(true);
+  });
+
+  it("sends an agent to a tool now and then to pick up a source", () => {
+    const board = settledBoard(TOOLS);
+    const plan = planStep(board, sequence(0.3, 0.1, 0.5), view)!;
+    expect(plan.to).toEqual({ kind: "tool", tool: 4 });
+    expect(plan.carry[1]).toBe(4);
+    expect(plan.person).toBe(false);
+  });
+
+  it("carries the source back into a cell with room for it", () => {
+    const board: Board = { ...settledBoard(TOOLS), at: [onCell(1), { kind: "tool", tool: 4 }, onCell(8), onCell(18)], carry: [null, 4, null, null] };
+    const full = board.sources.map((list, cell) => (cell === cellAt(2, 4) ? list : list.length ? [0, 1] : []));
+    const plan = planStep({ ...board, sources: full }, sequence(0.3, 0.9, 0), view)!;
+    expect(plan.to).toEqual(onCell(cellAt(2, 4)));
+    expect(plan.carry[1]).toBe(4);
+  });
+
+  it("sends a person into the open panel to stop on Status or Owner, never a tab", () => {
+    const board = settledBoard(TOOLS);
+    const plan = planStep(board, sequence(0, 0.1, 0.6), view)!;
+    expect(plan.to).toEqual({ kind: "field", field: "owner" });
+    expect(plan.person).toBe(false);
+  });
+
+  it("keeps people on the board while no cell is open, or the panel is not shown", () => {
+    const closed: Board = { ...settledBoard(TOOLS), focus: null };
+    expect(planStep(closed, sequence(0, 0.1, 0.6, 0.9), view)!.to.kind).toBe("cell");
+    expect(planStep(settledBoard(TOOLS), sequence(0, 0.1, 0.6, 0.9), { ...view, fields: [] })!.to.kind).toBe("cell");
+  });
+
+  it("walks a person back from the panel to a cell near the open one", () => {
+    const board: Board = { ...settledBoard(TOOLS), at: [{ kind: "field", field: "status" }, onCell(8), onCell(15), onCell(18)] };
+    const plan = planStep(board, sequence(0, 0.1, 0), view)!;
+    const to = cellOf(plan.to)!;
+    expect(nearCells(board.focus!, filledCells(board))).toContain(to);
+  });
+
+  it("never pairs a walker with one away from the board", () => {
+    const board: Board = { ...settledBoard(TOOLS), at: [onCell(1), onCell(8), onCell(15), { kind: "tool", tool: 2 }] };
+    // Walker 2 (a person), no errand, a nearby cell, a pair wanted: the only agent on the board is walker 1.
+    const plan = planStep(board, sequence(0.5, 0.9, 0, 0.1), view)!;
+    expect(plan.at[3]).toEqual({ kind: "tool", tool: 2 });
+    expect(plan.at[1]).toEqual(plan.to);
+  });
+});
+
+describe("rehome", () => {
+  it("sends a walker standing in a panel that is not shown back to a filled cell", () => {
+    const board: Board = { ...settledBoard(TOOLS), at: [{ kind: "field", field: "owner" }, onCell(8), onCell(15), onCell(18)] };
+    const moved = rehome(board, sequence(0), false)!;
+    expect(moved[0]).toEqual(onCell(FILLS[0]!));
+    expect(moved.slice(1)).toEqual(board.at.slice(1));
+    expect(rehome(board, sequence(0), true)).toBeNull();
+    expect(rehome(settledBoard(TOOLS), sequence(0), false)).toBeNull();
+  });
+});
+
+describe("nextStatus", () => {
+  it("picks a status that reads differently from the one shown", () => {
+    const statuses = ["Live", "Built", "Planned", "Live"];
+    for (const r of [0, 0.4, 0.99]) expect(statuses[nextStatus(0, statuses, () => r)]).not.toBe("Live");
+  });
+});
+
+describe("the loop's clock", () => {
+  const clock = { soloAt: 1000, openSince: 2000, lastOpen: 3000 };
+
+  it("opens a new cell at most once per cooldown", () => {
+    expect(mayOpen(clock, 3000 + TIMING.cooldown - 1)).toBe(false);
+    expect(mayOpen(clock, 3000 + TIMING.cooldown)).toBe(true);
+  });
+
+  it("lets the board stand alone a while before a person opens the panel", () => {
+    expect(personOpens(true, clock, 1000 + TIMING.soloGrace - 1)).toBe(false);
+    expect(personOpens(true, clock, 1000 + TIMING.soloGrace)).toBe(true);
+    expect(personOpens(false, clock, 1001)).toBe(true);
+  });
+
+  it("closes the panel again once it has been open long enough", () => {
+    expect(panelExpired(false, clock, 2000 + TIMING.panelLife)).toBe(false);
+    expect(panelExpired(false, clock, 2001 + TIMING.panelLife)).toBe(true);
+    expect(panelExpired(true, clock, 1e9)).toBe(false);
+  });
+});
+
+describe("soloScale", () => {
+  it("grows the board into the panel's room", () => {
+    expect(soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 1000, sheetHeight: 300 })).toBeCloseTo(1.554);
+  });
+
+  it("as far as the frame's height allows, and never smaller", () => {
+    expect(soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 400, sheetHeight: 300 })).toBeCloseTo(344 / 318);
+    expect(soloScale({ board: 500, gap: 37, panel: 240, stageHeight: 200, sheetHeight: 300 })).toBe(1);
   });
 });
 
@@ -201,17 +344,30 @@ describe("beamDash", () => {
   });
 });
 
-describe("walkers on a cell", () => {
-  it("stand side by side when they share a cell", () => {
-    expect(slotsOf([3, 3, 5, 3])).toEqual([0, 1, 0, 2]);
+describe("walkers", () => {
+  const walker = { width: 22, height: 22 };
+  const frame = { width: 1000, height: 600 };
+
+  it("stand side by side when they share a place", () => {
+    expect(slotsOf([onCell(3), onCell(3), onCell(5), onCell(3)])).toEqual([0, 1, 0, 2]);
+    expect(slotsOf([{ kind: "tool", tool: 1 }, { kind: "tool", tool: 1 }, onCell(1), null])).toEqual([0, 1, 0, 0]);
   });
 
   it("stand on the top edge, in from the right corner", () => {
-    const cell = { left: 100, top: 40, width: 70 };
-    const spot = walkerSpot(cell, 0, { width: 22, height: 22 });
+    const cell = rect(100, 40, 70, 52);
+    const spot = walkerSpot(cell, 0, walker, frame, null);
     expect(spot.x).toBe(157);
     expect(spot.y).toBeCloseTo(30.76);
-    expect(walkerSpot(cell, 1, { width: 22, height: 22 }).x).toBe(140);
+    expect(walkerSpot(cell, 1, walker, frame, null).x).toBe(140);
+  });
+
+  it("stay inside the frame", () => {
+    expect(walkerSpot(rect(-40, 2, 30, 30), 0, walker, frame, null)).toEqual({ x: 4, y: 4 });
+    expect(walkerSpot(rect(990, 590, 40, 40), 0, walker, frame, null)).toEqual({ x: 974, y: 574 });
+  });
+
+  it("stay inside the panel when they stop on one of its fields", () => {
+    expect(walkerSpot(rect(800, 200, 200, 20), 0, walker, frame, 960).x).toBe(928);
   });
 });
 
@@ -220,8 +376,8 @@ describe("projection", () => {
   const cell = rect(300, 200, 70, 52);
   const panel = rect(700, 100, 250, 450);
 
-  it("runs from the cell's right edge to the panel's left edge on a wide screen", () => {
-    const light = projection(stage, cell, panel, false);
+  it("runs from the cell's right edge to the panel's left edge", () => {
+    const light = projection(stage, cell, panel);
     expect(light.points).toBe("360,180 690,96 690,514 360,232");
     expect(light.edges).toEqual([
       { x1: 360, y1: 180, x2: 690, y2: 96 },
@@ -231,12 +387,6 @@ describe("projection", () => {
     expect(light.to).toBe("inset(0 309px 0 0)");
   });
 
-  it("runs from the cell's bottom edge down to the panel's top on a phone", () => {
-    const light = projection(stage, cell, rect(30, 400, 300, 180), true);
-    expect(light.points).toBe("290,232 360,232 304,380 36,380");
-    expect(light.from).toBe("inset(0 0 368px 0)");
-    expect(light.to).toBe("inset(0 0 219px 0)");
-  });
 });
 
 describe("panelFill", () => {

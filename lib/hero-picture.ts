@@ -2,10 +2,14 @@
  * The hero picture's model and geometry, apart from the DOM and the clock.
  *
  * Tools send documents through the node into the cells of a blueprint; people
- * and agents (the walkers) stand on filled cells and step to nearby ones; the
- * cell a person stops on is shown in the panel and projected into it. The
- * timeline that drives this lives in hooks/use-hero-picture.ts; everything it
- * decides or draws is computed here, with the randomness passed in.
+ * and agents (the walkers) stand on filled cells and step to nearby ones. Now
+ * and then an agent walks to a tool and carries a source back into a cell, and
+ * a person walks into the panel and stops on a field. The cell a person stops
+ * on is shown in the panel and projected into it. Each round opens on the
+ * board alone (solo), larger, with no panel; the panel slides in the first
+ * time a person opens a cell, and closes again a while later. The timeline
+ * that drives this lives in hooks/use-hero-picture.ts; everything it decides
+ * or draws is computed here, with the randomness and the clock passed in.
  */
 
 export const ROWS = 4;
@@ -30,6 +34,18 @@ export const FILLS: readonly number[] = GRID.flatMap((row, r) =>
 
 export type Walker = "person" | "agent";
 export const WALKERS: readonly Walker[] = ["person", "agent", "person", "agent"];
+
+/** The panel's fields a person stops on: never a tab label, where they would cover the word. */
+export type Field = "status" | "owner";
+export const FIELDS: readonly Field[] = ["status", "owner"];
+
+/** Where a walker stands: on a cell, on a tool, or on one of the panel's fields. */
+export type Place = { kind: "cell"; cell: number } | { kind: "tool"; tool: number } | { kind: "field"; field: Field };
+
+export const onCell = (cell: number): Place => ({ kind: "cell", cell });
+export const cellOf = (place: Place | null | undefined) => (place?.kind === "cell" ? place.cell : null);
+const placeKey = (place: Place | null) =>
+  place === null ? null : place.kind === "cell" ? `c${place.cell}` : place.kind === "tool" ? `t${place.tool}` : `f${place.field}`;
 
 /** Milliseconds, as the prototype times them. */
 export const TIMING = {
@@ -57,6 +73,18 @@ export const TIMING = {
   startBy: 1000,
   hit: 900,
   ping: 700,
+  /** A tool an agent reaches lights this long. */
+  toolLit: 700,
+  /** While the board grows or shrinks, the walkers and the beam ride along with it this long, and nobody sets off. */
+  ride: 720,
+  /** Leaving solo, the board gives its room back for this long before the cell opens. */
+  unsolo: 760,
+  /** A new cell opens at most this often, so the last one has time to be read. */
+  cooldown: 2600,
+  /** A round's board stands alone at least this long before a person opens the panel. */
+  soloGrace: 5000,
+  /** The panel closes again once it has been open this long. */
+  panelLife: 11000,
 } as const;
 
 /** The curve a document follows along a beam. */
@@ -68,6 +96,13 @@ export const HIT_KEYFRAMES: Keyframe[] = [
   { offset: 0.3, boxShadow: "0 0 0 2px var(--color-brand), 0 0 20px var(--color-brand-soft)" },
   { offset: 1, boxShadow: "0 0 0 0 transparent" },
 ];
+
+/** A panel field pings when a person stops on it (the prototype's cp-hit, eased out). */
+export const FIELD_PING_KEYFRAMES: Keyframe[] = [
+  { boxShadow: "0 0 0 0 color-mix(in oklab, var(--color-brand) 55%, transparent)" },
+  { boxShadow: "0 0 0 7px transparent" },
+];
+export const FIELD_PING_EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
 
 /** The node rings when a document passes through it. */
 export const PING_KEYFRAMES: Keyframe[] = [
@@ -90,8 +125,14 @@ export function beamDash(length: number) {
 export type Board = {
   /** Per cell, the tools whose documents landed there; a cell with any is filled. */
   sources: readonly (readonly number[])[];
-  /** Per walker, the cell it stands on. */
-  at: readonly (number | null)[];
+  /** Per walker, where it stands. */
+  at: readonly (Place | null)[];
+  /** Per walker, the tool whose source it is carrying to a cell. */
+  carry: readonly (number | null)[];
+  /** The board stands alone, larger, and the panel is away. */
+  solo: boolean;
+  /** The status a person set on the open cell, in place of its own. */
+  status: number | null;
   /** The cell a person last opened; it stays while the panel blanks for the next one. */
   focus: number | null;
   /** The focus is lit on the board and projected into the panel. */
@@ -112,7 +153,10 @@ export function settledBoard(toolCount: number): Board {
   const focus = cellAt(0, 1);
   return {
     sources,
-    at: [cellAt(0, 1), cellAt(1, 2), cellAt(2, 3), cellAt(3, 0)],
+    at: [cellAt(0, 1), cellAt(1, 2), cellAt(2, 3), cellAt(3, 0)].map(onCell),
+    carry: WALKERS.map(() => null),
+    solo: false,
+    status: null,
     focus,
     projecting: true,
     shown: focus,
@@ -125,7 +169,10 @@ export function settledBoard(toolCount: number): Board {
 export type BoardAction =
   | { type: "reset"; landed: readonly (readonly [cell: number, tool: number])[]; at: readonly number[] }
   | { type: "land"; cell: number; tool: number }
-  | { type: "move"; at: readonly (number | null)[] }
+  | { type: "move"; at: readonly (Place | null)[]; carry?: readonly (number | null)[] }
+  | { type: "drop"; walker: number; cell: number }
+  | { type: "solo"; on: boolean }
+  | { type: "restatus"; status: number }
   | { type: "close" }
   | { type: "focus"; cell: number }
   | { type: "reveal" }
@@ -137,7 +184,14 @@ export function boardReducer(board: Board, action: BoardAction): Board {
     case "reset": {
       const sources: number[][] = board.sources.map(() => []);
       for (const [cell, tool] of action.landed) sources[cell]?.push(tool);
-      return { ...board, sources, at: action.at, focus: null, projecting: false };
+      return {
+        ...board,
+        sources,
+        at: action.at.map(onCell),
+        carry: board.carry.map(() => null),
+        focus: null,
+        projecting: false,
+      };
     }
     case "land":
       return {
@@ -145,11 +199,31 @@ export function boardReducer(board: Board, action: BoardAction): Board {
         sources: board.sources.map((list, cell) => (cell === action.cell ? [...list, action.tool] : list)),
       };
     case "move":
-      return { ...board, at: action.at };
+      return { ...board, at: action.at, carry: action.carry ?? board.carry };
+    case "drop": {
+      const tool = board.carry[action.walker];
+      const carry = board.carry.map((held, i) => (i === action.walker ? null : held));
+      if (tool == null) return board;
+      if ((board.sources[action.cell]?.length ?? 2) >= 2) return { ...board, carry };
+      return {
+        ...board,
+        carry,
+        sources: board.sources.map((list, cell) => (cell === action.cell ? [...list, tool] : list)),
+      };
+    }
+    case "solo": {
+      if (!action.on) return { ...board, solo: false };
+      // Anyone in the panel walks back to the cell they were editing.
+      const home = board.focus ?? filledCells(board)[0];
+      const at = board.at.map((place) => (place?.kind === "field" && home !== undefined ? onCell(home) : place));
+      return { ...board, at, solo: true, focus: null, projecting: false, panel: "hidden" };
+    }
+    case "restatus":
+      return { ...board, status: action.status };
     case "close":
       return { ...board, projecting: false, panel: "hidden" };
     case "focus":
-      return { ...board, focus: action.cell, projecting: true, shown: action.cell };
+      return { ...board, focus: action.cell, projecting: true, shown: action.cell, status: null };
     case "reveal":
       return { ...board, panel: "shown" };
     case "fade":
@@ -213,21 +287,90 @@ export function nearCells(from: number, pool: readonly number[]) {
   return close.length ? close : others;
 }
 
+/** What the walkers can reach right now: the tools, and the panel's fields while the panel is shown. */
+export type Reach = { tools: readonly number[]; fields: readonly Field[] };
+
 /**
- * One walker steps to a nearby filled cell; now and then a person and an agent
- * go together. `person` says whether a person arrives, which opens the cell.
+ * One walker's next walk, as the prototype plans it. From a cell, an agent now
+ * and then goes to a tool to pick up a source, and a person to a field of the
+ * open panel; otherwise the walker steps to a nearby filled cell, now and then
+ * with a walker of the other kind. From a tool, an agent carries its source to
+ * a cell with room for it; from the panel, a person goes back near the open
+ * cell. `person` says whether a person arrives on a cell, which opens it.
  */
-export function planStep(board: Board, random: Random) {
+export function planStep(board: Board, random: Random, reach: Reach) {
   const pool = filledCells(board);
   if (pool.length < 3) return null;
   const walker = Math.floor(random() * WALKERS.length);
-  const from = board.at[walker] ?? pick(pool, random);
-  const to = pick(nearCells(from, pool), random);
+  const agent = WALKERS[walker] === "agent";
+  const from = board.at[walker] ?? onCell(pick(pool, random));
+  const onMap = from.kind === "cell";
+  const errand = random();
+  const carry = [...board.carry];
+  const at = [...board.at];
+  const go = (to: Place) => {
+    at[walker] = to;
+    return { walker, at, carry, to, person: false };
+  };
+  if (onMap && agent && errand < 0.3 && reach.tools.length) {
+    const tool = pick(reach.tools, random);
+    carry[walker] = tool;
+    return go({ kind: "tool", tool });
+  }
+  if (onMap && !agent && board.focus !== null && errand < 0.3 && reach.fields.length) {
+    return go({ kind: "field", field: pick(reach.fields, random) });
+  }
+  const roomy = pool.filter((cell) => (board.sources[cell]?.length ?? 0) < 2);
+  const cell = onMap
+    ? pick(nearCells(from.cell, pool), random)
+    : board.carry[walker] != null && roomy.length
+      ? pick(roomy, random)
+      : pick(board.focus !== null ? nearCells(board.focus, pool) : pool, random);
+  const to = onCell(cell);
   const pair =
-    random() < 0.3 ? WALKERS.findIndex((kind, j) => j !== walker && kind !== WALKERS[walker]) : -1;
-  const at = board.at.map((cell, i) => (i === walker || i === pair ? to : cell));
-  const person = WALKERS[walker] === "person" || (pair >= 0 && WALKERS[pair] === "person");
-  return { at, to, person };
+    onMap && random() < 0.3
+      ? WALKERS.findIndex((kind, j) => j !== walker && kind !== WALKERS[walker] && board.at[j]?.kind === "cell")
+      : -1;
+  if (pair >= 0) at[pair] = to;
+  const plan = go(to);
+  return { ...plan, person: !agent || (pair >= 0 && WALKERS[pair] === "person") };
+}
+
+/** The walkers standing on a panel that is not shown, sent back to filled cells; null when none is. */
+export function rehome(board: Board, random: Random, fieldsShown: boolean) {
+  if (fieldsShown || !board.at.some((place) => place?.kind === "field")) return null;
+  const pool = filledCells(board);
+  if (!pool.length) return null;
+  return board.at.map((place) => (place?.kind === "field" ? onCell(pick(pool, random)) : place));
+}
+
+/** The status a person sets: any that reads differently from the one shown. */
+export function nextStatus(current: number, statuses: readonly string[], random: Random) {
+  const others = statuses.flatMap((label, i) => (label === statuses[current] ? [] : [i]));
+  return pick(others, random);
+}
+
+/** When the loop last went solo, opened the panel, and opened a cell (performance.now() milliseconds). */
+export type Clock = { soloAt: number; openSince: number; lastOpen: number };
+
+/** A new cell opens only once the last has had time to be read. */
+export const mayOpen = (clock: Clock, now: number) => now - clock.lastOpen >= TIMING.cooldown;
+
+/** A person arriving on a cell opens it, unless the board has only just gone solo. */
+export const personOpens = (solo: boolean, clock: Clock, now: number) => !(solo && now - clock.soloAt < TIMING.soloGrace);
+
+/** The panel has been open long enough, and the board goes solo again. */
+export const panelExpired = (solo: boolean, clock: Clock, now: number) => !solo && now - clock.openSince > TIMING.panelLife;
+
+/**
+ * How much the board grows when it stands alone: from its left edge into the
+ * panel's room (its gap and its width), as far as the frame's height allows,
+ * and never smaller than it is.
+ */
+export function soloScale(size: { board: number; gap: number; panel: number; stageHeight: number; sheetHeight: number }) {
+  const room = (size.board + size.gap + size.panel) / size.board;
+  const tall = (size.stageHeight - 56) / (size.sheetHeight + 18);
+  return Math.max(1, Math.min(room, tall));
 }
 
 /** Where a document goes and which free tool sends it; null when an extra finds no cell to join. */
@@ -296,17 +439,31 @@ export function beamPaths(tools: readonly Box[], node: Box, sheet: Box, vertical
   return { feeds, toBoard: `M${node.right + 6} ${ny}L${sheet.left - 5} ${ny}` };
 }
 
-/** Each walker's place in the queue on its cell, so walkers sharing a cell stand side by side. */
-export const slotsOf = (at: readonly (number | null)[]) =>
-  at.map((cell, i) => at.slice(0, i).filter((other) => other === cell).length);
+/** Each walker's place in the queue on its spot, so walkers sharing one stand side by side. */
+export const slotsOf = (at: readonly (Place | null)[]) => {
+  const keys = at.map(placeKey);
+  return keys.map((key, i) => keys.slice(0, i).filter((other) => other === key).length);
+};
 
-/** Where a walker stands: on the top edge of its cell, in from the right corner by its slot. */
+/**
+ * Where a walker stands, in the stage's coordinates: on the top edge of its
+ * target, in from the right corner by its slot. It never leaves the frame, and
+ * on a panel field (`panelRight` given) never leaves the panel.
+ */
 export function walkerSpot(
-  cell: { left: number; top: number; width: number },
+  target: Box,
   slot: number,
   walker: { width: number; height: number },
+  frame: { width: number; height: number },
+  panelRight: number | null,
 ) {
-  return { x: cell.left + cell.width - (slot + 1) * (walker.width - 5) + 4, y: cell.top - walker.height * 0.42 };
+  const right = panelRight === null ? frame.width - walker.width - 4 : panelRight - walker.width - 10;
+  const x = target.right - (slot + 1) * (walker.width - 5) + 4;
+  const y = target.top - walker.height * 0.42;
+  return {
+    x: Math.max(4, Math.min(right, x)),
+    y: Math.max(4, Math.min(frame.height - walker.height - 4, y)),
+  };
 }
 
 type Point = readonly [x: number, y: number];
@@ -314,34 +471,25 @@ type Point = readonly [x: number, y: number];
 /**
  * The projection from a cell to the panel, in the stage's coordinates: the
  * light (a quad from the cell's far edge to the panel's near edge), its two
- * edges, and the clip that sweeps it from the cell to the panel. Wide, it runs
- * left to right; on a phone, downwards.
+ * edges, and the clip that sweeps it from the cell to the panel, left to
+ * right. A phone shows no panel, so it never projects.
  */
-export function projection(stage: Box, cell: Box, panel: Box, vertical: boolean) {
-  const corners: Point[] = vertical
-    ? [
-        [cell.left, cell.bottom],
-        [cell.right, cell.bottom],
-        [panel.right - 16, panel.top],
-        [panel.left + 16, panel.top],
-      ]
-    : [
-        [cell.right, cell.top],
-        [panel.left, panel.top + 16],
-        [panel.left, panel.bottom - 16],
-        [cell.right, cell.bottom],
-      ];
+export function projection(stage: Box, cell: Box, panel: Box) {
+  const corners: Point[] = [
+    [cell.right, cell.top],
+    [panel.left, panel.top + 16],
+    [panel.left, panel.bottom - 16],
+    [cell.right, cell.bottom],
+  ];
   const points = corners.map(([x, y]) => [x - stage.left, y - stage.top] as const);
   const [a, b, c, d] = points as [Point, Point, Point, Point];
-  const edges = vertical ? [[a, d], [b, c]] : [[a, b], [d, c]];
   return {
     points: points.map((point) => point.join(",")).join(" "),
-    edges: edges.map(([from, to]) => ({ x1: from![0], y1: from![1], x2: to![0], y2: to![1] })),
-    from: vertical
-      ? `inset(0 0 ${stage.bottom - cell.bottom}px 0)`
-      : `inset(0 ${stage.right - cell.right}px 0 0)`,
-    to: vertical
-      ? `inset(0 0 ${stage.bottom - panel.top - 1}px 0)`
-      : `inset(0 ${stage.right - panel.left - 1}px 0 0)`,
+    edges: [
+      { x1: a[0], y1: a[1], x2: b[0], y2: b[1] },
+      { x1: d[0], y1: d[1], x2: c[0], y2: c[1] },
+    ],
+    from: `inset(0 ${stage.right - cell.right}px 0 0)`,
+    to: `inset(0 ${stage.right - panel.left - 1}px 0 0)`,
   };
 }
