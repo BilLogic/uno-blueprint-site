@@ -1,6 +1,6 @@
 # Reference
 
-`prototype.html` is the approved design (the v7.6 outline, artifact v67), vendored as one file with its images embedded.
+`prototype.html` is the approved design (the v7.6 outline, artifact v68), vendored as one file with its images embedded.
 
 - It is the source of truth for look, copy, motion and breakpoints. Where the site and the prototype differ, the prototype wins.
 - It is never served: it sits outside `app/` and `public/`, so the build does not copy it.

@@ -2638,10 +2638,9 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
     const to=gBase+1;if(!down||to>N||t<(to<N?EDGE[to]:1))return;
     const from=EDGE[to-1],y=Math.round(to<N?y0+(from+(EDGE[to]-from)*GATE_LAND)*L:y0+L);
     if(scrollY>y){gHeld=y;if(!gFree){gFree=now+showFor(to);gAt=now}scrollTo({top:y,behavior:'instant'})}}
-  /* a wheel that would carry the page past the step it may reach is stopped before it moves, not pulled back after: pulling back is invisible
-     while the stage is pinned, but where the walkthrough lets go the whole page would jump down and back, which reads as shaking.
-     The stop is the end of the step it may reach, or where the walkthrough lets go after the last one. */
-  /* the limit is the end of that step (or where the walkthrough lets go); a wheel that would pass it rests the page just inside the step, as the pull-back does */
+  /* a wheel that would carry the page past the end of the step it may reach (or past where the walkthrough lets go, after the last one) is stopped
+     before it moves, and the page rests just inside that step, where the pull-back would put it. Pulling back is invisible while the stage is pinned,
+     but where the walkthrough lets go the whole page would jump down and back, which reads as shaking. */
   const stopAt=to=>{if(to>N)return null;const r=scr.getBoundingClientRect(),L=r.height-sticky.offsetHeight,y0=r.top+scrollY-top;
     if(to===N){const y=Math.round(y0+L);return [y,y]}const from=EDGE[to-1];return [Math.floor(y0+EDGE[to]*L)-1,Math.round(y0+(from+(EDGE[to]-from)*GATE_LAND)*L)]};
   addEventListener('wheel',e=>{if(e.deltaY<=0||gBase<0||RM||window.GLIDE)return;const n=performance.now();
