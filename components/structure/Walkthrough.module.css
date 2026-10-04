@@ -61,10 +61,10 @@
  * Script draws them while they become the six layers of the stack.
  */
 
+/* Its z-index is set from the morph's CARDS_LAYER, which the cards order themselves under. */
 .context {
   position: absolute;
   inset: 0;
-  z-index: 20;
   pointer-events: none;
 }
 
@@ -86,7 +86,7 @@
   transform: rotate(var(--r));
 }
 
-/* The diff's lines sit closer together than a card's other rows. */
+/* The diff's lines sit closer together than a card's other rows (see CARD_BODIES). */
 .diffCard {
   gap: 5px;
 }

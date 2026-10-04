@@ -143,6 +143,34 @@ test.describe("structure walkthrough", () => {
     await expect(firstCard).not.toHaveAttribute("style", /rotateX/, { timeout: 5000 });
   });
 
+  test("a fast scroll back up plays the cards back only once the opening step shows again", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    await watch(page);
+    await scrollToStep(section(page), 3);
+    await settlesOn(page, titles[3]!);
+    // While any later step shows, the cards must stay as the stack they became.
+    await page.evaluate(() => {
+      const w = window as unknown as { early: number };
+      w.early = 0;
+      const card = document.querySelector<HTMLElement>("[data-card]")!;
+      const formed = card.style.left;
+      const check = () => {
+        const title = document.querySelector("section [aria-live] b")?.textContent;
+        if (title !== "Your context" && card.style.left !== formed) w.early++;
+        requestAnimationFrame(check);
+      };
+      requestAnimationFrame(check);
+    });
+    await scrollToStep(section(page), 0, 0.1);
+    await settlesOn(page, titles[0]!);
+    await expect(section(page).locator("[data-card]").first()).not.toHaveAttribute("style", /rotateX/, {
+      timeout: 5000,
+    });
+    expect(await page.evaluate(() => (window as unknown as { early: number }).early)).toBe(0);
+    expect(await seen(page)).toEqual([...titles.slice(0, 4), ...titles.slice(0, 3).reverse()]);
+  });
+
   test("with reduced motion the last step shows at once and the section does not pin", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize({ width: 1440, height: 900 });

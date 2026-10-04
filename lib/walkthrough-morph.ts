@@ -6,7 +6,7 @@
  * its progress on with the clock, and `morphFrame` says where every card is
  * at that progress. Geometry is in stage px (see `walkthrough.ts`).
  */
-import { TIMING } from "./walkthrough";
+import { STACK_ANGLE, TIMING } from "./walkthrough";
 
 /** Where a card rests (left and top in stage px), its turn in degrees, and its measured size. */
 export type CardRest = { x: number; y: number; r: number; w: number; h: number };
@@ -64,16 +64,17 @@ const TILT_END = 0.42;
 const SHUFFLE_START = 0.46;
 const SHUFFLE_LENGTH = 0.4;
 const CONTENT_FADE_END = 0.22;
-/** The stack's angle: tilted back and turned. */
-const STACK_TILT = 58;
-const STACK_TURN = -45;
 /** How far a card swings out mid-shuffle: on a phone, and on a wide frame (each card a little further). */
 const SWING = { narrow: 46, wide: 64, widePerCard: 6, rise: 0.25 } as const;
 /** The cards settle from a slight wobble on either side as the shuffle ends. */
 const JITTER = { odd: 7, even: -6 } as const;
 const RADIUS = { card: 12, layer: 16 } as const;
-/** Above the stack, as the cards' layer (`.context`, z-index 20) is. */
-const Z_TOP = 20;
+/**
+ * The cards' layer sits this high on the stage, above the stack; the cards
+ * order themselves just under it while they land. The scene sets the layer's
+ * z-index from this, so the two cannot drift apart.
+ */
+export const CARDS_LAYER = 20;
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -127,15 +128,15 @@ export function morphFrame(
       height: lerp(card.h, to.h, m),
       tx: lerp(0, to.tx, m),
       ty: lerp(0, to.ty, m),
-      tilt: STACK_TILT * m,
-      turn: lerp(card.r, STACK_TURN + jitter, m),
+      tilt: STACK_ANGLE.tilt * m,
+      turn: lerp(card.r, STACK_ANGLE.turn + jitter, m),
       swingX: side * out,
       swingY: -out * SWING.rise,
       scale: lerp(1, to.scale, m),
       radius: lerp(RADIUS.card, RADIUS.layer, m),
       contentOpacity,
       // The order is wrong as they land, and right once the shuffle passes its middle.
-      zIndex: q < 0.5 ? Z_TOP - landing : Z_TOP - i,
+      zIndex: q < 0.5 ? CARDS_LAYER - landing : CARDS_LAYER - i,
     };
   });
 }
@@ -143,3 +144,30 @@ export function morphFrame(
 /** A frame's transform, in the order the layers of the stack are drawn. */
 export const cardTransform = (f: CardFrame) =>
   `translate(${f.tx}px,${f.ty}px) rotateX(${f.tilt}deg) rotateZ(${f.turn}deg) translate(${f.swingX}px,${f.swingY}px) scale(${f.scale})`;
+
+/** The inline styles that draw a card at a frame; clearing these same names puts it back at rest. */
+export function cardStyles(f: CardFrame) {
+  return {
+    left: `${f.left}px`,
+    top: `${f.top}px`,
+    width: `${f.width}px`,
+    height: `${f.height}px`,
+    transform: cardTransform(f),
+    "border-radius": `${f.radius}px`,
+    "z-index": String(f.zIndex),
+    "--co": f.contentOpacity.toFixed(3),
+  };
+}
+
+/** Every style name `cardStyles` writes. */
+export type CardStyleName = keyof ReturnType<typeof cardStyles>;
+export const CARD_STYLE_NAMES = [
+  "left",
+  "top",
+  "width",
+  "height",
+  "transform",
+  "border-radius",
+  "z-index",
+  "--co",
+] as const satisfies readonly CardStyleName[];

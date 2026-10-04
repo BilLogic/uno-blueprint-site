@@ -14,12 +14,12 @@ const SCROLL_LENGTH = LENGTHS.reduce((sum, length) => sum + length, 0);
 
 /**
  * A team's scattered context, then services down to one cell, driven by
- * scroll: six cards (a PRD, a thread, a design, a ticket, a funnel, a diff)
- * become the stack, then sheets for services, phases,
- * scenarios and paths stack and leave, the blueprint turns to face the
- * reader, its lanes and lines are read one at a time, then its steps, its
- * cells, and one cell projected into its panel. The headline stays pinned
- * with the frame, and the caption changes with each step.
+ * scroll. Six cards (a PRD, a thread, a design, a ticket, a funnel, a diff)
+ * become the stack; sheets for services, phases, scenarios and paths stack
+ * and leave; the blueprint turns to face the reader; its lanes and lines are
+ * read one at a time, then its steps and its cells; and one cell is projected
+ * into its panel. The headline stays pinned with the frame, and the caption
+ * changes with each step.
  */
 export function Walkthrough() {
   const { refs, step, previous, layout } = useWalkthrough(EDGES, SCROLL_LENGTH);

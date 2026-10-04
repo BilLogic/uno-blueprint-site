@@ -39,9 +39,13 @@ export const TIMING = {
   morphFrameCap: 64,
   /** The hold on a step before the walkthrough moves on toward the scroll. */
   step: 560,
-  /** The hold after the stack folds flat, or stands back up: its choreography is longer. */
+  /**
+   * The hold after the stack folds flat, or stands back up. It covers the CSS
+   * choreography (the sheets' stagger, the board's delay and its turn, in
+   * `Walkthrough.module.css` and `sceneAt`), so change them together.
+   */
   flatten: 1250,
-  /** The hold after the cell opens in its panel, or closes. */
+  /** The hold after the cell opens in its panel, or closes: the beam's delay and sweep, then the panel opening. */
   openCell: 950,
 } as const;
 
@@ -108,6 +112,17 @@ export function introTriggered(progress: number, edges: readonly number[]): bool
 }
 
 /**
+ * Which way the opening morph should play, given whether the scroll is past
+ * its trigger and the step on show. It plays back only once the walkthrough
+ * has walked back to the opening step, so a fast scroll up never starts it
+ * while the stack it would unmake is still on screen.
+ */
+export function morphHeading(triggered: boolean, step: number): "forward" | "back" | "hold" {
+  if (triggered) return "forward";
+  return step === STEP.context ? "back" : "hold";
+}
+
+/**
  * The step the scroll asks for. Past the trigger, the opening step hands on to
  * the next one as soon as `stackFormed`, so the reader need not scroll its
  * whole length.
@@ -160,7 +175,8 @@ export function scrollProgress({ stickyTop, sectionTop, sectionHeight, stickyHei
 /**
  * Where the frame sticks: in the middle of the screen under the nav, never
  * above 76 px. A frame too tall for that sits higher, its foot just above the
- * bottom of the screen.
+ * bottom of the screen; the top may then be negative, tucking the headline up
+ * under the nav, which is intended and is what the prototype does.
  */
 export function stickyTopFor(viewportHeight: number, stickyHeight: number): number {
   if (stickyHeight > viewportHeight - TALL_FRAME_SLACK) {
@@ -255,13 +271,19 @@ export function flatLift(fit: StageFit, captionLine: number): number {
   return middle - FLAT_BOARD_MIDDLE;
 }
 
-const ISO = "rotateX(58deg) rotateZ(-45deg)";
+/** The stack's angle: tilted back and turned, in degrees. The opening cards land at it too. */
+export const STACK_ANGLE = { tilt: 58, turn: -45 } as const;
+const ISO = `rotateX(${STACK_ANGLE.tilt}deg) rotateZ(${STACK_ANGLE.turn}deg)`;
 const FLAT = "rotateX(0deg) rotateZ(0deg)";
 const SHEET_GAP = 100;
+/** A sheet's middle, this far below its top: a sheet is 190 px tall. Labels and the board line up on it. */
+const SHEET_MIDDLE = 95;
+/** Below the deepest stacked sheet, each sheet still to come is tucked this close under the last. */
+const TUCKED_GAP = 8;
 /** Once the paths join the stack, its sheets close up to this gap. */
 const FULL_STACK_GAP = 86;
 /** How far the stack is lowered at each depth, so it reads centred as it grows. */
-const STACK_DROP = [0, 0, 8, 22] as const;
+const STACK_DROP: Readonly<Record<StackDepth, number>> = { 0: 0, 1: 0, 2: 8, 3: 22 };
 const STACK_CENTRE = 255;
 const BOARD_STACK_SCALE = 0.5;
 /** The paths behind the board, each this much further down the stack. */
@@ -269,16 +291,22 @@ const GHOST_STEP = 10;
 
 /** The deepest the stack goes: services, phases, scenarios, then paths. */
 const MAX_DEPTH = 3;
+/** How deep the stack is: services 0, phases 1, scenarios 2, paths 3. */
+type StackDepth = 0 | 1 | 2 | 3;
+const DEPTHS: readonly StackDepth[] = [0, 1, 2, 3];
 
 /** How many sheets are stacked at `step`, less one: services is 0, paths is 3. */
-const depthAt = (step: number) => Math.min(Math.max(step - STEP.context - 1, 0), MAX_DEPTH);
+const depthAt = (step: number): StackDepth => DEPTHS[Math.min(Math.max(step - STEP.context - 1, 0), MAX_DEPTH)]!;
 
 /** The stage px from the stage's top to sheet `i`, with the stack `depth` deep. */
-function sheetY(depth: number, i: number): number {
-  const gap = depth === 3 ? FULL_STACK_GAP : SHEET_GAP;
-  const below = i <= depth ? i * gap : depth * gap + (i - depth) * 8;
-  return STACK_CENTRE - 95 - (depth * gap) / 2 + STACK_DROP[depth as 0 | 1 | 2 | 3] + below;
+function sheetY(depth: StackDepth, i: number): number {
+  const gap = depth === MAX_DEPTH ? FULL_STACK_GAP : SHEET_GAP;
+  const below = i <= depth ? i * gap : depth * gap + (i - depth) * TUCKED_GAP;
+  return STACK_CENTRE - SHEET_MIDDLE - (depth * gap) / 2 + STACK_DROP[depth] + below;
 }
+
+/** Where the board sits in the stack, `depth` deep: in the place of a fourth sheet, centred on the stage. */
+const boardYAt = (depth: StackDepth) => sheetY(depth, SHEETS) + SHEET_MIDDLE - STACK_CENTRE;
 
 /** A layer of the stack: where it is moved to and how it is scaled, in stage px. */
 export type LayerPlace = { tx: number; ty: number; scale: number };
@@ -289,7 +317,7 @@ export type LayerPlace = { tx: number; ty: number; scale: number };
  */
 export function stackLayers(step: number): LayerPlace[] {
   const depth = depthAt(step);
-  const boardY = sheetY(depth, 3) + 95 - STACK_CENTRE;
+  const boardY = boardYAt(depth);
   return [
     ...Array.from({ length: SHEETS }, (_, i) => ({ tx: 0, ty: sheetY(depth, i), scale: 1 })),
     ...Array.from({ length: GHOSTS + 1 }, (_, n) => ({ tx: 0, ty: boardY + n * GHOST_STEP, scale: BOARD_STACK_SCALE })),
@@ -341,7 +369,7 @@ export function sceneAt(step: number, previous: number, lift = 0): Scene {
 
   // The stack stays centred on the stage as it grows.
   const ty = (i: number) => sheetY(e, i);
-  const boardY = ty(3) + 95 - STACK_CENTRE;
+  const boardY = boardYAt(e);
   const boardX = open ? -215 : 0;
   const boardLift = open ? 0 : lift;
   const boardScale = open ? 0.62 : 1.1;
@@ -380,7 +408,7 @@ export function sceneAt(step: number, previous: number, lift = 0): Scene {
     board: {
       transform: flat
         ? `translate(${boardX}px,${boardLift}px) ${FLAT} scale(${boardScale})`
-        : `translate(0px,${boardY}px) ${ISO} scale(.5)`,
+        : `translate(0px,${boardY}px) ${ISO} scale(${BOARD_STACK_SCALE})`,
       delay: goFlat ? 460 : 0,
     },
     // Nearest the board first.
@@ -388,11 +416,11 @@ export function sceneAt(step: number, previous: number, lift = 0): Scene {
       const n = j + 1;
       return flat
         ? `translate(${boardX + n * FLAT_GHOST_SHIFT}px,${-n * FLAT_GHOST_RISE + boardLift}px) ${FLAT} scale(${boardScale})`
-        : `translate(0px,${boardY + n * GHOST_STEP}px) ${ISO} scale(.5)`;
+        : `translate(0px,${boardY + n * GHOST_STEP}px) ${ISO} scale(${BOARD_STACK_SCALE})`;
     }),
     rows,
     lines,
     links: Array.from({ length: SHEETS }, (_, i) => !flat && i < e),
-    tags: Array.from({ length: 4 }, (_, i): TagState => ({ top: ty(i) + 95, in: !flat && !intro && i <= e, current: i === e })),
+    tags: Array.from({ length: 4 }, (_, i): TagState => ({ top: ty(i) + SHEET_MIDDLE, in: !flat && !intro && i <= e, current: i === e })),
   };
 }

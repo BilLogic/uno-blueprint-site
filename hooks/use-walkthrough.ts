@@ -21,7 +21,8 @@ import {
 } from "@/lib/walkthrough";
 import {
   CARD_PLACES,
-  cardTransform,
+  CARD_STYLE_NAMES,
+  cardStyles,
   morphFrame,
   type CardRest,
   type LayerBox,
@@ -38,9 +39,6 @@ function stagePoint(element: Element, world: DOMRect): [number, number] {
   const scale = world.width / STAGE_WIDTH || 1;
   return [(rect.left - world.left) / scale, (rect.top - world.top) / scale];
 }
-
-/** The inline styles the morph writes on a card, cleared to put it back at rest. */
-const CARD_STYLES = ["left", "top", "width", "height", "transform", "border-radius", "z-index", "--co"] as const;
 
 /** How the stage is laid out at this width: a phone frame or not, and the flat board's lift (see `flatLift`). */
 export type StageLayout = { narrow: boolean; lift: number };
@@ -185,16 +183,18 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
       beamEnds.current = [topRight[0], x];
     };
 
+    // Whether the frame is a phone's, as last fitted.
+    const isNarrow = () => fit.current?.narrow ?? false;
+
     // The opening cards: where each rests and how big it is, and the six layers of the stack they become.
     let cards: CardRest[] = [];
     let layers: LayerBox[] = [];
     const cardEls = () => [...(world.current?.querySelectorAll<HTMLElement>("[data-card]") ?? [])];
-    const atRest = (el: HTMLElement) => CARD_STYLES.forEach((name) => el.style.removeProperty(name));
+    const atRest = (el: HTMLElement) => CARD_STYLE_NAMES.forEach((name) => el.style.removeProperty(name));
     const measureMorph = () => {
       const worldEl = world.current;
       if (!worldEl) return;
-      const narrow = fit.current?.narrow ?? false;
-      const places = narrow ? CARD_PLACES.narrow : CARD_PLACES.wide;
+      const places = isNarrow() ? CARD_PLACES.narrow : CARD_PLACES.wide;
       cards = cardEls().map((el, i) => {
         atRest(el);
         const [x, y, r] = places[i]!;
@@ -217,7 +217,7 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
     };
     morph.current.draw = (progress) => {
       const els = cardEls();
-      const frames = morphFrame(progress, cards, layers, fit.current?.narrow ?? false);
+      const frames = morphFrame(progress, cards, layers, isNarrow());
       if (!frames.length) {
         els.forEach(atRest);
         return;
@@ -225,14 +225,7 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
       frames.forEach((frame, i) => {
         const style = els[i]?.style;
         if (!style) return;
-        style.left = `${frame.left}px`;
-        style.top = `${frame.top}px`;
-        style.width = `${frame.width}px`;
-        style.height = `${frame.height}px`;
-        style.transform = cardTransform(frame);
-        style.borderRadius = `${frame.radius}px`;
-        style.zIndex = String(frame.zIndex);
-        style.setProperty("--co", frame.contentOpacity.toFixed(3));
+        for (const [name, value] of Object.entries(cardStyles(frame))) style.setProperty(name, value);
       });
     };
     remorph.current = () => {

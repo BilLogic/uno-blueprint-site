@@ -8,6 +8,7 @@ import {
   flatLift,
   goalStep,
   introTriggered,
+  morphHeading,
   nextStep,
   poseOf,
   poseTransform,
@@ -162,7 +163,7 @@ describe("sceneAt", () => {
     expect(sceneAt(1, 0).sheets[0]!.transform).toBe("translate(0px,160px) rotateX(58deg) rotateZ(-45deg)");
     expect(sceneAt(3, 2).sheets[0]!.transform).toBe("translate(0px,68px) rotateX(58deg) rotateZ(-45deg)");
     expect(sceneAt(4, 3).sheets[0]!.transform).toBe("translate(0px,53px) rotateX(58deg) rotateZ(-45deg)");
-    expect(sceneAt(4, 3).board.transform).toBe("translate(0px,151px) rotateX(58deg) rotateZ(-45deg) scale(.5)");
+    expect(sceneAt(4, 3).board.transform).toBe("translate(0px,151px) rotateX(58deg) rotateZ(-45deg) scale(0.5)");
     expect(sceneAt(4, 3).tags.map((t) => t.top)).toEqual([148, 234, 320, 406]);
   });
 
@@ -254,6 +255,19 @@ describe("introTriggered", () => {
     expect(introTriggered(0.2, edges)).toBe(false);
     expect(introTriggered(0.22, edges)).toBe(true);
     expect(introTriggered(0.7, edges)).toBe(true);
+  });
+});
+
+describe("morphHeading", () => {
+  it("plays the morph forward as soon as the trigger is passed", () => {
+    expect(morphHeading(true, STEP.context)).toBe("forward");
+    expect(morphHeading(true, 3)).toBe("forward");
+  });
+
+  it("plays it back only once the walkthrough has walked back to the opening step", () => {
+    expect(morphHeading(false, STEP.context)).toBe("back");
+    expect(morphHeading(false, 1)).toBe("hold");
+    expect(morphHeading(false, 9)).toBe("hold");
   });
 });
 

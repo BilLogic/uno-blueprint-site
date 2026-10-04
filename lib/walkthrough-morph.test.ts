@@ -3,7 +3,9 @@ import { TIMING } from "./walkthrough";
 import {
   CARD_PLACES,
   LANDING_ORDER,
+  CARD_STYLE_NAMES,
   advanceMorph,
+  cardStyles,
   cardTransform,
   easeInOutCubic,
   morphFrame,
@@ -93,6 +95,15 @@ describe("cardTransform", () => {
     expect(cardTransform({ ...frame!, swingX: 0, swingY: 0 })).toBe(
       "translate(0px,160px) rotateX(58deg) rotateZ(-45deg) translate(0px,0px) scale(1)",
     );
+  });
+});
+
+describe("cardStyles", () => {
+  it("writes every style a card is drawn with, and names each so it can be cleared", () => {
+    const [frame] = morphFrame(1, cards, layers, false);
+    const styles = cardStyles(frame!);
+    expect(styles).toMatchObject({ left: "355px", top: "0px", "border-radius": "16px", "z-index": "20", "--co": "0.000" });
+    expect([...CARD_STYLE_NAMES].sort()).toEqual(Object.keys(styles).sort());
   });
 });
 

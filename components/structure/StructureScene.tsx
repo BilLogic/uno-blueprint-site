@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { ToolLogo, type Tool } from "@/components/icons/ToolLogo";
 import { structure } from "@/content/structure";
 import type { RowState, Scene } from "@/lib/walkthrough";
-import { CARD_PLACES } from "@/lib/walkthrough-morph";
+import { CARDS_LAYER, CARD_PLACES } from "@/lib/walkthrough-morph";
 import { EvidenceLogo, type EvidenceSource } from "./EvidenceLogo";
 import s from "./Walkthrough.module.css";
 
@@ -224,64 +224,83 @@ const Bar = ({ width, className }: { width: number; className?: string | undefin
   <span className={cx(s.bar, className)} style={{ width: pct(width) }} />
 );
 
-/** What each context card shows under its title: a sketch of the tool's own page. */
-const CARD_BODIES: Record<Tool, () => ReactNode> = {
-  Notion: () => (
-    <>
-      <Bar width={92} />
-      <Bar width={84} />
-      <Bar width={60} />
-    </>
-  ),
-  Slack: () => (
-    <>
-      <p className={s.message}>
+/**
+ * What each context card shows under its title, a sketch of the tool's own
+ * page, and any class the card needs to lay that sketch out.
+ */
+type CardBody = { body: () => ReactNode; cardClass?: string | undefined };
+
+const CARD_BODIES: Record<Tool, CardBody> = {
+  Notion: {
+    body: () => (
+      <>
+        <Bar width={92} />
+        <Bar width={84} />
+        <Bar width={60} />
+      </>
+    ),
+  },
+  Slack: {
+    body: () => (
+      <>
+        <p className={s.message}>
+          <i />
+          <Bar width={78} />
+        </p>
+        <p className={cx(s.message, s.mine)}>
+          <i />
+          <Bar width={56} />
+        </p>
+      </>
+    ),
+  },
+  Figma: {
+    body: () => (
+      <div className={s.figmaFrame}>
         <i />
-        <Bar width={78} />
-      </p>
-      <p className={cx(s.message, s.mine)}>
         <i />
-        <Bar width={56} />
-      </p>
-    </>
-  ),
-  Figma: () => (
-    <div className={s.figmaFrame}>
-      <i />
-      <i />
-      <i />
-    </div>
-  ),
-  Linear: () => (
-    <>
-      <div className={s.ticket}>
-        <span className={s.status}>{structure.context.ticketStatus}</span>
-        <Bar width={40} />
+        <i />
       </div>
-      <Bar width={70} />
-    </>
-  ),
-  Mixpanel: () => (
-    <div className={s.funnel}>
-      {[90, 64, 41, 28].map((height) => (
-        <i key={height} style={{ "--h": pct(height) } as CSSProperties} />
-      ))}
-    </div>
-  ),
-  GitHub: () => (
-    <>
-      <p className={s.code}>
-        <Bar width={18} className={s.keyword} />
-        <Bar width={42} />
-      </p>
-      <p className={cx(s.code, s.indent)}>
-        <Bar width={58} />
-      </p>
-      <p className={cx(s.code, s.indent, s.added)}>
-        <Bar width={46} />
-      </p>
-    </>
-  ),
+    ),
+  },
+  Linear: {
+    body: () => (
+      <>
+        <div className={s.ticket}>
+          <span className={s.status}>{structure.context.ticketStatus}</span>
+          <Bar width={40} />
+        </div>
+        <Bar width={70} />
+      </>
+    ),
+  },
+  Mixpanel: {
+    body: () => (
+      <div className={s.funnel}>
+        {[90, 64, 41, 28].map((height) => (
+          <i key={height} style={{ "--h": pct(height) } as CSSProperties} />
+        ))}
+      </div>
+    ),
+  },
+  GitHub: {
+    // The diff's lines sit closer together than a card's other rows.
+    cardClass: s.diffCard,
+    body: () => (
+      <>
+        <p className={s.code}>
+          <Bar width={18} className={s.keyword} />
+          <Bar width={42} />
+        </p>
+        <p className={cx(s.code, s.indent)}>
+          <Bar width={58} />
+        </p>
+        <p className={cx(s.code, s.indent, s.added)}>
+          <Bar width={46} />
+        </p>
+      </>
+    ),
+  },
 };
 
 /**
@@ -292,7 +311,7 @@ const CARD_BODIES: Record<Tool, () => ReactNode> = {
  */
 function ContextCards({ done }: { done: boolean }) {
   return (
-    <div className={cx(s.context, done && s.done)}>
+    <div className={cx(s.context, done && s.done)} style={{ zIndex: CARDS_LAYER }}>
       {structure.context.cards.map((card, i) => {
         const [x, y, r] = CARD_PLACES.wide[i]!;
         const [nx, ny, nr] = CARD_PLACES.narrow[i]!;
@@ -300,7 +319,7 @@ function ContextCards({ done }: { done: boolean }) {
         return (
           <div
             key={card.tool}
-            className={cx(s.card, card.tool === "GitHub" && s.diffCard)}
+            className={cx(s.card, CARD_BODIES[card.tool].cardClass)}
             data-card
             style={place as CSSProperties}
           >
@@ -310,7 +329,7 @@ function ContextCards({ done }: { done: boolean }) {
               </span>
               {card.title}
             </div>
-            {CARD_BODIES[card.tool]()}
+            {CARD_BODIES[card.tool].body()}
           </div>
         );
       })}

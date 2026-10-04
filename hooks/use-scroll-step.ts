@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { advanceMorph } from "@/lib/walkthrough-morph";
-import { TIMING, goalStep, introTriggered, nextStep, scrollProgress, stepHold } from "@/lib/walkthrough";
+import { STEP, TIMING, goalStep, introTriggered, morphHeading, nextStep, scrollProgress, stepHold } from "@/lib/walkthrough";
 
 export type StepChange = { step: number; previous: number };
 
@@ -17,10 +17,11 @@ export type Morph = { progress: number; draw: (progress: number) => void };
  * The scroll sets a goal, and the walkthrough walks to it one step at a time,
  * holding each step as long as its choreography needs (see `stepHold`), so no
  * step is skipped however fast the page scrolls. Past a buffer into the
- * opening step, the morph of `morph` plays on its own clock, forward, or back
- * once the reader scrolls above the buffer again; the opening step is left
- * only once it has finished. While `held`, scrolling is ignored and the last
- * step shows.
+ * opening step, the morph of `morph` plays forward on its own clock, and the
+ * opening step is left only once it has finished. Above the buffer it plays
+ * back, but only once the walkthrough has walked back to the opening step
+ * (see `morphHeading`). While `held`, scrolling is ignored and the last step
+ * shows.
  */
 export function useScrollStep(
   scroller: RefObject<HTMLElement | null>,
@@ -49,6 +50,8 @@ export function useScrollStep(
       if (to === from) return;
       current.current = to;
       setChange({ step: to, previous: from });
+      // Back on the opening step: read again, so the cards play back if the scroll is above the trigger.
+      if (to === STEP.context) schedule();
       if (to !== goal) hold = window.setTimeout(advance, stepHold(from, to));
     };
     const seek = (step: number) => {
@@ -89,9 +92,10 @@ export function useScrollStep(
         stickyHeight: pinned.offsetHeight,
       });
       seek(goalStep(progress, edges, m.progress === 1));
-      playMorph(introTriggered(progress, edges));
+      const heading = morphHeading(introTriggered(progress, edges), current.current);
+      if (heading !== "hold") playMorph(heading === "forward");
     };
-    // Hoisted, so the morph's clock above can ask for a fresh read once the stack has formed.
+    // Hoisted, so the stepping and the morph's clock above can ask for a fresh read.
     function schedule() {
       if (!frame) frame = requestAnimationFrame(read);
     }
