@@ -229,12 +229,18 @@ export function poseTransform(fit: StageFit, pose: Pose, room: number): string {
   return `translate(${x}px,${y}px) scale(${k})`;
 }
 
+const SHEETS = 3;
+const GHOSTS = 2;
+/** On the flat board, each path behind it sits this much higher and further right, in stage px. */
+const FLAT_GHOST_RISE = 11;
+const FLAT_GHOST_SHIFT = 13;
+
 /**
  * The flat board and the two paths peeking out above it, as one picture: its
  * middle in stage px, before any lift. The board is 372 px tall from 69 px
  * down, scaled about its own middle; each path behind it is 11 px higher.
  */
-const FLAT_BOARD_MIDDLE = 69 + 372 / 2 - (2 * 11) / 2;
+const FLAT_BOARD_MIDDLE = 69 + 372 / 2 - (GHOSTS * FLAT_GHOST_RISE) / 2;
 
 /**
  * How far to move the flat board down, in stage px, so the space above it
@@ -249,8 +255,6 @@ export function flatLift(fit: StageFit, captionLine: number): number {
   return middle - FLAT_BOARD_MIDDLE;
 }
 
-const SHEETS = 3;
-const GHOSTS = 2;
 const ISO = "rotateX(58deg) rotateZ(-45deg)";
 const FLAT = "rotateX(0deg) rotateZ(0deg)";
 const SHEET_GAP = 100;
@@ -263,8 +267,11 @@ const BOARD_STACK_SCALE = 0.5;
 /** The paths behind the board, each this much further down the stack. */
 const GHOST_STEP = 10;
 
+/** The deepest the stack goes: services, phases, scenarios, then paths. */
+const MAX_DEPTH = 3;
+
 /** How many sheets are stacked at `step`, less one: services is 0, paths is 3. */
-const depthAt = (step: number) => Math.min(Math.max(step - 1, 0), 3);
+const depthAt = (step: number) => Math.min(Math.max(step - STEP.context - 1, 0), MAX_DEPTH);
 
 /** The stage px from the stage's top to sheet `i`, with the stack `depth` deep. */
 function sheetY(depth: number, i: number): number {
@@ -350,7 +357,7 @@ export function sceneAt(step: number, previous: number, lift = 0): Scene {
     delay: goFlat ? i * 70 : goIso ? 420 + (2 - i) * 70 : 0,
   }));
 
-  // Lane r is read at step 5 + 2r, the line under it at 6 + 2r.
+  // Lane r is read at step 6 + 2r, the line under it at 7 + 2r.
   const reading = step > STEP.blueprint && step < STEP.steps;
   const rows = Array.from({ length: LANES }, (_, i): RowState => {
     const at = STEP.blueprint + 1 + 2 * i;
@@ -380,7 +387,7 @@ export function sceneAt(step: number, previous: number, lift = 0): Scene {
     ghosts: Array.from({ length: GHOSTS }, (_, j) => {
       const n = j + 1;
       return flat
-        ? `translate(${boardX + n * 13}px,${-n * 11 + boardLift}px) ${FLAT} scale(${boardScale})`
+        ? `translate(${boardX + n * FLAT_GHOST_SHIFT}px,${-n * FLAT_GHOST_RISE + boardLift}px) ${FLAT} scale(${boardScale})`
         : `translate(0px,${boardY + n * GHOST_STEP}px) ${ISO} scale(.5)`;
     }),
     rows,

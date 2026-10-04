@@ -91,6 +91,7 @@ export function useScrollStep(
       seek(goalStep(progress, edges, m.progress === 1));
       playMorph(introTriggered(progress, edges));
     };
+    // Hoisted, so the morph's clock above can ask for a fresh read once the stack has formed.
     function schedule() {
       if (!frame) frame = requestAnimationFrame(read);
     }

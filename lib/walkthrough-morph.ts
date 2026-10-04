@@ -72,6 +72,7 @@ const SWING = { narrow: 46, wide: 64, widePerCard: 6, rise: 0.25 } as const;
 /** The cards settle from a slight wobble on either side as the shuffle ends. */
 const JITTER = { odd: 7, even: -6 } as const;
 const RADIUS = { card: 12, layer: 16 } as const;
+/** Above the stack, as the cards' layer (`.context`, z-index 20) is. */
 const Z_TOP = 20;
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
