@@ -77,6 +77,10 @@ test.describe("bento", () => {
     await rag.hover();
     await expect(typed(page)).toHaveCSS("opacity", "1");
     await expect(rag).not.toContainText("“");
+    // Typed a letter to an element, it still reads as one question.
+    const question = rag.getByRole("img");
+    await expect(question).toHaveCount(1);
+    await expect(question).toHaveAccessibleName(bento.rag.question);
 
     await page.mouse.move(0, 0);
     await expect(typed(page)).toHaveCSS("opacity", "0");

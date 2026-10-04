@@ -27,6 +27,7 @@ export function Bento() {
       <BentoPanel
         index={1}
         size="narrow"
+        labelled
         icon={<Database {...iconProps} />}
         title={bento.rag.title}
         body={bento.rag.body}

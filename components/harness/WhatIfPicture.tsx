@@ -104,7 +104,7 @@ export function WhatIfPicture({ running }: PictureProps) {
             const look = best
               ? "border-dashed border-brand bg-brand-wash shadow-card"
               : state.shown
-                ? `bg-panel shadow-card ${frame.tracing ? "border-line-hot" : "border-line-2"}`
+                ? `bg-panel shadow-card ${frame.working ? "border-line-hot" : "border-line-2"}`
                 : "border-dashed border-line-2";
             const resting = frame.suggested !== null && !best;
             return (

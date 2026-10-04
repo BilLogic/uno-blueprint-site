@@ -1,32 +1,42 @@
 import { ArrowUp, Check, Gem, Search, UserRound } from "lucide-react";
+import type { CSSProperties } from "react";
 import { bento } from "@/content/bento";
-import { typeOut } from "@/lib/bento";
+import { typingDelays } from "@/lib/bento";
 import { ToolLogo } from "@/components/icons/ToolLogo";
 import { BOARD, HITS, RESULTS, SOURCE_WIRES, STACKS } from "./geometry";
 import styles from "./bento.module.css";
 import { vars } from "./vars";
 
-const QUESTION = typeOut(bento.rag.question);
+/**
+ * A word drawn one letter to an element, so each letter can move on its own
+ * beat. Where the word's holder carries it whole as a label, the letters are
+ * hidden from assistive technology so it is not read out letter by letter.
+ */
+const letters = (word: string, style: (i: number) => CSSProperties, labelled = false) =>
+  [...word].map((letter, i) => (
+    <i key={i} aria-hidden={labelled || undefined} style={style(i)}>
+      {letter}
+    </i>
+  ));
+
+const TYPED_AT = typingDelays(bento.rag.question);
 
 /**
  * Built for RAG: a question, one hit in each lane, one retriever, four ranked
  * results. While it plays the question types itself out and is sent (the
- * arrow leaves, a tick springs in), then the pipeline runs.
+ * arrow leaves, a tick springs in), then the pipeline runs. The question is
+ * the one thing here worth reading, so it alone is exposed, whole.
  */
 export function RagPicture() {
   return (
     <div className={styles.rag}>
       <div className={styles.query}>
-        <Search strokeWidth={1.75} />
-        <span className={styles.typed}>
-          {QUESTION.map(({ letter, delay }, i) => (
-            <i key={i} style={vars({ "--d": `${delay}ms` })}>
-              {letter}
-            </i>
-          ))}
-          <u className={styles.caret} />
+        <Search strokeWidth={1.75} aria-hidden="true" />
+        <span role="img" aria-label={bento.rag.question} className={styles.typed}>
+          {letters(bento.rag.question, (i) => vars({ "--d": `${TYPED_AT[i] ?? 0}ms` }), true)}
+          <u className={styles.caret} aria-hidden="true" />
         </span>
-        <span className={styles.send}>
+        <span className={styles.send} aria-hidden="true">
           <span className={styles.arrowUp}>
             <ArrowUp strokeWidth={1.75} />
           </span>
@@ -35,7 +45,7 @@ export function RagPicture() {
           </span>
         </span>
       </div>
-      <svg className={styles.retrieval} viewBox="0 0 380 196">
+      <svg className={styles.retrieval} viewBox="0 0 380 196" aria-hidden="true">
         {HITS.map((_, r) => {
           const y = 67.5 + r * 20;
           const d = `M139 ${y}C160 ${y} 156 98 175 98`;
@@ -146,13 +156,7 @@ export function ScalePicture() {
   );
 }
 
-/** A word drawn one letter to an element, so each letter can roll on its own beat. */
-const rolled = (word: string) =>
-  [...word].map((letter, i) => (
-    <i key={i} style={vars({ "--i": i })}>
-      {letter}
-    </i>
-  ));
+const rolled = (word: string) => letters(word, (i) => vars({ "--i": i }));
 
 /**
  * Product context, built in: a cell with its owner, status and value, between

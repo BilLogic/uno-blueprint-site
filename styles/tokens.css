@@ -11,9 +11,19 @@
  *   --bg --panel --ink ...   --color-bg --color-panel --color-ink ...
  *   --shadow                 --shadow-card
  *   --e-out/in/io/spring     --ease-out/in/io/spring
+ *   --e-spring-s             --ease-spring-s (a linear() spring, cubic-bezier fallback)
+ *   --e-spring-soft          --ease-spring-soft
  *   --t-1..--t-4             --duration-t-1..--duration-t-4
  *   --gutter --sec --head    --spacing-gutter --spacing-section --spacing-head
  *   --gap --r                --spacing-gap  --radius-16
+ *
+ * Bento, v7.6 (the prototype writes these inline, so the names are new):
+ *   .bxq-t typing, caret     --duration-type-start, --duration-letter-fade/settle, --duration-caret(-delay)
+ *   .bxq-s send, arrow, tick --duration-send(-press/-nudge/-swap/-leave/-tick), --duration-arrow-*, --duration-tick(-fade)
+ *   .bxr pipeline            --duration-pipeline + --duration-lane-stagger/wire-in/retriever/wire-out/
+ *                            result-stagger/scores/answer, --duration-pop(-node), --duration-score
+ *   .bxc-s Planned -> Live   --duration-status-roll/in/width(-delay), --duration-letter-roll(-fade)/out/in
+ *   .bxr-w width, .lf tiles  --spacing-duo-tile, --spacing-duo-gap
  */
 
 @theme static {
@@ -152,21 +162,47 @@
    * up out of its badge one letter at a time as Live rolls in.
    */
   --duration-type-start: 80ms; /* the first letter, after the pointer arrives */
+  --duration-letter-fade: 120ms; /* a typed letter appears */
+  --duration-letter-settle: 200ms; /* and drops into its line */
   --duration-caret: 500ms; /* one blink */
   --duration-caret-delay: 900ms;
   --duration-send: 850ms; /* the question is sent */
   --duration-send-press: 320ms;
+  --duration-send-nudge: 180ms; /* the button's own transform; an icon's fade */
+  --duration-send-swap: 220ms; /* an icon moving inside the button */
   --duration-send-leave: 920ms; /* the arrow leaves */
+  --duration-arrow-out: 200ms;
+  --duration-arrow-fade: 160ms;
+  --duration-arrow-fade-lag: 40ms; /* the arrow fades a beat after it starts to leave */
   --duration-send-tick: 1000ms; /* the tick springs in */
-  --duration-pipeline: 1100ms; /* the first matched cell */
-  --duration-pop: 600ms;
-  --duration-score: 900ms;
+  --duration-tick: 500ms;
+  --duration-tick-fade: 150ms;
+  --duration-pipeline: 1100ms; /* the first matched cell, once the question is sent */
+  --duration-lane-stagger: 70ms; /* from one lane's matched cell, or wire in, to the next */
+  --duration-wire-in: 100ms; /* a wire into the retriever, after its cell */
+  --duration-retriever: 450ms; /* the retriever, after the first cell */
+  --duration-wire-out: 500ms; /* the first wire out to a result */
+  --duration-result-stagger: 50ms; /* from one wire out to the next */
+  --duration-scores: 750ms; /* the score bars */
+  --duration-answer: 900ms; /* the top answer */
+  --duration-pop: 600ms; /* a matched cell or the top answer pops */
+  --duration-pop-node: 550ms; /* the retriever pops */
+  --duration-score: 900ms; /* a score bar springs to length */
   --duration-letter-roll: 280ms;
+  --duration-letter-roll-fade: 200ms;
   --duration-letter-out: 28ms; /* between one letter of Planned leaving and the next */
   --duration-letter-in: 40ms; /* between one letter of Live arriving and the next */
   --duration-status-roll: 260ms; /* Planned starts to leave */
   --duration-status-in: 340ms; /* Live starts to arrive */
-  --duration-status-width: 320ms;
+  --duration-status-width: 320ms; /* the badge narrows to fit Live */
+  --duration-status-width-delay: 300ms;
+  /*
+   * Bento, duo card: each of its two tiles is at most this wide, the gap
+   * between them as given. The RAG picture below it in one column spans both
+   * tiles exactly: half the width, plus half the gap, plus one tile.
+   */
+  --spacing-duo-tile: 230px;
+  --spacing-duo-gap: 14px;
 
   --shadow-*: initial;
   /* Light casts a soft drop shadow; dark lights the top edge instead. */

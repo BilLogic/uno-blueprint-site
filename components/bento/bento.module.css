@@ -84,12 +84,6 @@
     transition-delay: 0s !important;
     animation: none !important;
   }
-  /* The question is already typed. */
-  .panel .typed i {
-    max-width: 1em;
-    opacity: 1;
-    transform: none;
-  }
 }
 
 .inner {
@@ -250,7 +244,7 @@
 .leaves {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: var(--spacing-duo-gap);
   width: 100%;
 
   @variant max-sm {
@@ -264,7 +258,7 @@
 
   & > * {
     box-sizing: border-box;
-    width: min(100%, 230px);
+    width: min(100%, var(--spacing-duo-tile));
   }
 }
 .page {
@@ -404,10 +398,13 @@
 .rag {
   display: grid;
   gap: 10px;
-  /* In one column, as wide as the duo card's two tiles above it: each half less the gap, a 230px tile centred in it. */
+  /*
+   * As wide as the duo card's two tiles would be at this width: half of it,
+   * plus half their gap, plus one tile. It holds at every width; where the
+   * panel is narrower, the full width wins, as in the prototype.
+   */
   justify-self: center;
-  width: min(100%, calc(50% + 237px));
-  margin-inline: auto;
+  width: min(100%, calc(50% + var(--spacing-duo-gap) / 2 + var(--spacing-duo-tile)));
 }
 .query {
   display: flex;
@@ -432,7 +429,7 @@
     color: var(--color-faint);
   }
 }
-/* The question, a letter to an element; at rest the box is empty and waits for it. */
+/* The question, a letter to an element, typed out (its end state). */
 .typed {
   display: inline-flex;
   align-items: center;
@@ -441,10 +438,16 @@
 
   & i {
     display: inline-block;
-    max-width: 0;
+    max-width: 1em;
     overflow: hidden;
     font-style: normal;
     vertical-align: bottom;
+  }
+}
+/* At rest, where it may move, the box is empty and waits for the question. */
+@media (prefers-reduced-motion: no-preference) {
+  .panel:not(:hover, :focus-visible, [data-hot]) .typed i {
+    max-width: 0;
     opacity: 0;
     transform: translateY(3px);
     transition: max-width 0s;
@@ -473,7 +476,7 @@
   transition:
     background var(--duration-t-2),
     color var(--duration-t-2),
-    transform 0.18s var(--ease-out);
+    transform var(--duration-send-nudge) var(--ease-out);
 
   & > span {
     position: absolute;
@@ -481,8 +484,8 @@
     display: grid;
     place-items: center;
     transition:
-      transform 0.22s var(--ease-out),
-      opacity 0.18s;
+      transform var(--duration-send-swap) var(--ease-out),
+      opacity var(--duration-send-nudge);
   }
   & svg {
     width: 13px;
@@ -597,13 +600,10 @@
 .panel:is(:hover, :focus-visible, [data-hot]) {
   /* The question types itself out at a typist's rhythm, each letter settling as it lands. */
   & .typed i {
-    max-width: 1em;
-    opacity: 1;
-    transform: none;
     transition:
       max-width 0s,
-      opacity 0.12s,
-      transform 0.2s var(--ease-out);
+      opacity var(--duration-letter-fade),
+      transform var(--duration-letter-settle) var(--ease-out);
     transition-delay: calc(var(--duration-type-start) + var(--d));
   }
   & .caret {
@@ -626,56 +626,56 @@
     opacity: 0;
     transform: translateY(-120%);
     transition:
-      transform 0.2s var(--ease-in) var(--duration-send-leave),
-      opacity 0.16s calc(var(--duration-send-leave) + 40ms);
+      transform var(--duration-arrow-out) var(--ease-in) var(--duration-send-leave),
+      opacity var(--duration-arrow-fade) calc(var(--duration-send-leave) + var(--duration-arrow-fade-lag));
   }
   & .tick {
     opacity: 1;
     transform: scale(1);
     transition:
-      transform 0.5s var(--ease-spring-s) var(--duration-send-tick),
-      opacity 0.15s var(--duration-send-tick);
+      transform var(--duration-tick) var(--ease-spring-s) var(--duration-send-tick),
+      opacity var(--duration-tick-fade) var(--duration-send-tick);
   }
   /* Then the pipeline runs: matched cells pop, the retriever pops, scores spring to length, the top answer pops. */
   & .retrieval .cell.hit {
     fill: var(--color-brand-soft);
     stroke: var(--color-brand);
     stroke-dasharray: 3 2;
-    transition-delay: calc(var(--duration-pipeline) + var(--n) * 0.07s);
-    animation: pop var(--duration-pop) var(--ease-spring-s) calc(var(--duration-pipeline) + var(--n) * 0.07s);
+    transition-delay: calc(var(--duration-pipeline) + var(--n) * var(--duration-lane-stagger));
+    animation: pop var(--duration-pop) var(--ease-spring-s) calc(var(--duration-pipeline) + var(--n) * var(--duration-lane-stagger));
   }
   & .retrieval .flow.in {
     stroke-dashoffset: 0;
-    transition-delay: calc(var(--duration-pipeline) + 0.1s + var(--n) * 0.07s);
+    transition-delay: calc(var(--duration-pipeline) + var(--duration-wire-in) + var(--n) * var(--duration-lane-stagger));
   }
   & .retrieval :is(.node, .lens) {
     stroke: var(--color-brand);
-    transition-delay: calc(var(--duration-pipeline) + 0.45s);
+    transition-delay: calc(var(--duration-pipeline) + var(--duration-retriever));
   }
   & .retrieval .node {
-    animation: pop 0.55s var(--ease-spring-s) calc(var(--duration-pipeline) + 0.45s);
+    animation: pop var(--duration-pop-node) var(--ease-spring-s) calc(var(--duration-pipeline) + var(--duration-retriever));
   }
   & .retrieval .flow.out {
     stroke-dashoffset: 0;
-    transition-delay: calc(var(--duration-pipeline) + 0.5s + var(--n) * 0.05s);
+    transition-delay: calc(var(--duration-pipeline) + var(--duration-wire-out) + var(--n) * var(--duration-result-stagger));
   }
   & .retrieval .score {
     transform: scaleX(var(--s));
-    transition-delay: calc(var(--duration-pipeline) + 0.75s);
+    transition-delay: calc(var(--duration-pipeline) + var(--duration-scores));
   }
   & .retrieval .row.top {
     fill: color-mix(in oklab, var(--color-brand) 9%, var(--color-panel));
     stroke: var(--color-brand);
-    transition-delay: calc(var(--duration-pipeline) + 0.9s);
-    animation: pop var(--duration-pop) var(--ease-spring-soft) calc(var(--duration-pipeline) + 0.9s);
+    transition-delay: calc(var(--duration-pipeline) + var(--duration-answer));
+    animation: pop var(--duration-pop) var(--ease-spring-soft) calc(var(--duration-pipeline) + var(--duration-answer));
   }
   & .retrieval .score.top {
     fill: var(--color-brand);
-    transition-delay: calc(var(--duration-pipeline) + 0.75s);
+    transition-delay: calc(var(--duration-pipeline) + var(--duration-scores));
   }
   & .retrieval .rank.top {
     fill: var(--color-brand);
-    transition-delay: calc(var(--duration-pipeline) + 0.9s);
+    transition-delay: calc(var(--duration-pipeline) + var(--duration-answer));
   }
 }
 
@@ -869,7 +869,7 @@
     width: 42px;
     height: 12px;
     font-style: normal;
-    transition: width var(--duration-status-width) var(--ease-io) 0.3s;
+    transition: width var(--duration-status-width) var(--ease-io) var(--duration-status-width-delay);
   }
   & b {
     position: absolute;
@@ -885,7 +885,7 @@
     font-style: normal;
     transition:
       transform var(--duration-letter-roll) var(--ease-out),
-      opacity 0.2s;
+      opacity var(--duration-letter-roll-fade);
     transition-delay: calc(var(--i) * var(--duration-letter-out));
   }
   & b + b i {

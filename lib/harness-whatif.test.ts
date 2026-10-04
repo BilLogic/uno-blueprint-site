@@ -41,13 +41,13 @@ describe("whatIfFrame", () => {
 
   it("starts with every slot empty", () => {
     expect(frame(0).options.every((o) => !o.shown)).toBe(true);
-    expect(frame(0).tracing).toBe(false);
+    expect(frame(0).working).toBe(false);
   });
 
   it("shows every option at once, and pings once", () => {
     const drafted = frame(1);
     expect(drafted.options.every((o) => o.shown)).toBe(true);
-    expect(drafted.tracing).toBe(true);
+    expect(drafted.working).toBe(true);
     expect(drafted.pings).toBe(1);
   });
 
@@ -66,7 +66,7 @@ describe("whatIfFrame", () => {
   it("suggests the gentlest option at the end", () => {
     const end = frame(steps.length);
     expect(end.suggested).toBe(1);
-    expect(end.tracing).toBe(false);
+    expect(end.working).toBe(false);
     expect(end.pings).toBe(1);
   });
 });

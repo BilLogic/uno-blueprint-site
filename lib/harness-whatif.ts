@@ -39,7 +39,7 @@ export type WhatIfFrame = {
   /** Per option: shown, how many of its cells are traced, and whether its gain and cost show. */
   options: readonly { shown: boolean; traced: number; weighed: boolean }[];
   /** The options are drafted and still being traced or weighed; none is suggested yet. */
-  tracing: boolean;
+  working: boolean;
   /** The suggested option, once all are weighed. */
   suggested: number | null;
   pings: number;
@@ -47,13 +47,13 @@ export type WhatIfFrame = {
 
 export function whatIfFrame(steps: readonly WhatIfStep[], count: number, cellCounts: readonly number[]): WhatIfFrame {
   const options = cellCounts.map(() => ({ shown: false, traced: 0, weighed: false }));
-  let tracing = false;
+  let working = false;
   let suggested: number | null = null;
   let pings = 0;
   for (const step of steps.slice(0, count)) {
     if (step.kind === "draft") {
       options.forEach((option) => (option.shown = true));
-      tracing = true;
+      working = true;
       pings += 1;
     } else if (step.kind === "trace") {
       const option = options[step.option];
@@ -61,11 +61,11 @@ export function whatIfFrame(steps: readonly WhatIfStep[], count: number, cellCou
     } else if (step.kind === "weigh") {
       options.forEach((option) => (option.weighed = true));
     } else {
-      tracing = false;
+      working = false;
       suggested = gentlest(cellCounts);
     }
   }
-  return { options, tracing, suggested, pings };
+  return { options, working, suggested, pings };
 }
 
 /** The cells marked on today's board: none while the options are traced, then the suggested option's. */
