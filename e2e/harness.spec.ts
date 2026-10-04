@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { map } from "@/content/harness";
 
 const section = (page: Page) =>
   page.locator("section", { has: page.getByRole("heading", { name: "Harness for your agents." }) });
@@ -43,7 +44,10 @@ test.describe("harness showcase", () => {
     for (const cell of ["Drops off the device", "Calls with a quote", "Parts inventory"]) {
       await expect(harness.getByText(cell, { exact: true })).toBeVisible();
     }
-    await expect(harness.getByText("Draft, waiting for your sign-off")).toHaveCSS("opacity", "1");
+    // The map ends on the finished board: every phrase placed in its cell, and no tag under it.
+    const board = harness.getByRole("tabpanel");
+    for (const { text } of map.placements) await expect(board.getByText(text, { exact: true })).toBeVisible();
+    await expect(board.getByText(/sign-off/)).toHaveCount(0);
 
     await harness.getByRole("tab", { name: "What-if" }).click();
     // Every option carries the badge; only the gentlest shows it.

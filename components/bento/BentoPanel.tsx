@@ -21,9 +21,15 @@ type BentoPanelProps = {
   body: string;
   /** The picture: grey at rest, playing while the panel is hovered, focused or in the middle of a touch screen. */
   children: ReactNode;
+  /**
+   * The picture carries words of its own worth reading, labelled where they
+   * are drawn, and hides its decoration itself. Otherwise the whole picture
+   * is hidden from assistive technology.
+   */
+  labelled?: boolean;
 };
 
-export function BentoPanel({ index, size, icon, title, body, children }: BentoPanelProps) {
+export function BentoPanel({ index, size, icon, title, body, children, labelled = false }: BentoPanelProps) {
   const titleId = useId();
   const arrived = useArrived(index);
   const noHover = useNoHover();
@@ -60,7 +66,7 @@ export function BentoPanel({ index, size, icon, title, body, children }: BentoPa
           {title}
         </h3>
         <p className={styles.body}>{body}</p>
-        <div className={styles.picture} aria-hidden>
+        <div className={styles.picture} aria-hidden={!labelled || undefined}>
           {children}
         </div>
       </div>

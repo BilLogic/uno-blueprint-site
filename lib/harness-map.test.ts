@@ -11,7 +11,7 @@ const steps = mapSteps(order);
 
 describe("mapSteps", () => {
   it("reads, opens and places each phrase in turn, then finishes", () => {
-    expect(steps.map((s) => (s.kind === "done" ? "done" : `${s.kind} ${s.phrase}`))).toEqual([
+    expect(steps.map((s) => (s.kind === "end" ? "end" : `${s.kind} ${s.phrase}`))).toEqual([
       "read 0",
       "open 0",
       "place 0",
@@ -21,7 +21,7 @@ describe("mapSteps", () => {
       "read 1",
       "open 1",
       "place 1",
-      "done",
+      "end",
     ]);
   });
 
@@ -44,7 +44,6 @@ describe("mapFrame", () => {
     expect(f.lanes).toEqual([false, false, false, false]);
     expect(f.steps).toEqual([false, false, false]);
     expect(f.read.size + f.placed.size).toBe(0);
-    expect(f.done).toBe(false);
   });
 
   it("opens a lane and a step only once a phrase calls for them", () => {
@@ -60,10 +59,9 @@ describe("mapFrame", () => {
     expect(frame(6).placed).toEqual(new Set([0, 2]));
   });
 
-  it("clears the mark and shows the draft notice at the end", () => {
+  it("ends on the finished board, with every phrase placed and no cell marked", () => {
     const end = frame(steps.length);
     expect(end.latest).toBeNull();
-    expect(end.done).toBe(true);
     expect(end.placed).toEqual(new Set([0, 1, 2]));
   });
 

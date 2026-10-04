@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { queueArrivals, tokenTravel } from "./bento";
+import { queueArrivals, tokenTravel, typingDelays } from "./bento";
 
 describe("queueArrivals", () => {
   it("lands panels seen together one beat apart, the first at once", () => {
@@ -31,5 +31,29 @@ describe("tokenTravel", () => {
   it("perches the agent over the cell's top-right corner", () => {
     const agent = { ...token, left: 287 };
     expect(tokenTravel(cell, agent, "agent")).toEqual({ x: 180 - 9.9 - 287, y: 32 - 12.1 - 89 });
+  });
+});
+
+describe("typingDelays", () => {
+  it("types the question at the design's recorded rhythm", () => {
+    // The prototype's own delays, in milliseconds, one per letter of "Who approves a refund?".
+    expect(typingDelays("Who approves a refund?")).toEqual([
+      0, 25, 46, 127, 147, 176, 201, 221, 249, 268, 295, 315, 385, 412, 496, 517, 540, 570, 607, 637, 663, 700,
+    ]);
+  });
+
+  it("keeps the rhythm going past its end, so a longer question still types out", () => {
+    const delays = typingDelays("x".repeat(30));
+    expect(delays).toHaveLength(30);
+    expect(new Set(delays).size).toBe(30);
+    expect([...delays].sort((a, b) => a - b)).toEqual(delays);
+  });
+
+  it("counts letters, not UTF-16 units", () => {
+    expect(typingDelays("é?")).toHaveLength(2);
+  });
+
+  it("types nothing for an empty question", () => {
+    expect(typingDelays("")).toEqual([]);
   });
 });

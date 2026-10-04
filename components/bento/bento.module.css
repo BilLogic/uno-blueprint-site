@@ -82,6 +82,7 @@
   .panel *::after {
     transition-duration: 0s !important;
     transition-delay: 0s !important;
+    animation: none !important;
   }
 }
 
@@ -243,7 +244,7 @@
 .leaves {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: var(--spacing-duo-gap);
   width: 100%;
 
   @variant max-sm {
@@ -257,7 +258,7 @@
 
   & > * {
     box-sizing: border-box;
-    width: min(100%, 230px);
+    width: min(100%, var(--spacing-duo-tile));
   }
 }
 .page {
@@ -397,13 +398,20 @@
 .rag {
   display: grid;
   gap: 10px;
+  /*
+   * As wide as the duo card's two tiles would be at this width: half of it,
+   * plus half their gap, plus one tile. It holds at every width; where the
+   * panel is narrower, the full width wins, as in the prototype.
+   */
+  justify-self: center;
+  width: min(100%, calc(50% + var(--spacing-duo-gap) / 2 + var(--spacing-duo-tile)));
 }
 .query {
   display: flex;
   gap: 8px;
   align-items: center;
-  justify-self: start;
-  padding: 7px 11px;
+  justify-self: center;
+  padding: 7px 5px 7px 11px;
   border: 1px solid var(--color-line-2);
   border-radius: var(--radius-10);
   background: var(--color-panel);
@@ -414,11 +422,102 @@
     border-color var(--duration-t-2),
     color var(--duration-t-2);
 
-  & svg {
+  & > svg {
     flex: none;
     width: 14px;
     height: 14px;
     color: var(--color-faint);
+  }
+}
+/* The question, a letter to an element, typed out (its end state). */
+.typed {
+  display: inline-flex;
+  align-items: center;
+  min-width: 12.5em;
+  white-space: pre;
+
+  & i {
+    display: inline-block;
+    max-width: 1em;
+    overflow: hidden;
+    font-style: normal;
+    vertical-align: bottom;
+  }
+}
+/* At rest, where it may move, the box is empty and waits for the question. */
+@media (prefers-reduced-motion: no-preference) {
+  .panel:not(:hover, :focus-visible, [data-hot]) .typed i {
+    max-width: 0;
+    opacity: 0;
+    transform: translateY(3px);
+    transition: max-width 0s;
+  }
+}
+.caret {
+  display: inline-block;
+  width: 1px;
+  height: 13px;
+  margin-left: 1px;
+  background: var(--color-faint);
+  opacity: 0;
+}
+/* The send button: an arrow that leaves once the question is typed, and a tick that springs in. */
+.send {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  width: 22px;
+  height: 22px;
+  margin-left: 4px;
+  border-radius: 7px;
+  background: var(--color-card-2);
+  color: var(--color-faint);
+  transition:
+    background var(--duration-t-2),
+    color var(--duration-t-2),
+    transform var(--duration-send-nudge) var(--ease-out);
+
+  & > span {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    transition:
+      transform var(--duration-send-swap) var(--ease-out),
+      opacity var(--duration-send-nudge);
+  }
+  & svg {
+    width: 13px;
+    height: 13px;
+  }
+}
+.tick {
+  opacity: 0;
+  transform: scale(0.4);
+}
+@keyframes send-press {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(0.82);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes pop {
+  from {
+    transform: scale(0.84);
+  }
+  to {
+    transform: none;
   }
 }
 .retrieval {
@@ -427,6 +526,10 @@
   height: auto;
   overflow: visible;
 
+  & :is(.cell, .node, .row) {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
   & .cell {
     fill: var(--color-card-2);
     stroke: transparent;
@@ -489,50 +592,90 @@
     transform-origin: 0 50%;
     transform: scaleX(0.42);
     transition:
-      transform var(--duration-t-3) var(--ease-out),
+      transform var(--duration-score) var(--ease-spring-soft),
       fill var(--duration-t-2);
   }
 }
 
 .panel:is(:hover, :focus-visible, [data-hot]) {
-  & .query {
-    border-color: var(--color-line-hot);
-    color: var(--color-ink);
+  /* The question types itself out at a typist's rhythm, each letter settling as it lands. */
+  & .typed i {
+    transition:
+      max-width 0s,
+      opacity var(--duration-letter-fade),
+      transform var(--duration-letter-settle) var(--ease-out);
+    transition-delay: calc(var(--duration-type-start) + var(--d));
   }
+  & .caret {
+    opacity: 1;
+    animation: caret-blink var(--duration-caret) steps(1) var(--duration-caret-delay) 2;
+  }
+  /* Then it is sent. */
+  & .query {
+    border-color: var(--color-brand);
+    color: var(--color-ink);
+    transition-delay: var(--duration-send);
+  }
+  & .send {
+    background: var(--color-brand);
+    color: var(--color-panel);
+    transition-delay: var(--duration-send);
+    animation: send-press var(--duration-send-press) var(--ease-out) var(--duration-send) both;
+  }
+  & .arrowUp {
+    opacity: 0;
+    transform: translateY(-120%);
+    transition:
+      transform var(--duration-arrow-out) var(--ease-in) var(--duration-send-leave),
+      opacity var(--duration-arrow-fade) calc(var(--duration-send-leave) + var(--duration-arrow-fade-lag));
+  }
+  & .tick {
+    opacity: 1;
+    transform: scale(1);
+    transition:
+      transform var(--duration-tick) var(--ease-spring-s) var(--duration-send-tick),
+      opacity var(--duration-tick-fade) var(--duration-send-tick);
+  }
+  /* Then the pipeline runs: matched cells pop, the retriever pops, scores spring to length, the top answer pops. */
   & .retrieval .cell.hit {
     fill: var(--color-brand-soft);
     stroke: var(--color-brand);
     stroke-dasharray: 3 2;
-    transition-delay: calc(var(--n) * 0.07s);
+    transition-delay: calc(var(--duration-pipeline) + var(--n) * var(--duration-lane-stagger));
+    animation: pop var(--duration-pop) var(--ease-spring-s) calc(var(--duration-pipeline) + var(--n) * var(--duration-lane-stagger));
   }
   & .retrieval .flow.in {
     stroke-dashoffset: 0;
-    transition-delay: calc(0.1s + var(--n) * 0.07s);
+    transition-delay: calc(var(--duration-pipeline) + var(--duration-wire-in) + var(--n) * var(--duration-lane-stagger));
   }
   & .retrieval :is(.node, .lens) {
     stroke: var(--color-brand);
-    transition-delay: 0.5s;
+    transition-delay: calc(var(--duration-pipeline) + var(--duration-retriever));
+  }
+  & .retrieval .node {
+    animation: pop var(--duration-pop-node) var(--ease-spring-s) calc(var(--duration-pipeline) + var(--duration-retriever));
   }
   & .retrieval .flow.out {
     stroke-dashoffset: 0;
-    transition-delay: calc(0.56s + var(--n) * 0.05s);
+    transition-delay: calc(var(--duration-pipeline) + var(--duration-wire-out) + var(--n) * var(--duration-result-stagger));
   }
   & .retrieval .score {
     transform: scaleX(var(--s));
-    transition-delay: 0.8s;
+    transition-delay: calc(var(--duration-pipeline) + var(--duration-scores));
   }
   & .retrieval .row.top {
     fill: color-mix(in oklab, var(--color-brand) 9%, var(--color-panel));
     stroke: var(--color-brand);
-    transition-delay: 0.95s;
+    transition-delay: calc(var(--duration-pipeline) + var(--duration-answer));
+    animation: pop var(--duration-pop) var(--ease-spring-soft) calc(var(--duration-pipeline) + var(--duration-answer));
   }
   & .retrieval .score.top {
     fill: var(--color-brand);
-    transition-delay: 0.8s;
+    transition-delay: calc(var(--duration-pipeline) + var(--duration-scores));
   }
   & .retrieval .rank.top {
     fill: var(--color-brand);
-    transition-delay: 0.95s;
+    transition-delay: calc(var(--duration-pipeline) + var(--duration-answer));
   }
 }
 
@@ -722,9 +865,11 @@
   & em {
     position: relative;
     display: block;
+    overflow: hidden;
     width: 42px;
     height: 12px;
     font-style: normal;
+    transition: width var(--duration-status-width) var(--ease-io) var(--duration-status-width-delay);
   }
   & b {
     position: absolute;
@@ -732,10 +877,20 @@
     top: 0;
     font-weight: 400;
     line-height: 12px;
-    transition: opacity var(--duration-t-1);
+    white-space: pre;
   }
-  & b + b {
+  /* Each letter rolls on its own beat: Planned's up and out, Live's up and in. */
+  & b i {
+    display: inline-block;
+    font-style: normal;
+    transition:
+      transform var(--duration-letter-roll) var(--ease-out),
+      opacity var(--duration-letter-roll-fade);
+    transition-delay: calc(var(--i) * var(--duration-letter-out));
+  }
+  & b + b i {
     opacity: 0;
+    transform: translateY(105%);
   }
 }
 .value {
@@ -789,13 +944,18 @@
     background: var(--color-brand);
     transition-delay: 0.26s;
   }
-  & .status b {
-    opacity: 0;
-    transition-delay: 0.26s;
+  & .status em {
+    width: 24px;
   }
-  & .status b + b {
+  & .status b i {
+    opacity: 0;
+    transform: translateY(-105%);
+    transition-delay: calc(var(--duration-status-roll) + var(--i) * var(--duration-letter-out));
+  }
+  & .status b + b i {
     opacity: 1;
-    transition-delay: 0.3s;
+    transform: none;
+    transition-delay: calc(var(--duration-status-in) + var(--i) * var(--duration-letter-in));
   }
   & .value {
     border-color: var(--color-brand);
