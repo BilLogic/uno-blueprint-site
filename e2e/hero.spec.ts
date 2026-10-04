@@ -132,12 +132,12 @@ for (const width of [1440, 390]) {
           const children = Array.from(stage.children) as HTMLElement[];
           const walkers = children.filter((child) => child.classList.contains("z-30"));
           const panel = children.find((child) => child.classList.contains("@container"))!;
-          const targets = () => {
-            const shown = (element: Element) => element.getBoundingClientRect().width > 0;
-            const fields =
-              getComputedStyle(panel).opacity === "1" ? [panel.querySelector(".rounded-pill")!, panel.querySelector(".gap-1\\.75")!] : [];
-            return [...stage.querySelectorAll(".h-13"), ...stage.querySelectorAll("span[title]"), ...fields].filter(shown);
-          };
+          const shown = (element: Element) => element.getBoundingClientRect().width > 0;
+          const fields = [panel.querySelector(".rounded-pill")!, panel.querySelector(".gap-1\\.75")!];
+          // A field counts only while the panel is open and on screen; standing on one of a closed or hidden panel is a stray.
+          const panelOpen = () => shown(panel) && getComputedStyle(panel).opacity === "1";
+          const targets = () =>
+            [...stage.querySelectorAll(".h-13"), ...stage.querySelectorAll("span[title]"), ...(panelOpen() ? fields : [])].filter(shown);
           const overlaps = (a: DOMRect, b: DOMRect) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
           const seen = walkers.map(() => ({ transform: "", since: 0, checked: false }));
           const out: string[] = [];
@@ -152,7 +152,9 @@ for (const width of [1440, 390]) {
               if (last.checked || now - last.since < 1000 || !("placed" in walker.dataset)) return;
               last.checked = true;
               const spot = walker.getBoundingClientRect();
-              if (!targets().some((target) => overlaps(spot, target.getBoundingClientRect()))) out.push(`${i} at ${last.transform}`);
+              const stranded = walker.dataset.on === "field" && !panelOpen();
+              if (stranded || !targets().some((target) => overlaps(spot, target.getBoundingClientRect())))
+                out.push(`${i} at ${last.transform}${stranded ? " on a closed panel" : ""}`);
             });
           }, 100);
           setTimeout(() => {

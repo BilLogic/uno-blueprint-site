@@ -171,7 +171,9 @@ export type BoardAction =
   | { type: "land"; cell: number; tool: number }
   | { type: "move"; at: readonly (Place | null)[]; carry?: readonly (number | null)[] }
   | { type: "drop"; walker: number; cell: number }
-  | { type: "solo"; on: boolean }
+  /** `random` (0 to 1) picks the filled cell anyone standing on the panel walks back to as it closes. */
+  | { type: "solo"; on: true; random: number }
+  | { type: "solo"; on: false }
   | { type: "restatus"; status: number }
   | { type: "close" }
   | { type: "focus"; cell: number }
@@ -213,8 +215,9 @@ export function boardReducer(board: Board, action: BoardAction): Board {
     }
     case "solo": {
       if (!action.on) return { ...board, solo: false };
-      // Anyone in the panel walks back to the cell they were editing.
-      const home = board.focus ?? filledCells(board)[0];
+      // The panel closes: anyone standing on it walks back to a filled cell, never left on a field that is no longer there.
+      const pool = filledCells(board);
+      const home = pool[Math.min(pool.length - 1, Math.floor(action.random * pool.length))];
       const at = board.at.map((place) => (place?.kind === "field" && home !== undefined ? onCell(home) : place));
       return { ...board, at, solo: true, focus: null, projecting: false, panel: "hidden" };
     }

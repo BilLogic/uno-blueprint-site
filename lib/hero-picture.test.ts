@@ -80,17 +80,35 @@ describe("boardReducer", () => {
   });
 
   it("goes solo: the board alone, the panel blank and its light out", () => {
-    const solo = boardReducer(board, { type: "solo", on: true });
+    const solo = boardReducer(board, { type: "solo", on: true, random: 0 });
     expect(solo).toMatchObject({ solo: true, focus: null, projecting: false, panel: "hidden" });
     // The panel comes back blank; the next cell fills it.
     expect(boardReducer(solo, { type: "solo", on: false })).toMatchObject({ solo: false, panel: "hidden", focus: null });
   });
 
-  it("going solo, walks anyone in the panel back to the cell they were editing", () => {
-    const editing: Board = { ...board, at: [{ kind: "field", field: "status" }, ...board.at.slice(1)] };
-    const solo = boardReducer(editing, { type: "solo", on: true });
-    expect(solo.at[0]).toEqual(onCell(board.focus!));
-    expect(solo.at.slice(1)).toEqual(board.at.slice(1));
+  it("closing the panel walks anyone standing on it back to a filled cell", () => {
+    const editing: Board = {
+      ...board,
+      at: [{ kind: "field", field: "status" }, board.at[1]!, { kind: "field", field: "owner" }, board.at[3]!],
+    };
+    for (const random of [0, 0.5, 0.999]) {
+      const solo = boardReducer(editing, { type: "solo", on: true, random });
+      const pool = filledCells(solo);
+      for (const i of [0, 2]) expect(pool).toContain(cellOf(solo.at[i]));
+      expect([solo.at[1], solo.at[3]]).toEqual([board.at[1], board.at[3]]);
+    }
+  });
+
+  it("never sends anyone to a panel field while the panel is closed", () => {
+    const view = { tools: [0, 1, 2, 3, 4, 5, 6, 7], fields: ["status", "owner"] as const };
+    const editing: Board = { ...board, at: [{ kind: "field", field: "owner" }, ...board.at.slice(1)] };
+    const closed = boardReducer(editing, { type: "solo", on: true, random: 0.3 });
+    expect(closed.at[0]!.kind).toBe("cell");
+    // The person on the panel, then every errand roll: a closed panel is never a target.
+    for (const errand of [0, 0.1, 0.29, 0.5]) {
+      expect(planStep(closed, sequence(0, errand, 0, 0.9), view)!.to.kind).toBe("cell");
+      expect(planStep(closed, sequence(0.5, errand, 0, 0.9), view)!.to.kind).toBe("cell");
+    }
   });
 
   it("drops a carried source into a cell with room, and nothing into a full one", () => {

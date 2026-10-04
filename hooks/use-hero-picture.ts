@@ -155,6 +155,8 @@ function placeWalkers(el: Elements, at: Board["at"], jump: boolean) {
     if (jump) walker.style.transition = "none";
     walker.style.transform = `translate(${spot.x}px,${spot.y}px)`;
     walker.dataset.placed = "";
+    // What it stands on (cell, tool or field), for the behaviour tests.
+    walker.dataset.on = at[i]?.kind ?? "";
   });
   if (!jump) return;
   void stage.offsetWidth;
@@ -310,7 +312,8 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
         stage.style.setProperty("--solo-scale", scale.toFixed(3));
       }
     } else clock.openSince = now;
-    dispatch({ type: "solo", on });
+    // The reducer walks anyone on the panel back to a cell before the board starts growing.
+    dispatch(on ? { type: "solo", on, random: Math.random() } : { type: "solo", on });
     rideAlong(TIMING.ride);
   }
 
