@@ -1,4 +1,4 @@
-import type { Marks } from "./repair-board";
+import type { Marks, StepName } from "./repair-board";
 
 export type TouchPointTab = "app" | "agent" | "chat" | "phone";
 
@@ -26,7 +26,7 @@ type TouchPoints = {
     )[];
     step: string;
   };
-  phone: { journey: string; path: string; lit: string };
+  phone: { lit: StepName<"user"> };
 };
 
 export const touchPoints = {
@@ -99,10 +99,6 @@ export const touchPoints = {
     /** The step the bot's link opens. */
     step: "Picks up",
   },
-  /** The journey reader: one actor's steps down the walk-in path, with the step jumped to lit. */
-  phone: {
-    journey: "Repair intake",
-    path: "User · walk-in path",
-    lit: "Quote approved",
-  },
+  /** The journey reader shows the user's steps down the board's path, with the step jumped to lit. */
+  phone: { lit: "Quote approved" },
 } as const satisfies TouchPoints;

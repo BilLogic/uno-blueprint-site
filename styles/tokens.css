@@ -298,6 +298,7 @@
   --spacing-bubble-y: 0.7em;
   /* The phone placeholder: a handset standing on the stage's foot, its screen a journey reader. */
   --aspect-phone: 9 / 17;
+  --aspect-phone-narrow: 4 / 5; /* on a phone, wide enough for a step's name */
   --radius-phone: 1.8em; /* the handset's corners */
   --spacing-phone-top: 6%; /* the stage above the handset */
   --spacing-phone-bezel: 0.45em; /* the rim round the screen */

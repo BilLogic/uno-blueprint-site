@@ -10,7 +10,7 @@ function labels(tabs: readonly { label: string }[]): readonly [string, string, s
 }
 
 /** The last tab's label, where End lands and ArrowLeft wraps to. */
-const last = (tabs: readonly [string, ...string[]]) => tabs[tabs.length - 1] ?? tabs[0];
+const last = (tabs: readonly [string, ...string[]]) => tabs.at(-1)!;
 
 const rows = [
   {
@@ -82,33 +82,38 @@ for (const row of rows) {
   });
 }
 
-test("the touch points end on the phone, which claims reading and jumping, and its stage keeps the same size", async ({
-  page,
-}) => {
-  const phone = touchPoints.tabs[3];
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
-  const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
-  await expect(list.getByRole("tab")).toHaveCount(4);
-  await expect(list.getByRole("tab").last()).toHaveText(phone.label);
+const phone = touchPoints.tabs.find((tab) => tab.value === "phone")!;
 
-  const stage = (tab: string) => page.getByRole("tabpanel", { name: tab }).locator("> div").first();
-  const before = await stage(touchPoints.tabs[0].label).boundingBox();
-  await list.getByRole("tab", { name: phone.label }).click();
-  const panel = page.getByRole("tabpanel", { name: phone.label });
-  await expect(panel.getByText(phone.caption)).toBeVisible();
-  const after = await stage(phone.label).boundingBox();
-  // Clicking may scroll the tab into view, so only the size is compared.
-  expect([after!.width, after!.height]).toEqual([before!.width, before!.height]);
+for (const width of [1440, 390]) {
+  test(`at ${width} px the touch points end on the phone, every tab's stage is one size, and the handset fills it`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
+    await expect(list.getByRole("tab")).toHaveCount(touchPoints.tabs.length);
+    await expect(list.getByRole("tab").last()).toHaveText(phone.label);
 
-  // The phone frame fills the stage's height and stays inside it.
-  const frame = await stage(phone.label).locator("[aria-hidden]").first().boundingBox();
-  expect(frame!.y).toBeGreaterThanOrEqual(after!.y);
-  expect(frame!.y + frame!.height).toBeLessThanOrEqual(after!.y + after!.height + 0.5);
-  expect(frame!.x).toBeGreaterThanOrEqual(after!.x);
-  expect(frame!.x + frame!.width).toBeLessThanOrEqual(after!.x + after!.width);
-  expect(frame!.height).toBeGreaterThan(after!.height * 0.75);
-});
+    // Clicking may scroll the tab into view, so only the stage's size is compared.
+    const sizes = [];
+    for (const tab of touchPoints.tabs) {
+      await list.getByRole("tab", { name: tab.label }).click();
+      const box = await page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage").boundingBox();
+      sizes.push([box!.width, box!.height]);
+    }
+    expect(new Set(sizes.map(String)).size).toBe(1);
+
+    const panel = page.getByRole("tabpanel", { name: phone.label });
+    await expect(panel.getByText(phone.caption)).toBeVisible();
+    const stage = (await panel.getByTestId("showcase-stage").boundingBox())!;
+    const frame = (await panel.getByTestId("phone-frame").boundingBox())!;
+    expect(frame.y).toBeGreaterThanOrEqual(stage.y);
+    expect(frame.y + frame.height).toBeLessThanOrEqual(stage.y + stage.height + 0.5);
+    expect(frame.x).toBeGreaterThanOrEqual(stage.x);
+    expect(frame.x + frame.width).toBeLessThanOrEqual(stage.x + stage.width);
+    expect(frame.height).toBeGreaterThan(stage.height * 0.75);
+  });
+}
 
 test("the canvas's side link sits beside the headline, and on a phone under the sub-headline", async ({ page }) => {
   const section = page.locator("section", {
