@@ -173,12 +173,6 @@ export function MapPicture({ running, onStale }: PictureProps) {
               </div>
             ))}
           </div>
-          <span
-            aria-hidden={!frame.done}
-            className={`mt-1 justify-self-start rounded-pill bg-amber-bg px-[9px] py-0.5 text-11 leading-normal font-medium text-amber transition-opacity duration-400 motion-reduce:transition-none ${frame.done ? "opacity-100" : "opacity-0"}`}
-          >
-            {map.done}
-          </span>
         </Card>
       </Side>
     </Flow>

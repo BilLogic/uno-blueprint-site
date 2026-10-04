@@ -43,7 +43,8 @@ test.describe("harness showcase", () => {
     for (const cell of ["Drops off the device", "Calls with a quote", "Parts inventory"]) {
       await expect(harness.getByText(cell, { exact: true })).toBeVisible();
     }
-    await expect(harness.getByText("Draft, waiting for your sign-off")).toHaveCSS("opacity", "1");
+    // The map ends on the finished board, with no tag under it.
+    await expect(harness.getByText(/sign-off/)).toHaveCount(0);
 
     await harness.getByRole("tab", { name: "What-if" }).click();
     // Every option carries the badge; only the gentlest shows it.

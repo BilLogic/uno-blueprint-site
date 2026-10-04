@@ -29,7 +29,6 @@ type DocPart = { bar: number } | { phrase: number; text: string };
 export const map = {
   sources: "Your existing context",
   result: "Your blueprint",
-  done: "Draft, waiting for your sign-off",
   /** Five documents, each with a title bar (% of the row) and a line holding the phrases. */
   docs: [
     { source: "figma", title: 34, line: [{ bar: 22 }, { phrase: 0, text: "drops off the device" }, { bar: 30 }] },

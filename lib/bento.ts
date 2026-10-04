@@ -42,3 +42,23 @@ export function tokenTravel(
   const y = cell.top - token.height * 0.55 - token.top;
   return { x, y };
 }
+
+/**
+ * A typist's rhythm, as the design records it: the gap before each letter
+ * after the first, in milliseconds. Letters come quickly; the gap before a
+ * space is longer, where the typist pauses between words.
+ */
+export const TYPIST_GAPS_MS = [25, 21, 81, 20, 29, 25, 20, 28, 19, 27, 20, 70, 27, 84, 21, 23, 30, 37, 30, 26, 37] as const;
+
+/**
+ * The RAG card's question, letter by letter, each with the moment it is typed
+ * (ms after typing starts). A question longer than the recorded rhythm starts
+ * the rhythm again.
+ */
+export function typeOut(text: string, gaps: readonly number[] = TYPIST_GAPS_MS): { letter: string; delay: number }[] {
+  let delay = 0;
+  return [...text].map((letter, i) => {
+    if (i > 0) delay += gaps[(i - 1) % gaps.length] ?? 0;
+    return { letter, delay };
+  });
+}

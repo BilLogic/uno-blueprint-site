@@ -1,17 +1,39 @@
-import { Gem, Search, UserRound } from "lucide-react";
+import { ArrowUp, Check, Gem, Search, UserRound } from "lucide-react";
 import { bento } from "@/content/bento";
+import { typeOut } from "@/lib/bento";
 import { ToolLogo } from "@/components/icons/ToolLogo";
 import { BOARD, HITS, RESULTS, SOURCE_WIRES, STACKS } from "./geometry";
 import styles from "./bento.module.css";
 import { vars } from "./vars";
 
-/** Built for RAG: a question, one hit in each lane, one retriever, four ranked results. */
+const QUESTION = typeOut(bento.rag.question);
+
+/**
+ * Built for RAG: a question, one hit in each lane, one retriever, four ranked
+ * results. While it plays the question types itself out and is sent (the
+ * arrow leaves, a tick springs in), then the pipeline runs.
+ */
 export function RagPicture() {
   return (
     <div className={styles.rag}>
       <div className={styles.query}>
         <Search strokeWidth={1.75} />
-        <span>{bento.rag.question}</span>
+        <span className={styles.typed}>
+          {QUESTION.map(({ letter, delay }, i) => (
+            <i key={i} style={vars({ "--d": `${delay}ms` })}>
+              {letter}
+            </i>
+          ))}
+          <u className={styles.caret} />
+        </span>
+        <span className={styles.send}>
+          <span className={styles.arrowUp}>
+            <ArrowUp strokeWidth={1.75} />
+          </span>
+          <span className={styles.tick}>
+            <Check strokeWidth={1.75} />
+          </span>
+        </span>
       </div>
       <svg className={styles.retrieval} viewBox="0 0 380 196">
         {HITS.map((_, r) => {
@@ -124,7 +146,19 @@ export function ScalePicture() {
   );
 }
 
-/** Product context, built in: a cell with its owner, status and value, between the steps either side. */
+/** A word drawn one letter to an element, so each letter can roll on its own beat. */
+const rolled = (word: string) =>
+  [...word].map((letter, i) => (
+    <i key={i} style={vars({ "--i": i })}>
+      {letter}
+    </i>
+  ));
+
+/**
+ * Product context, built in: a cell with its owner, status and value, between
+ * the steps either side. While it plays, Planned rolls up out of its badge one
+ * letter at a time as Live rolls in.
+ */
 export function ContextPicture() {
   const [before, after] = bento.context.status;
   return (
@@ -141,8 +175,8 @@ export function ContextPicture() {
         </span>
         <span className={styles.status}>
           <em>
-            <b>{before}</b>
-            <b>{after}</b>
+            <b>{rolled(before)}</b>
+            <b>{rolled(after)}</b>
           </em>
         </span>
         <span className={styles.value}>

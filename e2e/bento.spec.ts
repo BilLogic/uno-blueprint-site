@@ -12,9 +12,16 @@ const titles = [
 const panel = (page: Page, title: (typeof titles)[number]) =>
   page.getByRole("group", { name: title });
 
-/** The product-context picture's status reads "Planned" at rest and "Live" while it plays. */
+/**
+ * The product-context picture's status reads "Planned" at rest and "Live" while
+ * it plays, rolling in one letter at a time: this is Live's last letter.
+ */
 const live = (page: Page) =>
-  panel(page, bento.context.title).getByText("Live", { exact: true });
+  panel(page, bento.context.title).getByText("Live", { exact: true }).locator("i").last();
+
+/** The RAG picture's question, typed in while it plays: its last letter. */
+const typed = (page: Page) =>
+  panel(page, bento.rag.title).getByText(bento.rag.question, { exact: true }).locator("i").last();
 
 test.describe("bento", () => {
   test("panels arrive as they scroll into view, one beat apart along a row", async ({ page }) => {
@@ -61,6 +68,20 @@ test.describe("bento", () => {
     await expect(live(page)).toHaveCSS("opacity", "0");
   });
 
+  test("the RAG question types itself out while the pointer is on its panel, unquoted", async ({ page }) => {
+    await page.goto("/");
+    const rag = panel(page, bento.rag.title);
+    await rag.scrollIntoViewIfNeeded();
+    await expect(typed(page)).toHaveCSS("opacity", "0");
+
+    await rag.hover();
+    await expect(typed(page)).toHaveCSS("opacity", "1");
+    await expect(rag).not.toContainText("“");
+
+    await page.mouse.move(0, 0);
+    await expect(typed(page)).toHaveCSS("opacity", "0");
+  });
+
   test("a panel reached with the keyboard plays as it does under the pointer", async ({ page }) => {
     await page.goto("/");
     // The hero's link, the last stop before the bento.
@@ -83,6 +104,9 @@ test.describe("bento", () => {
     // A picture shows how it ends at once, with nothing in between.
     await panel(page, bento.context.title).hover();
     await expect(live(page)).toHaveCSS("opacity", "1", { timeout: 100 });
+
+    // The RAG question is already typed, at rest.
+    await expect(typed(page)).toHaveCSS("opacity", "1");
   });
 
   test("on a phone the duo card keeps its tree, both readings side by side", async ({ page }) => {

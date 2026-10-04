@@ -132,6 +132,12 @@
   --ease-io: cubic-bezier(0.65, 0, 0.35, 1); /* something on screen moves from A to B */
   --ease-spring: cubic-bezier(0.34, 1.45, 0.5, 1); /* a small thing pops */
   --ease-plain: ease; /* the browser's default, which the prototype's quick hover fades keep */
+  /*
+   * Something that lands springs: a real spring (overshoot, then settle) where
+   * linear() is supported, set below; these curves stand in where it is not.
+   */
+  --ease-spring-s: var(--ease-spring);
+  --ease-spring-soft: cubic-bezier(0.3, 1.25, 0.5, 1);
   --duration-t-1: 160ms;
   --duration-t-2: 280ms;
   --duration-t-3: 460ms;
@@ -140,6 +146,27 @@
   --duration-arrive: 550ms;
   --duration-rise: 850ms;
   --duration-travel: 500ms;
+  /*
+   * Bento, RAG: the question types itself out, is sent (the arrow leaves, a
+   * tick springs in), then the pipeline runs. Product context: Planned rolls
+   * up out of its badge one letter at a time as Live rolls in.
+   */
+  --duration-type-start: 80ms; /* the first letter, after the pointer arrives */
+  --duration-caret: 500ms; /* one blink */
+  --duration-caret-delay: 900ms;
+  --duration-send: 850ms; /* the question is sent */
+  --duration-send-press: 320ms;
+  --duration-send-leave: 920ms; /* the arrow leaves */
+  --duration-send-tick: 1000ms; /* the tick springs in */
+  --duration-pipeline: 1100ms; /* the first matched cell */
+  --duration-pop: 600ms;
+  --duration-score: 900ms;
+  --duration-letter-roll: 280ms;
+  --duration-letter-out: 28ms; /* between one letter of Planned leaving and the next */
+  --duration-letter-in: 40ms; /* between one letter of Live arriving and the next */
+  --duration-status-roll: 260ms; /* Planned starts to leave */
+  --duration-status-in: 340ms; /* Live starts to arrive */
+  --duration-status-width: 320ms;
 
   --shadow-*: initial;
   /* Light casts a soft drop shadow; dark lights the top edge instead. */
@@ -381,7 +408,7 @@
     }
   }
   /* A line traced from a phrase to the skill and on to its lane. */
-  --animate-draw: draw 0.45s ease forwards;
+  --animate-draw: draw 0.45s var(--ease-out) forwards;
   @keyframes draw {
     to {
       stroke-dashoffset: 0;
@@ -414,6 +441,13 @@
       border: 1px dashed var(--color-amber);
       color: var(--color-amber);
     }
+  }
+}
+
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --ease-spring-s: linear(0, 0.22 6%, 0.6 14%, 0.9 22%, 1.05 30%, 1.09 36%, 1.06 44%, 1.01 56%, 0.993 68%, 1);
+    --ease-spring-soft: linear(0, 0.25 7%, 0.66 16%, 0.93 25%, 1.03 33%, 1.04 40%, 1.015 52%, 0.998 66%, 1);
   }
 }
 
