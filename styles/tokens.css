@@ -269,19 +269,29 @@
   --color-sketch: color-mix(in oklab, var(--color-ink) 32%, transparent); /* the first line of sketched text */
   --spacing-hero-stage-x: clamp(16px, 2vw, 28px);
   --spacing-hero-stage-y: clamp(44px, 6vw, 88px);
-  --spacing-hero-stage-gap: clamp(16px, 2.4vw, 36px);
-  --spacing-hero-feed-gap: clamp(14px, 2.2vw, 34px);
-  --spacing-hero-panel: min(100%, 250px);
+  /* One gap between tools, mark, board and panel; the row is centred, so the frame's margins match. */
+  --spacing-hero-gap: clamp(18px, 2.6vw, 40px);
+  --spacing-hero-panel: clamp(168px, 17vw, 240px);
+  /* The panel's content width below which Status and Owner stack and Value proposition steps out. */
+  --container-hero-fields: 170px;
+  /* The two sheets stacked behind the hero board stick out this far right and up (the second one half as far); the solo sizing reads them too. */
+  --spacing-hero-stack-x: 18px;
+  --spacing-hero-stack-y: 16px;
+  /* Solo: the panel slides this far aside while the board stands alone. */
+  --spacing-hero-solo-shift: 28px;
   /* The panel's content width below which its tab row holds only two tabs, then one. */
   --container-hero-tabs-3: 191px;
   --container-hero-tabs-2: 131px;
-  --spacing-hero-feed-inset: max(0px, calc(100% - 250px)); /* the tools and node end where the panel's column would */
   --shadow-hero-panel: var(--shadow-card), 0 24px 50px -24px rgba(0, 0, 0, 0.35);
   --shadow-walker: 0 0 0 2px var(--color-panel), 0 4px 10px -2px rgba(0, 0, 0, 0.35);
   --shadow-lit: 0 0 0 4px var(--color-brand-soft); /* a tool sending a document */
   --shadow-focus: 0 0 0 3px var(--color-brand-soft); /* the cell in the panel */
   --shadow-tab: 0 1.5px 0 var(--color-ink); /* the selected tab's underline */
-  --ease-walk: cubic-bezier(0.5, 0, 0.2, 1);
+  --ease-walk: cubic-bezier(0.5, 0, 0.25, 1.12); /* a walker settles with a small overshoot */
+  --duration-walk: 700ms;
+  --duration-hero-sweep: 500ms; /* the light sweeps from the cell to the panel */
+  --duration-solo-move: 650ms; /* the board grows or shrinks, the panel slides */
+  --duration-solo-fade: 450ms;
   --ease-sketch: cubic-bezier(0.2, 0.8, 0.2, 1);
   --animate-cap-in: cap-in 0.4s both;
   --animate-source-pop: source-pop 0.35s both;
@@ -473,7 +483,7 @@
 
 /* Hero picture */
 :root {
-  --hero-stage-columns: minmax(150px, 1fr) minmax(0, 500px) minmax(150px, 1fr);
+  --hero-stage-columns: auto minmax(0, 500px) auto;
   --hero-tool-columns: repeat(2, 42px);
   --hero-lane-columns: 10px repeat(6, minmax(0, 1fr));
   @variant max-md {
@@ -485,8 +495,16 @@
 /* A walker steps along a curve and fades in once placed. */
 @utility transition-walk {
   transition:
-    transform 0.65s var(--ease-walk),
+    transform var(--duration-walk) var(--ease-walk),
     opacity 0.4s;
+}
+
+/* The board and the panel trade room as the board goes solo and back. */
+@utility transition-solo {
+  transition:
+    scale var(--duration-solo-move) var(--ease-io),
+    translate var(--duration-solo-move) var(--ease-io),
+    opacity var(--duration-solo-fade) var(--ease-io);
 }
 
 /* A panel's rim, lit where the pointer is (hooks/use-pointer-light.ts sets --mx and --my). */
