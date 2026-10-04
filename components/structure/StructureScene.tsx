@@ -298,7 +298,12 @@ function ContextCards({ done }: { done: boolean }) {
         const [nx, ny, nr] = CARD_PLACES.narrow[i]!;
         const place = { "--x": `${x}px`, "--y": `${y}px`, "--r": `${r}deg`, "--nx": `${nx}px`, "--ny": `${ny}px`, "--nr": `${nr}deg` };
         return (
-          <div key={card.tool} className={s.card} data-card style={place as CSSProperties}>
+          <div
+            key={card.tool}
+            className={cx(s.card, card.tool === "GitHub" && s.diffCard)}
+            data-card
+            style={place as CSSProperties}
+          >
             <div className={s.cardTitle}>
               <span className={s.cardMark}>
                 <ToolLogo tool={card.tool} />

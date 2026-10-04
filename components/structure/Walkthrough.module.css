@@ -86,6 +86,11 @@
   transform: rotate(var(--r));
 }
 
+/* The diff's lines sit closer together than a card's other rows. */
+.diffCard {
+  gap: 5px;
+}
+
 /* A card's content fades as it tilts, so what lands is a bare layer. */
 .card > * {
   opacity: var(--co, 1);

@@ -6,6 +6,7 @@ import { useScrollStep, type Morph } from "@/hooks/use-scroll-step";
 import {
   STAGE_WIDTH,
   STEP,
+  CAPTION_GAP,
   TIMING,
   beamClip,
   availableStageHeight,
@@ -26,8 +27,6 @@ import {
   type LayerBox,
 } from "@/lib/walkthrough-morph";
 
-/** The pose is centred this far above the caption's first line, in px. */
-const CAPTION_GAP = 12;
 /** The caption's height before it is measured, as the prototype assumes. */
 const CAPTION_FALLBACK = 110;
 /** The beam meets the panel this far inside its top and bottom edges, in stage px. */
@@ -81,7 +80,7 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
   const reduced = useReducedMotion();
   const morph = useRef<Morph>({ progress: 0, draw: () => {} });
   const { step, previous } = useScrollStep(scroller, sticky, edges, reduced, morph);
-  const [layout, setLayout] = useState<StageLayout>({ narrow: false, lift: flatLift(false, 1) });
+  const [layout, setLayout] = useState<StageLayout>({ narrow: false, lift: 0 });
   const pose = poseOf(step);
   const open = step >= STEP.open;
 
@@ -94,16 +93,23 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
   const remorph = useRef(() => {});
 
   useLayoutEffect(() => {
+    // The caption's first line, in px below the frame's top. Read from the layout, not the
+    // rendered boxes: the caption's words slide in on every step.
+    const captionLine = (): number | null => {
+      const stageEl = stage.current;
+      const first = caption.current?.firstElementChild;
+      if (!stageEl || !(first instanceof HTMLElement)) return null;
+      if (first.offsetParent === stageEl.offsetParent) return first.offsetTop - stageEl.offsetTop;
+      return first.getBoundingClientRect().top - stageEl.getBoundingClientRect().top;
+    };
+
     // On a phone the caption sits at the foot of the frame, and the pose is centred above its first line.
     placePose.current = () => {
-      const stageEl = stage.current;
       const worldEl = world.current;
       const fitted = fit.current;
-      if (!stageEl || !worldEl || !fitted) return;
-      const first = caption.current?.firstElementChild;
-      const room = first
-        ? first.getBoundingClientRect().top - stageEl.getBoundingClientRect().top - CAPTION_GAP
-        : fitted.height;
+      if (!worldEl || !fitted) return;
+      const line = captionLine();
+      const room = line === null ? fitted.height : line - CAPTION_GAP;
       worldEl.style.transform = poseTransform(fitted, currentPose.current, room);
     };
 
@@ -117,10 +123,10 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
       const captionHeight = caption.current?.offsetHeight || CAPTION_FALLBACK;
       const fitted = fitStage(stageEl.clientWidth, availableStageHeight(innerHeight, headHeight, captionHeight), headHeight);
       fit.current = fitted;
-      const lift = flatLift(fitted.narrow, fitted.scales[1]);
-      setLayout((was) => (was.narrow === fitted.narrow && was.lift === lift ? was : { narrow: fitted.narrow, lift }));
       // Whole pixels, so everything below the section sits on the pixel grid.
       stageEl.style.height = `${Math.round(fitted.height)}px`;
+      const lift = flatLift(fitted, captionLine() ?? fitted.height);
+      setLayout((was) => (was.narrow === fitted.narrow && was.lift === lift ? was : { narrow: fitted.narrow, lift }));
       placePose.current();
       stickyEl.style.top = `${stickyTopFor(innerHeight, stickyEl.offsetHeight)}px`;
       scrollerEl.style.height = reduced

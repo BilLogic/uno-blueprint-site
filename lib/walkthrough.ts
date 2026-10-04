@@ -65,8 +65,8 @@ const MIN_WIDE_SHARE = 0.85;
 const NARROW_HEIGHT = 0.95;
 const MIN_NARROW_SHARE = 0.85;
 const MIN_NARROW_HEIGHT = 220;
-/** The flat board sits this far below the stage's middle on a wide frame, and above it on a phone, in screen px. */
-const FLAT_LIFT = { wide: 22, narrow: -7 } as const;
+/** On a phone the pose is centred this far above the caption's first line, in px. */
+export const CAPTION_GAP = 12;
 
 /**
  * The beam's clip, open from the stage's left edge to `to` in stage px. The
@@ -230,12 +230,24 @@ export function poseTransform(fit: StageFit, pose: Pose, room: number): string {
 }
 
 /**
- * How far the flat board is moved down (up, if negative) in stage px, so the
- * space above it matches the space between it and the caption. `scale` is the
- * flat pose's.
+ * The flat board and the two paths peeking out above it, as one picture: its
+ * middle in stage px, before any lift. The board is 372 px tall from 69 px
+ * down, scaled about its own middle; each path behind it is 11 px higher.
  */
-export const flatLift = (narrow: boolean, scale: number) =>
-  (narrow ? FLAT_LIFT.narrow : FLAT_LIFT.wide) / (scale || 1);
+const FLAT_BOARD_MIDDLE = 69 + 372 / 2 - (2 * 11) / 2;
+
+/**
+ * How far to move the flat board down, in stage px, so the space above it
+ * (with the paths behind it) equals the space between it and the caption.
+ * `captionLine` is the caption's first line, in px below the frame's top. On
+ * a phone the pose is already centred above that line (see `poseTransform`),
+ * short of it by `CAPTION_GAP`, which is made up here.
+ */
+export function flatLift(fit: StageFit, captionLine: number): number {
+  const k = fit.scales[1] || 1;
+  const middle = fit.narrow ? POSE_MIDDLE[1] + CAPTION_GAP / (2 * k) : captionLine / (2 * k);
+  return middle - FLAT_BOARD_MIDDLE;
+}
 
 const SHEETS = 3;
 const GHOSTS = 2;

@@ -234,11 +234,15 @@ describe("stackLayers", () => {
 });
 
 describe("flatLift", () => {
-  it("lowers the flat board 22 screen px on a wide frame and raises it 7 on a phone, whatever the scale", () => {
-    expect(flatLift(false, 1)).toBe(22);
-    expect(flatLift(false, 0.5)).toBe(44);
-    expect(flatLift(true, 0.5)).toBe(-14);
-    expect(flatLift(false, 0)).toBe(22);
+  it("centres the flat board, with the paths peeking out above it, between the frame's top and the caption", () => {
+    // Wide: the caption's first line 2 px under a full-size stage is the prototype's 22 px.
+    expect(flatLift({ narrow: false, height: 530, scales: [1, 1, 1] }, 532)).toBe(22);
+    expect(flatLift({ narrow: false, height: 265, scales: [0.5, 0.5, 0.5] }, 267)).toBe(23);
+  });
+
+  it("on a phone, makes up for the pose being centred a little above the caption", () => {
+    expect(flatLift({ narrow: true, height: 300, scales: [0.5, 0.5, 0.5] }, 250)).toBe(18);
+    expect(flatLift({ narrow: true, height: 300, scales: [1, 1, 1] }, 250)).toBe(12);
   });
 });
 
