@@ -19,7 +19,7 @@ export const RESULTS = [
   { y: 158, score: 0.3 },
 ] as const;
 
-/** Uno team or every team: three stacks of flows, each starting to fill after its own delay (seconds). */
+/** Scalable structure: three stacks of flows, each starting to fill after its own delay (seconds). */
 export const STACKS = [
   { flows: 5, delay: 0.14 },
   { flows: 7, delay: 0, middle: true },

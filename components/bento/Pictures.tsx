@@ -105,7 +105,7 @@ export function RagPicture() {
   );
 }
 
-/** Uno team or every team: one team's flow in the middle; the stacks fill to every service. */
+/** Scalable structure: one team's flow in the middle; the stacks fill to every service. */
 export function ScalePicture() {
   return (
     <div className={styles.scale}>
