@@ -235,7 +235,7 @@
   --color-term-edge: #2a3137; /* that button's rim */
   --color-term-muted: #9aa4af; /* that button's icon */
   --color-term-key: #7fe3cc; /* a skill's name */
-  --color-term-faint: #8b99a3; /* what a skill does */
+  --color-term-faint: #8b99a3; /* what a skill does, and a note above commands */
   --color-term-hover: rgba(255, 255, 255, 0.055);
   --leading-command: 1.6; /* commands in a box; the agent view's page reads looser */
   --leading-prompt-title: 1.4; /* a prompt's title */
