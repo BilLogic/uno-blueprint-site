@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { isGliding } from "@/lib/glide";
+import { isGliding } from "@/hooks/glide-signal";
 import { advanceMorph } from "@/lib/walkthrough-morph";
 import { STEP, TIMING, goalStep, introTriggered, morphHeading, nextStep, scrollProgress, stepHold } from "@/lib/walkthrough";
 

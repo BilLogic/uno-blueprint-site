@@ -2,8 +2,7 @@
  * An in-page link glides the whole way to its section: eased in and out,
  * longer for longer trips, never more than GLIDE_MAX_MS. A pinned section on
  * the way (the walkthrough) is unpinned for the trip, so the page never seems
- * to stall on it, and while the glide runs the signal below is on, so whatever
- * reads the scroll to drive a pinned section can leave it alone.
+ * to stall on it. The glide itself is `hooks/use-in-page-glide.ts`.
  */
 
 /** The shortest glide, however short the trip. */
@@ -26,8 +25,8 @@ export function glideDuration(distance: number, screenHeight: number): number {
 /** The glide's curve: a cubic ease in and out, from 0 to 1. */
 export const easeInOut = (p: number) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
 
-/** Where a glide aiming for `target` stops, kept within the page's scroll range. */
-export const glideEnd = (target: number, maxScroll: number) => Math.max(0, Math.min(maxScroll, target));
+/** Where a glide aiming for the scroll position `targetScrollY` stops, kept within the page's scroll range. */
+export const glideEnd = (targetScrollY: number, maxScroll: number) => Math.max(0, Math.min(maxScroll, targetScrollY));
 
 /** Whether to jump instead of glide: for less motion, or a trip too short to see. */
 export const glideJumps = (distance: number, reducedMotion: boolean) =>
@@ -53,12 +52,18 @@ export function inPageTarget(href: string | null): string | null {
   return href.slice(1) || null;
 }
 
-let gliding = false;
+/** The keys that scroll the page, so pressing one stops a glide where it is. */
+const SCROLL_KEYS: ReadonlySet<string> = new Set([
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "PageUp",
+  "PageDown",
+  "Home",
+  "End",
+  " ",
+]);
 
-/** Whether a glide is running. A scroll-driven section reads this and skips its scroll handling while it is. */
-export const isGliding = () => gliding;
-
-/** Turns the glide signal on as a glide starts, and off as it ends. */
-export function setGliding(on: boolean) {
-  gliding = on;
-}
+/** Whether pressing `key` (a `KeyboardEvent.key`) stops a glide. */
+export const keyStopsGlide = (key: string) => SCROLL_KEYS.has(key);

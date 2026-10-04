@@ -4,6 +4,12 @@ import { hero } from "../content/hero";
 
 /** The longest a glide takes, plus room for the frames around it. */
 const GLIDE_TIMEOUT = 2_500;
+/** How long the view is watched after arrival, to see it hold its place. */
+const SETTLE_MS = 600;
+/** How far into a glide a reader interrupts it. */
+const INTERRUPT_AFTER_MS = 250;
+/** Long enough for an interrupted glide to have taken another frame, had it not stopped. */
+const STOP_SETTLE_MS = 300;
 
 const cta = (page: Page) => page.locator("main").getByRole("link", { name: hero.primary.label }).first();
 
@@ -67,26 +73,54 @@ for (const viewport of [
 
       // The walkthrough is pinned again, and the target holds its place.
       const before = await landing(page);
-      await page.waitForTimeout(600);
+      await page.waitForTimeout(SETTLE_MS);
       expect((await landing(page)).top).toBeCloseTo(before.top, 0);
       expect(page.url()).not.toContain("#");
     });
   });
 }
 
-test("a wheel stops the glide where it is", async ({ page }) => {
+for (const [how, interrupt] of [
+  ["a wheel", (page: Page) => page.mouse.wheel(0, 1)],
+  ["a scrolling key", (page: Page) => page.keyboard.press("ArrowDown")],
+  ["a press", (page: Page) => page.mouse.down().then(() => page.mouse.up())],
+] as const) {
+  test(`${how} stops the glide where it is`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    await cta(page).click();
+    await page.waitForTimeout(INTERRUPT_AFTER_MS);
+    await page.mouse.move(1400, 450);
+    await interrupt(page);
+    await page.waitForTimeout(STOP_SETTLE_MS);
+    const stopped = await page.evaluate(() => scrollY);
+    await page.waitForTimeout(GLIDE_TIMEOUT);
+    expect(Math.abs((await page.evaluate(() => scrollY)) - stopped)).toBeLessThan(4);
+    const { top, margin } = await landing(page);
+    expect(top - margin).toBeGreaterThan(100);
+  });
+}
+
+test("a link taken from the keyboard hands focus to its section, so Tab carries on from there", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
-  await cta(page).click();
-  await page.waitForTimeout(250);
-  await page.mouse.move(700, 450);
-  await page.mouse.wheel(0, 1);
-  await page.waitForTimeout(300);
-  const stopped = await page.evaluate(() => scrollY);
-  await page.waitForTimeout(GLIDE_TIMEOUT);
-  expect(Math.abs((await page.evaluate(() => scrollY)) - stopped)).toBeLessThan(4);
-  const { top, margin } = await landing(page);
-  expect(top - margin).toBeGreaterThan(100);
+  await cta(page).focus();
+  await page.keyboard.press("Enter");
+  await expect
+    .poll(
+      async () => {
+        const { top, margin } = await landing(page);
+        return Math.abs(top - margin);
+      },
+      { timeout: GLIDE_TIMEOUT },
+    )
+    .toBeLessThan(2);
+  await page.keyboard.press("Tab");
+  const inside = await page.evaluate(
+    (id) => document.getElementById(id)!.contains(document.activeElement),
+    getStarted.id,
+  );
+  expect(inside).toBe(true);
 });
 
 test("with reduced motion the link jumps", async ({ page }) => {

@@ -22,8 +22,11 @@ export function useMediaQuery(query: string, serverValue = false): boolean {
   );
 }
 
+/** The query for a reader who asked for less motion. */
+export const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+
 /** The reader asked for less motion: show each animation's end state. */
-export const useReducedMotion = () => useMediaQuery("(prefers-reduced-motion: reduce)");
+export const useReducedMotion = () => useMediaQuery(REDUCED_MOTION_QUERY);
 
 /** A touch screen with no hover: pictures that play on hover play by themselves. */
 export const useNoHover = () => useMediaQuery("(hover: none)");

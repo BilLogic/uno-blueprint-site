@@ -24,6 +24,11 @@
     outline-offset: 2px;
   }
 
+  /* A section an in-page link glided to holds focus for the next Tab, without a ring round all of it. */
+  [data-glide-target]:focus {
+    outline: none;
+  }
+
   /* The agent view replaces the human page while it is chosen. */
   [data-view="agent"] #human,
   :root:not([data-view="agent"]) #agent {

@@ -309,7 +309,8 @@
 /*
  * A corner the projection lines are drawn from or to. It sits on the curve of
  * its box's rounded corner, not the square one: in by r(1 - 1/sqrt 2) on both
- * axes, for the box's radius r.
+ * axes, for the box's radius r. Each kind reads the radius token its box is
+ * drawn with (.sheet and .board, .tile, .cell below), so the two stay together.
  */
 .corner {
   --corner-in: calc(var(--corner-radius) * (1 - 1 / sqrt(2)));

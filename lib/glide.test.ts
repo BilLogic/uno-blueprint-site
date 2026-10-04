@@ -1,14 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
-import {
-  easeInOut,
-  glideDuration,
-  glideEnd,
-  glideJumps,
-  inPageTarget,
-  isGliding,
-  onGlidePath,
-  setGliding,
-} from "./glide";
+import { describe, expect, it } from "vitest";
+import { easeInOut, glideDuration, glideEnd, glideJumps, inPageTarget, keyStopsGlide, onGlidePath } from "./glide";
 
 describe("glideDuration", () => {
   const screen = 1000;
@@ -100,14 +91,15 @@ describe("inPageTarget", () => {
   });
 });
 
-describe("the glide signal", () => {
-  afterEach(() => setGliding(false));
+describe("keyStopsGlide", () => {
+  it("stops for the keys that scroll the page", () => {
+    for (const key of ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "PageUp", "PageDown", "Home", "End", " "]) {
+      expect(keyStopsGlide(key)).toBe(true);
+    }
+  });
 
-  it("is off until a glide starts, and off again once it ends", () => {
-    expect(isGliding()).toBe(false);
-    setGliding(true);
-    expect(isGliding()).toBe(true);
-    setGliding(false);
-    expect(isGliding()).toBe(false);
+  it("leaves other keys alone", () => {
+    expect(keyStopsGlide("Tab")).toBe(false);
+    expect(keyStopsGlide("a")).toBe(false);
   });
 });

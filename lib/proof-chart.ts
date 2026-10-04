@@ -7,7 +7,7 @@
 /** The chart is revealed once its top is above this share of the screen... */
 const REVEAL_TOP_AT = 0.45;
 /** ...or once its foot is this far, in px, above the foot of the screen. */
-const REVEAL_FOOT_CLEARANCE = 24;
+const REVEAL_FOOT_CLEARANCE_PX = 24;
 /** Each pair starts this much after the one before it (its bars wait only on a phone). */
 const PAIR_STAGGER_MS = 130;
 /** A pair's values appear this long after it starts. */
@@ -15,7 +15,7 @@ const VALUES_AFTER_MS = 520;
 
 /** Whether to reveal the chart, from where its `top` and `bottom` sit on a screen `screenHeight` tall. */
 export const revealDue = (chart: { top: number; bottom: number }, screenHeight: number) =>
-  chart.bottom < screenHeight - REVEAL_FOOT_CLEARANCE || chart.top < screenHeight * REVEAL_TOP_AT;
+  chart.bottom < screenHeight - REVEAL_FOOT_CLEARANCE_PX || chart.top < screenHeight * REVEAL_TOP_AT;
 
 /** When pair `index` grows, and when its values appear, after the chart is revealed. */
 export function pairReveal(index: number): { growDelayMs: number; valuesAtMs: number } {

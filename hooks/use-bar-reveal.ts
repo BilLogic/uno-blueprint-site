@@ -27,7 +27,7 @@ export function useBarReveal<T extends HTMLElement>(
     function revealOnce() {
       frame = 0;
       if (!reduced && !revealDue(root.getBoundingClientRect(), innerHeight)) return;
-      // Revealed for good: nothing left to follow.
+      // Revealed for good: stop reading the scroll.
       stopListening();
       groups.forEach((group, i) => {
         const { growDelayMs, valuesAtMs } = reduced ? { growDelayMs: 0, valuesAtMs: 0 } : pairReveal(i);

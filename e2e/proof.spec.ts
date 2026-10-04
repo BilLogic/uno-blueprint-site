@@ -11,6 +11,9 @@ async function scrollPlotTo(page: Page, fromTop: number) {
   }, fromTop);
 }
 
+/** Long enough for any reveal a scroll might set off to have played. */
+const REVEAL_SETTLE_MS = 1000;
+
 /** The height of the bar a value label sits on. */
 const barHeight = (page: Page, text: string) =>
   value(page, text).evaluate((label) => label.parentElement!.getBoundingClientRect().height);
@@ -33,7 +36,7 @@ test.describe("on a wide screen", () => {
 
     // Scrolling back does not hide it again.
     await scrollPlotTo(page, 900);
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(REVEAL_SETTLE_MS);
     expect(await barHeight(page, "71%")).toBeCloseTo(0.71 * 230, 0);
   });
 
@@ -71,7 +74,7 @@ test.describe("on a phone", () => {
 
     // Scrolling back does not hide it again.
     await scrollPlotTo(page, 844);
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(REVEAL_SETTLE_MS);
     expect(await barHeight(page, "71%")).toBeCloseTo(0.71 * 160, 0);
   });
 });
