@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { getStarted } from "@/content/get-started";
 
 test.use({ permissions: ["clipboard-read", "clipboard-write"] });
 
@@ -24,17 +25,20 @@ test.describe("install", () => {
     expect(await copyFrom(page, page.getByRole("tabpanel", { name: "pnpm", exact: true }))).toBe(
       "pnpm create uno-blueprint\ncd uno-blueprint\npnpm dev",
     );
-    await tabs.getByRole("tab", { name: "yarn 1", exact: true }).click();
-    expect(await copyFrom(page, page.getByRole("tabpanel", { name: "yarn 1", exact: true }))).toBe(
-      "yarn create uno-blueprint\ncd uno-blueprint\nyarn dev",
+    await tabs.getByRole("tab", { name: "yarn", exact: true }).click();
+    const yarn = page.getByRole("tabpanel", { name: "yarn", exact: true });
+    // The Yarn 1 note is shown as a comment, and left out of the copy so the paste runs as typed.
+    await expect(yarn).toContainText(
+      "# Yarn 1 (Classic). Yarn 2 and later skip the setup scripts the template needs.",
     );
+    expect(await copyFrom(page, yarn)).toBe("yarn create uno-blueprint\ncd uno-blueprint\nyarn dev");
     await tabs.getByRole("tab", { name: "bun", exact: true }).click();
     expect(await copyFrom(page, page.getByRole("tabpanel", { name: "bun", exact: true }))).toBe(
       "bun create uno-blueprint\ncd uno-blueprint\nbun dev",
     );
     await tabs.getByRole("tab", { name: "agent", exact: true }).click();
     expect(await copyFrom(page, page.getByRole("tabpanel", { name: "agent", exact: true }))).toMatch(
-      /^Set up Uno Blueprint for me\. .* no database to start\.$/,
+      /^Set up Uno Blueprint for me\. Run npm create uno-blueprint@latest, .* no database to start\.$/,
     );
   });
 
@@ -57,16 +61,55 @@ test.describe("install", () => {
       await page.getByRole("tab", { name, exact: true }).click();
       return (await page.getByRole("tabpanel", { name, exact: true }).boundingBox())?.height;
     };
-    // On a phone the agent's sentence is taller than the box, which grows for it as in the design.
+    // On a phone the agent's sentence and the Yarn 1 note are taller than the box, which grows for them as in the design.
     for (const [width, names] of [
-      [1440, ["npm", "agent", "pnpm", "yarn 1", "bun"]],
-      [390, ["npm", "pnpm", "yarn 1", "bun"]],
+      [1440, ["npm", "agent", "pnpm", "yarn", "bun"]],
+      [390, ["npm", "pnpm", "bun"]],
     ] as const) {
       await page.setViewportSize({ width, height: 900 });
       const heights = [];
       for (const name of names) heights.push(await height(name));
       expect(new Set(heights).size).toBe(1);
     }
+    // The yarn box at that width: taller than the others, and its note and commands all inside it.
+    const npm = await height("npm");
+    const yarn = await height("yarn");
+    expect(yarn).toBeGreaterThan(npm ?? Infinity);
+    const panel = page.getByRole("tabpanel", { name: "yarn", exact: true });
+    expect(await panel.evaluate((box) => box.scrollHeight - box.clientHeight)).toBeLessThanOrEqual(0);
+  });
+});
+
+test.describe("database", () => {
+  test("each host's tab copies its own prompt, and keys stay in .env", async ({ page }) => {
+    await page.goto("/");
+    const { tabs: hosts, tabsLabel, keepSecrets } = getStarted.database;
+    const tabs = page.getByRole("tablist", { name: tabsLabel });
+    await expect(tabs.getByRole("tab")).toHaveText(hosts.map((host) => host.label));
+    for (const host of hosts) {
+      await tabs.getByRole("tab", { name: host.label, exact: true }).click();
+      const copied = await copyFrom(page, page.getByRole("tabpanel", { name: host.label, exact: true }));
+      expect(copied).toBe(host.prompt);
+      if (host.connects) expect(copied).toContain(keepSecrets);
+    }
+  });
+
+  test("the arrow keys move along the hosts", async ({ page }) => {
+    await page.goto("/");
+    const hosts = getStarted.database.tabs;
+    const [{ label: first }, { label: second }] = hosts;
+    const { label: last } = hosts.at(-1) ?? hosts[0];
+    const firstTab = page.getByRole("tab", { name: first, exact: true });
+    await expect(firstTab).toHaveAttribute("aria-selected", "true");
+    await firstTab.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("tab", { name: second, exact: true })).toBeFocused();
+    await expect(page.getByRole("tabpanel", { name: second, exact: true })).toBeVisible();
+    await page.keyboard.press("End");
+    await expect(page.getByRole("tabpanel", { name: last, exact: true })).toBeVisible();
+    await page.keyboard.press("ArrowRight");
+    await expect(firstTab).toHaveAttribute("aria-selected", "true");
+    await expect(firstTab).toBeFocused();
   });
 });
 
@@ -105,7 +148,7 @@ test.describe("questions", () => {
   test("a question opens and closes from the keyboard", async ({ page }) => {
     await page.goto("/");
     const question = page.getByRole("button", { name: "Does my data become public?" });
-    const answer = page.getByText("your blueprint lives in your own database");
+    const answer = page.getByText("No. The code is open source; your blueprint lives in your own database.");
     await expect(question).toHaveAttribute("aria-expanded", "false");
     await expect(answer).toBeHidden();
 
@@ -140,6 +183,7 @@ test("the longest commands and answers still fit a 375 px screen", async ({ page
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/");
   await page.getByRole("tab", { name: "agent", exact: true }).click();
+  await page.getByRole("tab", { name: "Postgres", exact: true }).click();
   await page.getByRole("tab", { name: "Other agents", exact: true }).click();
   await page.getByRole("button", { name: "Which agents can use it?" }).click();
   const overflow = await page.evaluate(

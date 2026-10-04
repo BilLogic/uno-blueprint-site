@@ -1,20 +1,17 @@
 "use client";
 
-import { useState } from "react";
 import { getStarted } from "@/content/get-started";
 import { GitHubMark } from "@/components/icons/GitHubMark";
 import { anchorProps } from "@/components/ui/anchor-props";
-import { TabList, tabId, tabPanelId } from "@/components/ui/Tabs";
+import { TabList } from "@/components/ui/Tabs";
+import { useTabs } from "@/hooks/use-tabs";
 import { CodeBlock } from "./CodeBlock";
 import { StepLabel, tabClassName, tabListClassName } from "./step-parts";
 
 const { install } = getStarted;
-type Value = (typeof install.tabs)[number]["value"];
-const ID_BASE = "install";
 
 export function InstallStep() {
-  const [value, setValue] = useState<Value>(install.tabs[0].value);
-  const tab = install.tabs.find((candidate) => candidate.value === value) ?? install.tabs[0];
+  const { tab, tabListProps, panelProps } = useTabs("install", install.tabs);
   return (
     <div className="grid min-w-0 gap-3.5">
       <div className="flex items-center justify-between">
@@ -28,21 +25,12 @@ export function InstallStep() {
         </a>
       </div>
       <TabList
+        {...tabListProps}
         label={install.tabsLabel}
-        idBase={ID_BASE}
-        tabs={install.tabs}
-        value={value}
-        onChange={setValue}
         className={tabListClassName}
         tabClassName={tabClassName}
       />
-      <CodeBlock
-        code={tab.code}
-        role="tabpanel"
-        id={tabPanelId(ID_BASE, tab.value)}
-        aria-labelledby={tabId(ID_BASE, tab.value)}
-        className="min-h-install"
-      />
+      <CodeBlock {...panelProps} code={tab.code} className="min-h-install" />
     </div>
   );
 }

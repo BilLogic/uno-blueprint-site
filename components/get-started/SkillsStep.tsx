@@ -1,39 +1,28 @@
 "use client";
 
-import { useState } from "react";
 import { getStarted } from "@/content/get-started";
-import { TabList, tabId, tabPanelId } from "@/components/ui/Tabs";
+import { TabList } from "@/components/ui/Tabs";
+import { useTabs } from "@/hooks/use-tabs";
 import { CodeBlock } from "./CodeBlock";
 import { CopyButton } from "./CopyButton";
 import { StepLabel, StepSub, revealCopy, tabClassName, tabListClassName } from "./step-parts";
 
 const { skills } = getStarted;
-type Value = (typeof skills.tabs)[number]["value"];
-const ID_BASE = "skills";
 
 export function SkillsStep() {
-  const [value, setValue] = useState<Value>(skills.tabs[0].value);
-  const tab = skills.tabs.find((candidate) => candidate.value === value) ?? skills.tabs[0];
+  const { tab, tabListProps, panelProps } = useTabs("skills", skills.tabs);
   return (
     <div className="grid min-w-0 gap-3.5">
       <StepLabel>{skills.label}</StepLabel>
       <StepSub>{skills.sub}</StepSub>
       <TabList
+        {...tabListProps}
         label={skills.tabsLabel}
-        idBase={ID_BASE}
-        tabs={skills.tabs}
-        value={value}
-        onChange={setValue}
         className={`mt-1 ${tabListClassName}`}
         tabClassName={tabClassName}
       />
       {/* The commands, the note and the way each skill is called all change with the agent. */}
-      <div
-        role="tabpanel"
-        id={tabPanelId(ID_BASE, tab.value)}
-        aria-labelledby={tabId(ID_BASE, tab.value)}
-        className="grid min-w-0 gap-3.5"
-      >
+      <div {...panelProps} className="grid min-w-0 gap-3.5">
         <CodeBlock code={tab.code} />
         <p className="mt-2.5 mb-3.5 text-14 text-muted">{tab.note}</p>
         <ul className="grid gap-0.5 rounded-12 bg-term p-1.5 text-term-ink">
