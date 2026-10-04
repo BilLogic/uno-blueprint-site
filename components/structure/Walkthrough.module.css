@@ -306,11 +306,44 @@
   color: var(--color-ink);
 }
 
-/* A corner the projection lines are drawn from or to. */
+/*
+ * A corner the projection lines are drawn from or to. It sits on the curve of
+ * its box's rounded corner, not the square one: in by r(1 - 1/sqrt 2) on both
+ * axes, for the box's radius r.
+ */
 .corner {
+  --corner-in: calc(var(--corner-radius) * (1 - 1 / sqrt(2)));
   position: absolute;
   width: 0;
   height: 0;
+}
+
+.corner[data-corner="sheet"] {
+  --corner-radius: var(--radius-16);
+}
+
+.corner[data-corner="tile"] {
+  --corner-radius: var(--radius-10);
+}
+
+.corner[data-corner="cell"] {
+  --corner-radius: var(--radius-8);
+}
+
+.corner[data-at="top-left"] {
+  translate: var(--corner-in) var(--corner-in);
+}
+
+.corner[data-at="top-right"] {
+  translate: calc(-1 * var(--corner-in)) var(--corner-in);
+}
+
+.corner[data-at="bottom-right"] {
+  translate: calc(-1 * var(--corner-in)) calc(-1 * var(--corner-in));
+}
+
+.corner[data-at="bottom-left"] {
+  translate: var(--corner-in) calc(-1 * var(--corner-in));
 }
 
 .links {

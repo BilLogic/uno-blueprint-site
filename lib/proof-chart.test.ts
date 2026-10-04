@@ -1,41 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { barProgress, isBarFull, phoneReveal, phoneRevealDue } from "./proof-chart";
+import { pairReveal, revealDue } from "./proof-chart";
 
-describe("barProgress", () => {
+describe("revealDue", () => {
   const screen = 1000;
 
-  it("is empty while the baseline is at or below the foot of the screen", () => {
-    expect(barProgress(1000, screen)).toBe(0);
-    expect(barProgress(1400, screen)).toBe(0);
+  it("waits while the chart's top is low on the screen and its foot below it", () => {
+    expect(revealDue({ top: 450, bottom: 1200 }, screen)).toBe(false);
   });
 
-  it("grows as the baseline climbs the lower third of the screen", () => {
-    expect(barProgress(1000 - 170, screen)).toBeCloseTo(0.5);
+  it("reveals once the chart's top is well into the screen", () => {
+    expect(revealDue({ top: 449, bottom: 1200 }, screen)).toBe(true);
   });
 
-  it("is full once the baseline has climbed a third of the way up, and stays full", () => {
-    expect(barProgress(1000 - 340, screen)).toBe(1);
-    expect(barProgress(-200, screen)).toBe(1);
-  });
-});
-
-describe("isBarFull", () => {
-  it("counts a pair as grown just short of full, so its values show without a last scroll", () => {
-    expect(isBarFull(0.97)).toBe(false);
-    expect(isBarFull(0.971)).toBe(true);
+  it("reveals a chart that is in view whole, however low it sits", () => {
+    expect(revealDue({ top: 700, bottom: 976 }, screen)).toBe(false);
+    expect(revealDue({ top: 700, bottom: 975 }, screen)).toBe(true);
   });
 });
 
-describe("phoneRevealDue", () => {
-  it("waits until the chart's top is well into the screen", () => {
-    expect(phoneRevealDue(600, 1000)).toBe(false);
-    expect(phoneRevealDue(579, 1000)).toBe(true);
-  });
-});
-
-describe("phoneReveal", () => {
+describe("pairReveal", () => {
   it("staggers the pairs and shows each pair's values once its bars are most of the way up", () => {
-    expect(phoneReveal(0)).toEqual({ growDelayMs: 0, valuesAtMs: 520 });
-    expect(phoneReveal(3)).toEqual({ growDelayMs: 390, valuesAtMs: 910 });
+    expect(pairReveal(0)).toEqual({ growDelayMs: 0, valuesAtMs: 520 });
+    expect(pairReveal(3)).toEqual({ growDelayMs: 390, valuesAtMs: 910 });
   });
 });

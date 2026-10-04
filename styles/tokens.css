@@ -62,7 +62,8 @@
   --color-note: light-dark(#fff7e3, #2a2414);
   --color-note-ink: light-dark(#6f5410, #f0d48c);
   --color-note-line: light-dark(#ecd9a6, #4a3d1c);
-  --color-term: #101417;
+  /* The terminal: below the page in light; in dark, one step above it, so a code box does not sink into the page. */
+  --color-term: light-dark(#101417, oklch(0.235 0.006 175));
   --color-term-ink: #d7e3df;
   /* Bento: the text bars drawn in its pictures, at the prototype's 24%, 26% and, once played, 30% of ink. */
   --color-bento-bar-dim: color-mix(in oklab, var(--color-ink) 24%, transparent);
@@ -212,6 +213,7 @@
     inset 0 1px 0 light-dark(transparent, rgba(255, 255, 255, 0.04));
   --shadow-menu: 0 10px 30px rgba(0, 0, 0, 0.14);
   --shadow-ring: 0 0 0 1px var(--color-line); /* a pressed segment's hairline */
+  --shadow-term: inset 0 0 0 1px light-dark(transparent, var(--color-line-2)); /* a code box's hairline, in dark */
 
   /* Page rhythm; narrower screens tighten it below. */
   --spacing-gutter: 96px;
@@ -243,6 +245,7 @@
   --radius-1: 1px; /* the bars of the questions' plus sign */
   --spacing-bar: 1.5px; /* their thickness */
   --spacing-aside: 260px; /* the heading column beside the steps and the questions */
+  --spacing-question-lead: calc(0.6em - 2px); /* above the first question, level with the heading */
   --spacing-install: 136px; /* the install box, tall enough for three commands on any tab */
   --spacing-skill-name: 7.5em; /* the column of skill names, in step with their type */
   --spacing-hang: 2ch; /* a wrapped command's hanging indent */
@@ -421,7 +424,7 @@
   --ease-linear: linear; /* Tailwind's own, cleared with the other curves above; a line drawn at the reader's scroll speed */
   --duration-t-tip: 150ms;
   --duration-t-rail: 200ms; /* the line catching up with the scroll; a card's hover */
-  --duration-t-grow: 450ms; /* a bar following the scroll */
+  --duration-t-grow: 450ms; /* a proof bar growing, on a wide screen */
   --blur-case: 7px;
 
   --animate-menu-in: menu-in var(--duration-t-1) var(--ease-out);
