@@ -106,6 +106,24 @@ async function flick(page: Page, direction: 1 | -1 = 1) {
   await page.waitForTimeout(FLICK_SETTLE);
 }
 
+/** A trackpad swipe: its deltas rise through these, then decay from the peak by a factor an event until under a pixel. */
+const SWIPE_RISE = [10, 22, 34, 46, 58, 70];
+const SWIPE_PEAK = 80;
+const SWIPE_DECAY = 0.93;
+const SWIPE_END = 1;
+
+/** One trackpad-like swipe down: speeding up, then coasting to a stop, an event every frame, with no pause after it. */
+async function swipe(page: Page) {
+  const size = page.viewportSize()!;
+  await page.mouse.move(size.width / 2, size.height / 2);
+  const deltas = [...SWIPE_RISE];
+  for (let delta = SWIPE_PEAK; delta >= SWIPE_END; delta *= SWIPE_DECAY) deltas.push(delta);
+  for (const delta of deltas) {
+    await page.mouse.wheel(0, delta);
+    await page.waitForTimeout(NOTCH_EVERY);
+  }
+}
+
 /** Whether the stage shows the cell lit, and whether its panel is open, as `[lit, open]`. */
 const cellState = (page: Page) =>
   section(page)
@@ -151,6 +169,35 @@ test.describe("structure walkthrough", () => {
       // The flick after that is free, and leaves the section.
       await flick(page);
       expect(await progress(page)).toBeGreaterThan(LEFT_THE_SECTION);
+    });
+  }
+
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    test(`at ${viewport.width} px back-to-back trackpad swipes move one step each, and the one after Cells holds, then leaves`, async ({
+      page,
+    }) => {
+      test.setTimeout(FLICK_WALK_TIMEOUT);
+      await page.setViewportSize(viewport);
+      await page.goto("/");
+      await watch(page);
+      await scrollToStep(section(page), 0, 0.1);
+      await nextFrame(page);
+      const reached: number[] = [];
+      for (let step = 1; step < titles.length; step++) {
+        await swipe(page);
+        reached.push(stepAt(await progress(page), edges));
+      }
+      expect(reached).toEqual(titles.slice(1).map((_, i) => i + 1));
+      // The swipe after Cells holds where the walkthrough lets go; the one after that leaves.
+      await swipe(page);
+      expect(await progress(page)).toBeCloseTo(1, HELD_AT_END_PLACES);
+      await swipe(page);
+      expect(await progress(page)).toBeGreaterThan(LEFT_THE_SECTION);
+      await settlesOn(page, titles.at(-1)!);
+      expect(await seen(page)).toEqual(titles);
     });
   }
 

@@ -7,8 +7,12 @@ import {
   cellOpensLate,
   fitStage,
   flatLift,
+  WHEEL_START,
   gateHold,
+  gateReleases,
   gestureBase,
+  noteWheel,
+  showFor,
   goalStep,
   introTriggered,
   morphHeading,
@@ -404,5 +408,99 @@ describe("the gesture gate", () => {
 describe("beamClip", () => {
   it("opens the beam from the stage's left edge to a point in stage px", () => {
     expect(beamClip(400)).toBe("inset(-60px 610px -60px 0)");
+  });
+});
+
+describe("showFor", () => {
+  const steps = 15;
+
+  it("gives a held step the same time to show as the walkthrough gives it", () => {
+    expect(showFor(1, steps)).toBe(TIMING.morph);
+    expect(showFor(STEP.blueprint, steps)).toBe(TIMING.flatten);
+    expect(showFor(STEP.cell, steps)).toBe(TIMING.openCell + TIMING.cellBeat);
+    expect(showFor(2, steps)).toBe(TIMING.step);
+    expect(showFor(STEP.steps, steps)).toBe(TIMING.step);
+  });
+
+  it("holds where the walkthrough lets go for a short beat", () => {
+    expect(showFor(steps, steps)).toBe(TIMING.gateExit);
+    expect(TIMING.gateExit).toBe(450);
+  });
+});
+
+describe("gateReleases", () => {
+  const held = { base: 3, freeAt: 1000, since: 400 };
+
+  it("lets a held step go once it has shown and a new swipe began after it was held", () => {
+    expect(gateReleases(held, 1000, 500)).toBe(true);
+  });
+
+  it("keeps it while it is still showing", () => {
+    expect(gateReleases(held, 999, 500)).toBe(false);
+  });
+
+  it("keeps it while the swipe that was held is still coasting", () => {
+    expect(gateReleases(held, 2000, 400)).toBe(false);
+    expect(gateReleases(held, 2000, 300)).toBe(false);
+  });
+
+  it("has nothing to count afresh while the gesture is free", () => {
+    expect(gateReleases({ base: null, freeAt: 0, since: 400 }, 2000, 500)).toBe(false);
+  });
+
+  it("counts a gesture that holds nothing afresh on a new swipe, so the swipe after a mid-way release is not pulled back", () => {
+    expect(gateReleases({ base: 3, freeAt: 0, since: 400 }, 2000, 500)).toBe(true);
+    expect(gateReleases({ base: 3, freeAt: 0, since: 400 }, 2000, 400)).toBe(false);
+  });
+});
+
+describe("noteWheel", () => {
+  const fold = (events: readonly (readonly [number, number])[]) => {
+    const starts: number[] = [];
+    let state = WHEEL_START;
+    for (const [delta, time] of events) {
+      const next = noteWheel(state, delta, time);
+      if (next.newAt !== state.newAt) starts.push(time);
+      state = next;
+    }
+    return starts;
+  };
+
+  /** A trackpad swipe: rising 10 to 70 over six events, then decaying from 80 by 0.93 an event, 16 ms apart. */
+  const swipe = (from: number, decays = 20) => {
+    const rise = [10, 22, 34, 46, 58, 70];
+    const fall = Array.from({ length: decays }, (_, i) => 80 * 0.93 ** i);
+    return [...rise, ...fall].map((delta, i) => [delta, from + i * 16] as const);
+  };
+
+  it("counts the first wheel event as a new swipe", () => {
+    expect(fold([[40, 1000]])).toEqual([1000]);
+  });
+
+  it("does not count a swipe's own rise or its coasting as new", () => {
+    expect(fold(swipe(1000))).toEqual([1000]);
+  });
+
+  it("counts a rise after the deltas had been falling as a new swipe, even with no pause", () => {
+    const first = swipe(1000);
+    const second = swipe(first.at(-1)![1] + 16);
+    expect(fold([...first, ...second])).toEqual([1000, second[0]![1] + 16 * 1]);
+  });
+
+  it("needs the rise to clear 1.3 times the last delta, plus 2", () => {
+    // Falling from 40 to 20; 27 is not past 20 * 1.3 + 2 = 28, 29 is.
+    expect(fold([[40, 1000], [20, 1016], [27, 1032]])).toEqual([1000]);
+    expect(fold([[40, 1000], [20, 1016], [29, 1032]])).toEqual([1000, 1032]);
+  });
+
+  it("does not count a rise that never followed a fall", () => {
+    expect(fold([[10, 1000], [40, 1016], [90, 1032]])).toEqual([1000]);
+  });
+
+  it("counts any event after a pause longer than the gate's idle as a new swipe", () => {
+    expect(fold([[40, 1000], [40, 1000 + TIMING.gateIdle], [40, 1001 + 2 * TIMING.gateIdle]])).toEqual([
+      1000,
+      1001 + 2 * TIMING.gateIdle,
+    ]);
   });
 });

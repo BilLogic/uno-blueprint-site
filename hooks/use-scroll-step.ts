@@ -7,14 +7,19 @@ import { advanceMorph } from "@/lib/walkthrough-morph";
 import {
   STEP,
   TIMING,
+  WHEEL_START,
   gateHold,
+  gateReleases,
   gestureBase,
   goalStep,
   introTriggered,
   morphHeading,
   nextStep,
+  noteWheel,
   scrollProgress,
+  showFor,
   stepHold,
+  type GateGesture,
 } from "@/lib/walkthrough";
 
 export type StepChange = { step: number; previous: number };
@@ -41,9 +46,11 @@ export type Morph = { progress: number; draw: (progress: number) => void };
  * A downward gesture (a wheel, a touch or a scrolling key, and the scroll it
  * sets going, until the page has been still for `TIMING.gateIdle`) moves the
  * walkthrough one step, however hard the flick: the page is held just inside
- * the next step (see `gestureBase` and `gateHold`). Scrolling up is free, and
- * so is a scroll no gesture made (a jump to an anchor, focus moving), so the
- * page can always be taken anywhere.
+ * the next step (see `gestureBase` and `gateHold`). A held step lets go once
+ * it has had time to show and a new swipe has begun (see `showFor`,
+ * `gateReleases` and `noteWheel`), so scrolling on is never fought. Scrolling
+ * up is free, and so is a scroll no gesture made (a jump to an anchor, focus
+ * moving), so the page can always be taken anywhere.
  */
 export function useScrollStep(
   scroller: RefObject<HTMLElement | null>,
@@ -65,19 +72,34 @@ export function useScrollStep(
     let goal = current.current;
 
     // The gesture gate: where the page was at the last read, when the reader last
-    // touched the page, and the step the running gesture counts from (`null`: free).
+    // touched the page, whether a gesture is running, and what it holds: the step
+    // it counts from (`null`: free), when it may be let go, and where it is held.
     let lastY = scrollY;
     let lastInput = -Infinity;
     let gesturing = false;
-    let base: number | null = null;
+    let gesture: GateGesture = { base: null, freeAt: 0, since: 0 };
+    let heldY = -1;
     let stillTimer = 0;
+    // When the latest swipe began: a wheel turning or speeding up again, a finger landing, a key pressed.
+    let wheel = WHEEL_START;
+    let swipeAt = 0;
     // Set while a glide skips the reads, so the first read after it starts afresh from where it ended.
     let glided = false;
-    const onInput = () => {
+    const onWheel = (event: WheelEvent) => {
+      lastInput = performance.now();
+      wheel = noteWheel(wheel, event.deltaY, lastInput);
+      swipeAt = Math.max(swipeAt, wheel.newAt);
+    };
+    const onTouchStart = () => {
+      swipeAt = performance.now();
+    };
+    const onTouchMove = () => {
       lastInput = performance.now();
     };
     const onKey = (event: KeyboardEvent) => {
-      if (keyScrollsPage(event.key)) onInput();
+      if (!keyScrollsPage(event.key)) return;
+      lastInput = performance.now();
+      if (!event.repeat) swipeAt = lastInput;
     };
     const gate = (section: HTMLElement, pinned: HTMLElement, stickyTop: number) => {
       const y = scrollY;
@@ -89,21 +111,28 @@ export function useScrollStep(
         gesturing = false;
         return;
       }
-      clearTimeout(stillTimer);
-      stillTimer = window.setTimeout(() => {
-        gesturing = false;
-      }, TIMING.gateIdle);
+      // The page's own jump back to a held step is not the reader scrolling, so it does not keep the gesture alive.
+      if (Math.round(y) !== heldY) {
+        clearTimeout(stillTimer);
+        stillTimer = window.setTimeout(() => {
+          gesturing = false;
+        }, TIMING.gateIdle);
+      }
       const rect = section.getBoundingClientRect();
       const scroll = { start: rect.top + y - stickyTop, travel: rect.height - pinned.offsetHeight };
       if (scroll.travel <= 0) return;
-      if (!gesturing) {
-        if (performance.now() - lastInput > TIMING.gestureInput) return;
+      const now = performance.now();
+      // A gesture starts, or a running one counts afresh from where the page was (see `gateReleases`).
+      if (gesturing ? gateReleases(gesture, now, swipeAt) : now - lastInput <= TIMING.gestureInput) {
         gesturing = true;
-        base = gestureBase(was, scroll, edges);
+        gesture = { base: gestureBase(was, scroll, edges), freeAt: 0, since: now };
       }
-      if (base === null || y <= was) return;
-      const hold = gateHold(base, y, scroll, edges);
+      if (!gesturing || gesture.base === null || y <= was) return;
+      const to = gesture.base + 1;
+      const hold = gateHold(gesture.base, y, scroll, edges);
       if (hold === null || hold >= y) return;
+      heldY = hold;
+      if (!gesture.freeAt) gesture = { ...gesture, freeAt: now + showFor(to, edges.length), since: now };
       scrollTo({ top: hold, behavior: "instant" });
       lastY = hold;
     };
@@ -176,8 +205,9 @@ export function useScrollStep(
     schedule();
     addEventListener("scroll", schedule, { passive: true });
     addEventListener("resize", onResize);
-    addEventListener("wheel", onInput, { passive: true });
-    addEventListener("touchmove", onInput, { passive: true });
+    addEventListener("wheel", onWheel, { passive: true });
+    addEventListener("touchstart", onTouchStart, { passive: true });
+    addEventListener("touchmove", onTouchMove, { passive: true });
     addEventListener("keydown", onKey);
     return () => {
       cancelAnimationFrame(frame);
@@ -187,8 +217,9 @@ export function useScrollStep(
       clearTimeout(stillTimer);
       removeEventListener("scroll", schedule);
       removeEventListener("resize", onResize);
-      removeEventListener("wheel", onInput);
-      removeEventListener("touchmove", onInput);
+      removeEventListener("wheel", onWheel);
+      removeEventListener("touchstart", onTouchStart);
+      removeEventListener("touchmove", onTouchMove);
       removeEventListener("keydown", onKey);
     };
   }, [scroller, sticky, edges, held, morph]);

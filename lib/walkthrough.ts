@@ -60,6 +60,8 @@ export const TIMING = {
    * busy page that reads the scroll a few frames late still gates it.
    */
   gestureInput: 600,
+  /** How long the page holds where the walkthrough lets go before a new swipe may carry it on. */
+  gateExit: 450,
 } as const;
 
 /** How far into the opening step's scroll, as a fraction of it, the morph plays. */
@@ -185,6 +187,62 @@ export function stepHold(from: number, to: number): number {
 const GATE_LAND = 0.15;
 /** A gesture that starts this close to where the walkthrough lets go, in px, is free: it absorbs the rounding of the held position. */
 const GATE_END_SLACK = 2;
+
+/**
+ * How long a step the gate holds the page on must show before a new swipe may
+ * carry the page on: the hold the walkthrough gives that step, or a short beat
+ * where the walkthrough lets go. `to` is the step held on; `steps` how many there are.
+ */
+export function showFor(to: number, steps: number): number {
+  if (to >= steps) return TIMING.gateExit;
+  if (to === STEP.context + 1) return TIMING.morph;
+  return stepHold(to - 1, to);
+}
+
+/**
+ * A running gesture: the step it counts from (`null`: free), when a step it
+ * holds may be let go (0 while nothing is held), and since when a new swipe
+ * counts (when it was counted, then when it was first held), in ms.
+ */
+export type GateGesture = { base: number | null; freeAt: number; since: number };
+
+/**
+ * Whether a running gesture counts afresh from where the page is, at `now`:
+ * a new swipe began (`newSwipeAt`) since it was counted or held, and any step
+ * it holds has had time to show. So scrolling on after a step has shown is
+ * never fought, one hard flick still moves one step, and a swipe that follows
+ * one let go mid-way is not pulled back to the step that one reached.
+ */
+export const gateReleases = ({ base, freeAt, since }: GateGesture, now: number, newSwipeAt: number) =>
+  base !== null && now >= freeAt && newSwipeAt > since;
+
+/**
+ * Telling a new wheel swipe from the last one still coasting: the deltas'
+ * size, whether they have been falling, the last event's time, and when the
+ * latest swipe began (ms).
+ */
+export type WheelState = { previous: number; falling: boolean; lastAt: number; newAt: number };
+export const WHEEL_START: WheelState = { previous: 0, falling: false, lastAt: -Infinity, newAt: 0 };
+
+/** A delta this much larger than the last, after they had been falling, is a new swipe: a trackpad speeding up again. */
+const SWIPE_RISE = 1.3;
+const SWIPE_RISE_SLACK = 2;
+
+/**
+ * The wheel state after an event of `delta` px at `time` ms. A swipe begins on
+ * a delta that rises clear of the last after the deltas had been falling, or
+ * on any event after the page has been still for `TIMING.gateIdle`.
+ */
+export function noteWheel(state: WheelState, delta: number, time: number): WheelState {
+  const size = Math.abs(delta);
+  let falling = state.falling || size < state.previous;
+  let newAt = state.newAt;
+  if ((falling && size > state.previous * SWIPE_RISE + SWIPE_RISE_SLACK) || time - state.lastAt > TIMING.gateIdle) {
+    newAt = time;
+    falling = false;
+  }
+  return { previous: size, falling, lastAt: time, newAt };
+}
 
 /** The pinned scroll on the page: where it starts, as a scroll position, and how long it runs, in px. */
 export type GateScroll = { start: number; travel: number };
