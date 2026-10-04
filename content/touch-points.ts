@@ -1,6 +1,6 @@
-import type { Marks } from "./repair-board";
+import type { Marks, StepName } from "./repair-board";
 
-export type TouchPointTab = "app" | "agent" | "chat";
+export type TouchPointTab = "app" | "agent" | "chat" | "phone";
 
 /** How a terminal line is coloured: the command, a progress note, a result, a warning. */
 export type TerminalTone = "command" | "muted" | "plain" | "warn";
@@ -26,12 +26,13 @@ type TouchPoints = {
     )[];
     step: string;
   };
+  phone: { lit: StepName<"user"> };
 };
 
 export const touchPoints = {
   headlineLead: "One blueprint.",
   headline: "Every place you work.",
-  subheadline: "Open it in the app, call it from your coding agent, or bring it into team chat. It plugs into the way your team already works.",
+  subheadline: "Open it in the app or on your phone, call it from your coding agent, or bring it into team chat. It plugs into the way your team already works.",
   tabsLabel: "Where agents reach the blueprint",
   tabs: [
     {
@@ -49,6 +50,11 @@ export const touchPoints = {
       label: "In your team Slack",
       caption:
         "Put a bot on the same blueprint, and answers arrive where the questions are asked. You build this one; the template does not ship it.",
+    },
+    {
+      value: "phone",
+      label: "On your phone",
+      caption: "Take the blueprint with you. Read any journey and jump to any step.",
     },
   ],
   app: {
@@ -93,4 +99,6 @@ export const touchPoints = {
     /** The step the bot's link opens. */
     step: "Picks up",
   },
+  /** The journey reader shows the user's steps down the board's path, with the step jumped to lit. */
+  phone: { lit: "Quote approved" },
 } as const satisfies TouchPoints;

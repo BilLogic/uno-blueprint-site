@@ -1,7 +1,7 @@
-import { LayoutGrid, MessageCircle, Terminal } from "lucide-react";
+import { LayoutGrid, MessageCircle, Smartphone, Terminal } from "lucide-react";
 import { touchPoints } from "@/content/touch-points";
 import { ShowcaseSection } from "@/components/showcase/ShowcaseSection";
-import { AgentMock, AppMock, ChatMock } from "./mocks";
+import { AgentMock, AppMock, ChatMock, PhoneMock } from "./mocks";
 
 /** The places people and agents reach the same blueprint, one tab each. */
 export function TouchPointsSection() {
@@ -19,6 +19,7 @@ export function TouchPointsSection() {
         app: { Icon: LayoutGrid, picture: <AppMock /> },
         agent: { Icon: Terminal, picture: <AgentMock /> },
         chat: { Icon: MessageCircle, picture: <ChatMock /> },
+        phone: { Icon: Smartphone, picture: <PhoneMock /> },
       }}
     />
   );

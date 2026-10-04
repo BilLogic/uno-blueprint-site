@@ -13,8 +13,14 @@ export type Steps = readonly [string, string, string, string] | readonly [string
 
 export type Lane = { key: LaneKey; name: string; steps: Steps };
 
+/** The journey the board maps, and the path through it. */
+const journey = "Repair intake";
+const path = "walk-in path";
+
 export const repairBoard = {
-  title: "Repair intake, walk-in path",
+  journey,
+  path,
+  title: `${journey}, ${path}`,
   /** What a step with nobody on it reads instead of its name. */
   gapLabel: "No owner",
   /** A step opened in a side panel: who owns it (nobody yet), its status and its source. */
@@ -76,8 +82,13 @@ export const repairBoard = {
     },
   ],
 } as const satisfies {
+  journey: string;
+  path: string;
   title: string;
   gapLabel: string;
   detail: { owner: string; missing: string; status: string; sourcesTitle: string; source: string };
   lanes: readonly Lane[];
 };
+
+/** The names of one lane's steps, so content naming a step fails the typecheck when it is renamed. */
+export type StepName<K extends LaneKey> = Extract<(typeof repairBoard.lanes)[number], { key: K }>["steps"][number];

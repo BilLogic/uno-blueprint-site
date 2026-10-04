@@ -1,5 +1,7 @@
 import { Fragment } from "react";
 import { touchPoints, type TerminalTone } from "@/content/touch-points";
+import { repairBoard } from "@/content/repair-board";
+import { laneByKey, stepWindow } from "@/lib/journey-reader";
 import { Board, MockWindow, StepDetail, Tag } from "@/components/showcase/mock";
 
 /** The built-in agent answers in the side panel, and the two steps it cites light up. */
@@ -78,5 +80,50 @@ export function ChatMock() {
       }
       panel={<StepDetail step={step} />}
     />
+  );
+}
+
+/** How many steps the reader lists on a phone, where the handset is smallest. */
+const stepsOnPhone = 3;
+
+/**
+ * The journey reader on a phone: a journey, the path it follows, and the
+ * user's steps as a list with the step jumped to lit. On a phone it lists
+ * fewer steps, the lit one among them. The handset stands on the stage's foot
+ * and fills its height, so a recording can later take its place at the same size.
+ */
+export function PhoneMock() {
+  const lane = laneByKey(repairBoard.lanes, "user");
+  const { lit } = touchPoints.phone;
+  const shown = stepWindow(lane.steps.length, lane.steps.indexOf(lit), stepsOnPhone);
+  return (
+    <div
+      aria-hidden="true"
+      data-testid="phone-frame"
+      className="absolute top-(--spacing-phone-top) bottom-0 left-1/2 aspect-phone -translate-x-1/2 overflow-hidden rounded-t-phone border border-b-0 border-line bg-card-2 px-(--spacing-phone-bezel) pt-(--spacing-phone-bezel) text-mock shadow-mock max-sm:aspect-phone-narrow"
+    >
+      <div className="grid min-h-full grid-cols-1 content-start gap-2 rounded-t-phone-screen bg-panel px-3 pt-2.5 max-sm:gap-1 max-sm:px-1.5 max-sm:pt-2 max-sm:text-11">
+        <span className="mb-1 h-1 w-(--spacing-phone-speaker) justify-self-center rounded-pill bg-line-2" />
+        <b className="truncate leading-tight">{repairBoard.journey}</b>
+        <span className="truncate text-11 text-muted">
+          {lane.name} · {repairBoard.path}
+        </span>
+        <ol className="mt-1 grid grid-cols-1 gap-1.5 max-sm:gap-1">
+          {lane.steps.map((step, index) => (
+            <li
+              key={step}
+              className={`flex items-center gap-2 rounded-6 border p-1.5 leading-tight max-sm:gap-1 max-sm:p-1 ${step === lit ? "border-dashed border-brand bg-brand-soft" : "border-line-2 bg-panel"} ${index < shown.start || index >= shown.end ? "max-sm:hidden" : ""}`}
+            >
+              <span
+                className={`grid size-(--spacing-phone-step) flex-none place-items-center rounded-full text-11 font-medium ${step === lit ? "bg-brand text-panel" : "bg-card-2 text-muted"}`}
+              >
+                {index + 1}
+              </span>
+              <span className="min-w-0 flex-1 truncate max-sm:whitespace-normal">{step}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
   );
 }

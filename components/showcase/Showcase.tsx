@@ -49,7 +49,10 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
         // The picture is hidden from assistive technology, so the panel itself takes focus.
         tabIndex={0}
       >
-        <div className="relative aspect-video max-w-full overflow-hidden rounded-16 border border-line bg-card bg-dots">
+        <div
+          data-testid="showcase-stage"
+          className="relative aspect-video max-w-full overflow-hidden rounded-16 border border-line bg-card bg-dots"
+        >
           {item.picture}
         </div>
         <p className="mt-4 max-w-caption text-14 text-muted">
