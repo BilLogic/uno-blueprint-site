@@ -2371,6 +2371,8 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
         inner=stage.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom),k=Math.max(1,Math.min(room/bp.offsetWidth,(stage.clientHeight-56)/(sheet.offsetHeight+18)));
         stage.style.setProperty('--solo-s',k.toFixed(3));stage.style.setProperty('--solo-tx','0px')}
       soloAt=performance.now()}else openSince=performance.now();
+    /* anyone standing on the panel when it closes walks back to a cell, never left on a field that is no longer there */
+    if(on){const on2=cells.filter(c=>c.classList.contains('on'));toks.forEach((_,i)=>{if(at[i]&&cp.contains(at[i])&&on2.length)at[i]=pick(on2)})}
     stage.classList.toggle('solo',on);ride(RM?0:720)}
   /* one cell at a time: a new one opens only once the last has had time to be read */
   let lastOpen=-1e9;
