@@ -24,17 +24,20 @@ test.describe("install", () => {
     expect(await copyFrom(page, page.getByRole("tabpanel", { name: "pnpm", exact: true }))).toBe(
       "pnpm create uno-blueprint\ncd uno-blueprint\npnpm dev",
     );
-    await tabs.getByRole("tab", { name: "yarn 1", exact: true }).click();
-    expect(await copyFrom(page, page.getByRole("tabpanel", { name: "yarn 1", exact: true }))).toBe(
-      "yarn create uno-blueprint\ncd uno-blueprint\nyarn dev",
+    await tabs.getByRole("tab", { name: "yarn", exact: true }).click();
+    const yarn = page.getByRole("tabpanel", { name: "yarn", exact: true });
+    // The Yarn 1 note is shown as a comment, and left out of the copy so the paste runs as typed.
+    await expect(yarn).toContainText(
+      "# Yarn 1 (Classic). Yarn 2 and later skip the setup scripts the template needs.",
     );
+    expect(await copyFrom(page, yarn)).toBe("yarn create uno-blueprint\ncd uno-blueprint\nyarn dev");
     await tabs.getByRole("tab", { name: "bun", exact: true }).click();
     expect(await copyFrom(page, page.getByRole("tabpanel", { name: "bun", exact: true }))).toBe(
       "bun create uno-blueprint\ncd uno-blueprint\nbun dev",
     );
     await tabs.getByRole("tab", { name: "agent", exact: true }).click();
     expect(await copyFrom(page, page.getByRole("tabpanel", { name: "agent", exact: true }))).toMatch(
-      /^Set up Uno Blueprint for me\. .* no database to start\.$/,
+      /^Set up Uno Blueprint for me\. Run npm create uno-blueprint@latest, .* no database to start\.$/,
     );
   });
 
@@ -57,16 +60,54 @@ test.describe("install", () => {
       await page.getByRole("tab", { name, exact: true }).click();
       return (await page.getByRole("tabpanel", { name, exact: true }).boundingBox())?.height;
     };
-    // On a phone the agent's sentence is taller than the box, which grows for it as in the design.
+    // On a phone the agent's sentence and the Yarn 1 note are taller than the box, which grows for them as in the design.
     for (const [width, names] of [
-      [1440, ["npm", "agent", "pnpm", "yarn 1", "bun"]],
-      [390, ["npm", "pnpm", "yarn 1", "bun"]],
+      [1440, ["npm", "agent", "pnpm", "yarn", "bun"]],
+      [390, ["npm", "pnpm", "bun"]],
     ] as const) {
       await page.setViewportSize({ width, height: 900 });
       const heights = [];
       for (const name of names) heights.push(await height(name));
       expect(new Set(heights).size).toBe(1);
     }
+  });
+});
+
+test.describe("database", () => {
+  test("each host's tab copies its own prompt, and keys stay in .env", async ({ page }) => {
+    await page.goto("/");
+    const tabs = page.getByRole("tablist", { name: "Database host" });
+    await expect(tabs.getByRole("tab")).toHaveText(["Supabase", "Neon", "Firebase", "Postgres", "Other"]);
+    for (const [host, start] of [
+      ["Supabase", "Connect this Uno Blueprint workspace to a Supabase project"],
+      ["Neon", "Connect this Uno Blueprint workspace to a Neon Postgres database"],
+      ["Firebase", "Connect this Uno Blueprint workspace to Firebase Data Connect"],
+      ["Postgres", "Connect this Uno Blueprint workspace to our own Postgres database"],
+    ] as const) {
+      await tabs.getByRole("tab", { name: host, exact: true }).click();
+      const copied = await copyFrom(page, page.getByRole("tabpanel", { name: host, exact: true }));
+      expect(copied.startsWith(start)).toBe(true);
+      expect(copied).toContain("Keep every key and connection string in .env, never in a tracked file.");
+    }
+    await tabs.getByRole("tab", { name: "Other", exact: true }).click();
+    expect(await copyFrom(page, page.getByRole("tabpanel", { name: "Other", exact: true }))).toMatch(
+      /^I want to run this Uno Blueprint workspace on \[our database\]\. .* propose a plan before you change anything\.$/,
+    );
+  });
+
+  test("the arrow keys move along the hosts", async ({ page }) => {
+    await page.goto("/");
+    const supabase = page.getByRole("tab", { name: "Supabase", exact: true });
+    await expect(supabase).toHaveAttribute("aria-selected", "true");
+    await supabase.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("tab", { name: "Neon", exact: true })).toBeFocused();
+    await expect(page.getByRole("tabpanel", { name: "Neon", exact: true })).toBeVisible();
+    await page.keyboard.press("End");
+    await expect(page.getByRole("tabpanel", { name: "Other", exact: true })).toBeVisible();
+    await page.keyboard.press("ArrowRight");
+    await expect(supabase).toHaveAttribute("aria-selected", "true");
+    await expect(supabase).toBeFocused();
   });
 });
 
@@ -105,7 +146,7 @@ test.describe("questions", () => {
   test("a question opens and closes from the keyboard", async ({ page }) => {
     await page.goto("/");
     const question = page.getByRole("button", { name: "Does my data become public?" });
-    const answer = page.getByText("your blueprint lives in your own database");
+    const answer = page.getByText("No. The code is open source; your blueprint lives in your own database.");
     await expect(question).toHaveAttribute("aria-expanded", "false");
     await expect(answer).toBeHidden();
 
@@ -140,6 +181,7 @@ test("the longest commands and answers still fit a 375 px screen", async ({ page
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/");
   await page.getByRole("tab", { name: "agent", exact: true }).click();
+  await page.getByRole("tab", { name: "Postgres", exact: true }).click();
   await page.getByRole("tab", { name: "Other agents", exact: true }).click();
   await page.getByRole("button", { name: "Which agents can use it?" }).click();
   const overflow = await page.evaluate(

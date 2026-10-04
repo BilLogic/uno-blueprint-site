@@ -1,10 +1,22 @@
-import { INSTALL_COMMANDS, WORKSPACE_FOLDER } from "@/lib/install-commands";
+import {
+  AGENT_INSTALL_PROMPT,
+  DATABASE_PROMPTS,
+  INSTALL_COMMANDS,
+  INSTALL_NOTES,
+  WORKSPACE_FOLDER,
+} from "@/lib/install-commands";
 import { links } from "./links";
 
-/** A box of commands, one per line, or a sentence to hand to an agent. */
-export type CodeContent = { kind: "commands"; lines: readonly string[] } | { kind: "prose"; text: string };
+/**
+ * A box of commands, one per line, under an optional note that is shown but
+ * never copied; or a sentence to hand to an agent.
+ */
+export type CodeContent =
+  | { kind: "commands"; lines: readonly string[]; note?: string }
+  | { kind: "prose"; text: string };
 
-const commands = (lines: readonly string[]): CodeContent => ({ kind: "commands", lines });
+const commands = (lines: readonly string[], note?: string): CodeContent =>
+  note === undefined ? { kind: "commands", lines } : { kind: "commands", lines, note };
 
 export const getStarted = {
   // The section is where "Get the template" lands.
@@ -22,14 +34,23 @@ export const getStarted = {
       {
         value: "agent",
         label: "agent",
-        code: {
-          kind: "prose",
-          text: `Set up Uno Blueprint for me. Clone ${links.github.href} and read its README.md and AGENTS.md first. Then run npm install and npm run dev, and tell me the local address. It needs Node 22 or later, and no database to start.`,
-        },
+        code: { kind: "prose", text: AGENT_INSTALL_PROMPT },
       },
       { value: "pnpm", label: "pnpm", code: commands(INSTALL_COMMANDS.pnpm) },
-      { value: "yarn", label: "yarn 1", code: commands(INSTALL_COMMANDS.yarn) },
+      { value: "yarn", label: "yarn", code: commands(INSTALL_COMMANDS.yarn, INSTALL_NOTES.yarn) },
       { value: "bun", label: "bun", code: commands(INSTALL_COMMANDS.bun) },
+    ],
+  },
+  database: {
+    label: "Database",
+    sub: "Your blueprint lives in your own database. Pick your host and paste the prompt into your agent.",
+    tabsLabel: "Database host",
+    tabs: [
+      { value: "supabase", label: "Supabase", prompt: DATABASE_PROMPTS.supabase },
+      { value: "neon", label: "Neon", prompt: DATABASE_PROMPTS.neon },
+      { value: "firebase", label: "Firebase", prompt: DATABASE_PROMPTS.firebase },
+      { value: "postgres", label: "Postgres", prompt: DATABASE_PROMPTS.postgres },
+      { value: "other", label: "Other", prompt: DATABASE_PROMPTS.other },
     ],
   },
   skills: {
