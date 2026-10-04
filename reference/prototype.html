@@ -1,4 +1,4 @@
-<title>Uno Blueprint</title>
+<title>Uno Blueprint Marketing Website</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu+Sans:wght@400;500;600;700&family=Ubuntu+Sans+Mono:wght@400;500&display=swap">
@@ -2076,6 +2076,9 @@ details:first-child,.qa:first-child{border-top:0}
 
 /* hero on a phone: the board alone, never the panel or its beam */
 @media (max-width:760px){.hv-stage .hv-cp,.hv-stage .pjv{display:none}.hv-stage.solo .hv-bp{transform:none}}
+/* the open cell's shadow and the dotted field run past the stage's foot: the stage clips its sides and top only, and the dots fade in from the top and out before the foot */
+.sx{overflow:visible;clip-path:inset(0 0 -80px 0)}
+.sx .hv-dots{-webkit-mask-image:linear-gradient(to bottom,transparent,#000 56px,#000 calc(100% - 72px),transparent);mask-image:linear-gradient(to bottom,transparent,#000 56px,#000 calc(100% - 72px),transparent)}
 </style>
 
 <header class="nav"><div class="wrap">
@@ -2469,8 +2472,7 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
    ['Line of internal interaction','Where your team hands off to the systems and partners behind it.',30],
    ['Support','The tools, data and partners every step relies on.',36],
    ['Steps','Each column is one moment in time, read down every lane at once.',42],
-   ['Cells','Where a lane meets a step: what one participant does at one moment.',46],
-   ['Inside a cell','Each cell carries the detail: owner, status, value, dependencies and the sources behind it.',120]];
+   ['Cells','Where a lane meets a step, one cell holds the detail: owner, status, value, dependencies and the sources behind it.',46]];
   const TAGS=['Services','Phases','Scenarios','Paths'];
   const LINEAR_D='M2.886 4.18A11.982 11.982 0 0 1 11.99 0C18.624 0 24 5.376 24 12.009c0 3.64-1.62 6.903-4.18 9.105L2.887 4.18ZM1.817 5.626l16.556 16.556c-.524.33-1.075.62-1.65.866L.951 7.277c.247-.575.537-1.126.866-1.65ZM.322 9.163l14.515 14.515c-.71.172-1.443.282-2.195.322L0 11.358a12 12 0 0 1 .322-2.195Zm-.17 4.862 9.823 9.824a12.02 12.02 0 0 1-9.824-9.824Z',MIXPANEL_D='M6.967 9.996h3.053c-.763-.477-1.048-1.145-1.431-2.384L7.443 3.366C6.919 1.458 6.49.551 4.39.551H.004v1.145h.621c1.286 0 1.431.477 1.814 1.908L3.44 7.326c.524 1.814 1.337 2.67 3.53 2.67h-.003Zm7.06 0h3.053c2.194 0 2.956-.86 3.484-2.67l1.001-3.722c.382-1.431.57-1.908 1.814-1.908H24V.551h-4.34c-2.146 0-2.576.86-3.053 2.815l-1.145 4.246c-.384 1.286-.673 1.907-1.435 2.384Zm-4.007 4.008h4.007V9.996H10.02v4.008ZM0 23.449h4.39c2.1 0 2.529-.907 3.053-2.815l1.146-4.246c.383-1.239.668-1.907 1.431-2.384H6.967c-2.194 0-3.007.86-3.531 2.67l-1.001 3.722c-.383 1.431-.524 1.907-1.814 1.907H0v1.146Zm19.65 0h4.343v-1.146h-.622c-1.239 0-1.431-.476-1.814-1.907l-1.001-3.722c-.524-1.814-1.286-2.67-3.483-2.67h-3.046c.762.477 1.041 1.098 1.424 2.384l1.145 4.246c.477 1.955.907 2.815 3.054 2.815Z';
   const sk=(w,c)=>`<span class="sk${c?' '+c:''}" style="width:${w}%"></span>`;
@@ -2484,7 +2486,9 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
    ['ana','Mixpanel','Checkout funnel',`<div class="fr-bars"><i style="--h:90%"></i><i style="--h:64%"></i><i style="--h:41%"></i><i style="--h:28%"></i></div>`,[236,292,4],[322,304,4]],
    ['code','GitHub','checkout-service',`<p class="fr-code">${sk(18,'kw')}${sk(42)}</p><p class="fr-code i">${sk(58)}</p><p class="fr-code i add">${sk(46)}</p>`,[594,302,-4],[514,312,-4]]];
   const INTRO=`<div class="sx-in">${FR.map(([k,t,h,body,W,P],i)=>`<div class="fr fr-${k}" data-i="${i}" style="--x:${W[0]}px;--y:${W[1]}px;--r:${W[2]}deg;--nx:${P[0]}px;--ny:${P[1]}px;--nr:${P[2]}deg"><div class="fr-t"><span class="fr-l">${t==='Linear'||t==='Mixpanel'?xlogo(t):logo(t)}</span>${h}</div>${body}</div>`).join('')}</div>`;
-  const N=LB.length,DY=100,CY=255,T='rotateX(58deg) rotateZ(-45deg)',S_BP=4,S_STEPS=12,S_CELL=13,S_OPEN=14;
+  const N=LB.length,DY=100,CY=255,T='rotateX(58deg) rotateZ(-45deg)',S_BP=4,S_STEPS=12,S_CELL=13,S_OPEN=13;
+  /* CELL_BEAT: how long the chosen cell shows lit on the flat board before it opens */
+  const CELL_BEAT=700;let openNow=false,beatT=0,capWas='';
   const TOT=LB.reduce((a,l)=>a+l[2],0);let acc=0;const EDGE=LB.map(l=>(acc+=l[2])/TOT);
   const ev=(n,w)=>`<div><i>${logo(n)}</i><span class="sk" style="width:${w}%"></span></div>`;
   /* each set of projection lines is drawn under the sheet it comes from and over the sheet it lands on */
@@ -2545,7 +2549,10 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
   function apply(S){
     const intro=S===0,s=Math.max(0,S-1),IX=0,IY=0;
     const sxin=w.querySelector('.sx-in');if(sxin)sxin.classList.toggle('done',!intro);
-    const e=Math.min(s,3),flat=s>=S_BP,open=s>=S_OPEN,goFlat=flat&&!wasFlat,goIso=!flat&&wasFlat;
+    const e=Math.min(s,3),flat=s>=S_BP,goFlat=flat&&!wasFlat,goIso=!flat&&wasFlat;let open=s>=S_OPEN;
+    /* arriving on the cell from above, it lights first and opens a beat later; scrolling back up closes it at once */
+    clearTimeout(beatT);
+    if(open&&!wasOpen&&!openNow&&!RM){open=false;beatT=setTimeout(()=>{if(cur===S){openNow=true;apply(S);openNow=false}},CELL_BEAT)}
     mode=open?2:flat?1:0;
     /* the stack stays centred on the stage as it grows */
     const ty=i=>{const d=e===3?86:DY;return CY-95-e*d/2+[0,0,8,22][e]+(i<=e?i*d:e*d+(i-e)*8)};
@@ -2571,8 +2578,7 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
     groups.forEach((g,i)=>g.classList.toggle('in',!flat&&i<e));cl.classList.toggle('in',open);
     if(open!==wasOpen)beam(open);
     tags.forEach((t,i)=>{t.style.top=(ty(i)+95)+'px';t.classList.toggle('in',!flat&&!intro&&i<=e);t.classList.toggle('cur',i===e)});
-    cap.innerHTML=`<b>${LB[S][0]}</b><p>${LB[S][1]}</p>`;pose();
-    cap.classList.remove('capsw');void cap.offsetWidth;cap.classList.add('capsw');
+    if(capWas!==LB[S][0]){capWas=LB[S][0];cap.innerHTML=`<b>${LB[S][0]}</b><p>${LB[S][1]}</p>`;cap.classList.remove('capsw');void cap.offsetWidth;cap.classList.add('capsw')}pose();
     wasFlat=flat;wasOpen=open;
     until=performance.now()+2400;if(!rf)track();
   }
@@ -2608,11 +2614,22 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
   function advance(){stT=0;if(cur===SG)return;if(cur===0&&SG>0&&ipv<1)return;
     const was=cur;set(cur+(SG>cur?1:-1));
     /* a step that folds the stack flat, or opens the cell, gets the time its choreography needs before the next one */
-    const fl=i=>i-1>=S_BP,op=i=>i-1>=S_OPEN,long=fl(was)!==fl(cur)?1250:op(was)!==op(cur)?950:560;
+    const fl=i=>i-1>=S_BP,op=i=>i-1>=S_OPEN,long=fl(was)!==fl(cur)?1250:op(was)!==op(cur)?950+(cur>was?CELL_BEAT:0):560;
     if(cur!==SG)stT=setTimeout(advance,RM?0:long)}
   const set=i=>{if(i!==cur){cur=i;apply(i)}};
   let raf=0;
+  /* GATE_IDLE: how long the page must be still before the next gesture counts; GATE_LAND: how far into the next step a held gesture rests */
+  const GATE_IDLE=260,GATE_LAND=.15;let gBase=-1,gLast=scrollY,gT=0;
+  function gate(r,sh){const L=r.height-sh,y0=r.top+scrollY-top,t=(scrollY-y0)/L,was=(gLast-y0)/L,down=scrollY>gLast;gLast=scrollY;
+    clearTimeout(gT);gT=setTimeout(()=>{gBase=-1},GATE_IDLE);
+    /* a gesture counts from where the page was before it moved, so a flick that starts on a step's edge still stops at the next one */
+    /* a gesture that starts past the walkthrough is free; one that starts inside it keeps its base until it ends; the 2px absorbs the rounding of the held position */
+    if(gBase<0){if(was*L>=L-2)return;gBase=Math.max(0,EDGE.findIndex(x=>was<x))}
+    /* the gesture that leaves the last step holds where the walkthrough lets go, so the page never runs on past the open cell in one flick */
+    const to=gBase+1;if(!down||to>N||t<(to<N?EDGE[to]:1))return;
+    const from=EDGE[to-1],y=Math.round(to<N?y0+(from+(EDGE[to]-from)*GATE_LAND)*L:y0+L);if(scrollY>y)scrollTo({top:y,behavior:'instant'})}
   function onScroll(){if(raf||window.GLIDE)return;raf=requestAnimationFrame(()=>{raf=0;if(RM){set(N-1);return}
+    gate(scr.getBoundingClientRect(),sticky.offsetHeight);
     const r=scr.getBoundingClientRect(),sh=sticky.offsetHeight,t=Math.min(.9999,Math.max(0,(top-r.top)/(r.height-sh)));const past=t>=EDGE[0]||t/EDGE[0]>.42;let ix=EDGE.findIndex(x=>t<x);if(ix===0&&past&&ipv===1)ix=1;goal(ix);introGoal(past?1:0)})}
   /* lines follow the sheets while they move, and settle again when each move ends */
   w.addEventListener('transitionend',e=>{if(e.propertyName==='transform'||e.propertyName==='top')lines()});
