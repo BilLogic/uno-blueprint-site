@@ -11,6 +11,8 @@ import {
   gateHold,
   gateReleases,
   gestureBase,
+  wheelPixels,
+  wheelStop,
   noteWheel,
   showFor,
   goalStep,
@@ -400,8 +402,55 @@ describe("the gesture gate", () => {
     expect(gateHold(2, 2600, { start: 1000.6, travel: 1000 }, edges)).toBe(2001);
   });
 
+  it("lets a wheel through that stays inside the step the gesture may reach", () => {
+    expect(wheelStop(0, 1000, 120, scroll, edges)).toBeNull();
+    expect(wheelStop(0, 1700, 99, scroll, edges)).toBeNull();
+    expect(wheelStop(1, 1900, 40, scroll, edges)).toBeNull();
+  });
+
+  it("stops a wheel that would carry the page past that step, and rests it 15% into the step", () => {
+    expect(wheelStop(0, 1700, 100, scroll, edges)).toBe(1460);
+    expect(wheelStop(0, 1000, 5000, scroll, edges)).toBe(1460);
+    expect(wheelStop(1, 1900, 100, scroll, edges)).toBe(1830);
+  });
+
+  it("stops the wheel that leaves the last step where the walkthrough lets go", () => {
+    expect(wheelStop(2, 1990, 10, scroll, edges)).toBeNull();
+    expect(wheelStop(2, 1990, 11, scroll, edges)).toBe(2000);
+    expect(wheelStop(2, 2000, 70, scroll, edges)).toBe(2000);
+  });
+
+  it("rests a stopped wheel where the pull-back would have", () => {
+    for (const [base, y, delta] of [
+      [0, 1700, 300],
+      [1, 1850, 400],
+      [2, 1950, 200],
+    ] as const) {
+      expect(wheelStop(base, y, delta, scroll, edges)).toBe(gateHold(base, y + delta, scroll, edges));
+    }
+  });
+
+  it("rests a stopped wheel on whole pixels", () => {
+    expect(wheelStop(0, 1700, 300, { start: 1000.4, travel: 1000 }, edges)).toBe(1460);
+    expect(wheelStop(2, 1990, 100, { start: 1000.6, travel: 1000 }, edges)).toBe(2001);
+  });
+
   it("waits for the page to be still this long before the next gesture counts", () => {
     expect(TIMING.gateIdle).toBe(260);
+  });
+});
+
+describe("wheelPixels", () => {
+  it("keeps a wheel in pixels as it is", () => {
+    expect(wheelPixels(120, 0, 900)).toBe(120);
+  });
+
+  it("counts a wheel in lines at 40 px a line", () => {
+    expect(wheelPixels(3, 1, 900)).toBe(120);
+  });
+
+  it("counts a wheel in pages at the page's height", () => {
+    expect(wheelPixels(1, 2, 900)).toBe(900);
   });
 });
 

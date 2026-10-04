@@ -270,9 +270,52 @@ export function gateHold(base: number, y: number, { start, travel }: GateScroll,
   if (to > edges.length) return null;
   const last = to === edges.length;
   if ((y - start) / travel < (last ? 1 : edges[to]!)) return null;
-  if (last) return Math.round(start + travel);
+  return gateRest(to, { start, travel }, edges);
+}
+
+/** Where a held gesture rests on step `to`: 15% into it, or where the walkthrough lets go after the last step. */
+function gateRest(to: number, { start, travel }: GateScroll, edges: readonly number[]): number {
+  if (to === edges.length) return Math.round(start + travel);
   const from = edges[to - 1]!;
   return Math.round(start + (from + (edges[to]! - from) * GATE_LAND) * travel);
+}
+
+/** How far a wheel reported in lines scrolls, per line, in px. */
+const WHEEL_LINE = 40;
+
+/**
+ * A wheel's `delta` in px, from its `mode` (`WheelEvent.deltaMode`: 0 pixels,
+ * 1 lines, 2 pages) and the page's height, as some browsers report a mouse
+ * wheel in lines.
+ */
+export function wheelPixels(delta: number, mode: number, pageHeight: number): number {
+  if (mode === 1) return delta * WHEEL_LINE;
+  if (mode === 2) return delta * pageHeight;
+  return delta;
+}
+
+/**
+ * Where a downward wheel of `delta` px, from `y`, in a gesture that counts
+ * from step `base`, must stop the page instead, or `null` to let it through.
+ * A wheel that would carry the page past the end of the next step (or past
+ * where the walkthrough lets go, after the last step) is stopped before it
+ * moves, and the page rests where `gateHold` would pull it back to. Pulling
+ * back is invisible while the stage is pinned, but where the walkthrough lets
+ * go the whole page would jump down and back for a frame, and that reads as
+ * shaking.
+ */
+export function wheelStop(
+  base: number,
+  y: number,
+  delta: number,
+  { start, travel }: GateScroll,
+  edges: readonly number[],
+): number | null {
+  const to = base + 1;
+  if (to > edges.length) return null;
+  const limit = to === edges.length ? Math.round(start + travel) : Math.floor(start + edges[to]! * travel) - 1;
+  if (y + delta <= limit) return null;
+  return gateRest(to, { start, travel }, edges);
 }
 
 /** The section's scroll length in viewport heights, from its steps' total. */
