@@ -19,12 +19,6 @@ import {
 
 export type StepChange = { step: number; previous: number };
 
-/**
- * A scroll that starts this soon after a wheel, a touch or a scrolling key, in
- * ms, is that gesture's; later, nothing the reader did set it going. Generous,
- * so a busy page that reads the scroll a few frames late still gates it.
- */
-const GESTURE_INPUT_WINDOW = 600;
 
 /** The opening morph's progress (0 to 1), and how to draw the cards at a progress. */
 export type Morph = { progress: number; draw: (progress: number) => void };
@@ -76,38 +70,40 @@ export function useScrollStep(
     let lastInput = -Infinity;
     let gesturing = false;
     let base: number | null = null;
-    let still = 0;
+    let stillTimer = 0;
     // Set while a glide skips the reads, so the first read after it starts afresh from where it ended.
     let glided = false;
-    const touched = () => {
+    const onInput = () => {
       lastInput = performance.now();
     };
-    const keyed = (event: KeyboardEvent) => {
-      if (keyScrollsPage(event.key)) touched();
+    const onKey = (event: KeyboardEvent) => {
+      if (keyScrollsPage(event.key)) onInput();
     };
     const gate = (section: HTMLElement, pinned: HTMLElement, stickyTop: number) => {
       const y = scrollY;
       const was = lastY;
       lastY = y;
-      if (glided) {
-        glided = false;
+      // During a glide, and on the first read after it, the gate stands aside: even a read queued before the glide began.
+      if (glided || isGliding()) {
+        glided = isGliding();
+        gesturing = false;
         return;
       }
-      clearTimeout(still);
-      still = window.setTimeout(() => {
+      clearTimeout(stillTimer);
+      stillTimer = window.setTimeout(() => {
         gesturing = false;
       }, TIMING.gateIdle);
       const rect = section.getBoundingClientRect();
       const scroll = { start: rect.top + y - stickyTop, travel: rect.height - pinned.offsetHeight };
       if (scroll.travel <= 0) return;
       if (!gesturing) {
-        if (performance.now() - lastInput > GESTURE_INPUT_WINDOW) return;
+        if (performance.now() - lastInput > TIMING.gestureInput) return;
         gesturing = true;
         base = gestureBase(was, scroll, edges);
       }
       if (base === null || y <= was) return;
       const hold = gateHold(base, y, scroll, edges);
-      if (hold === null) return;
+      if (hold === null || hold >= y) return;
       scrollTo({ top: hold, behavior: "instant" });
       lastY = hold;
     };
@@ -180,20 +176,20 @@ export function useScrollStep(
     schedule();
     addEventListener("scroll", schedule, { passive: true });
     addEventListener("resize", onResize);
-    addEventListener("wheel", touched, { passive: true });
-    addEventListener("touchmove", touched, { passive: true });
-    addEventListener("keydown", keyed);
+    addEventListener("wheel", onInput, { passive: true });
+    addEventListener("touchmove", onInput, { passive: true });
+    addEventListener("keydown", onKey);
     return () => {
       cancelAnimationFrame(frame);
       cancelAnimationFrame(morphFrame);
       clearTimeout(settle);
       clearTimeout(hold);
-      clearTimeout(still);
+      clearTimeout(stillTimer);
       removeEventListener("scroll", schedule);
       removeEventListener("resize", onResize);
-      removeEventListener("wheel", touched);
-      removeEventListener("touchmove", touched);
-      removeEventListener("keydown", keyed);
+      removeEventListener("wheel", onInput);
+      removeEventListener("touchmove", onInput);
+      removeEventListener("keydown", onKey);
     };
   }, [scroller, sticky, edges, held, morph]);
 

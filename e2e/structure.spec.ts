@@ -12,7 +12,21 @@ const FLICK_NOTCHES = 10;
 const FLICK_NOTCH = 300;
 const NOTCH_EVERY = 16;
 /** After a flick, long enough for the page to come to rest and the gesture to end. */
-const FLICK_SETTLE = TIMING.gateIdle + 400;
+const FLICK_REST = 400;
+const FLICK_SETTLE = TIMING.gateIdle + FLICK_REST;
+/** Fifteen flicks and their settling, with room to spare. */
+const FLICK_WALK_TIMEOUT = 120_000;
+/** How far the progress may sit from the end once held there, in decimal places, and how far past it a free flick lands. */
+const HELD_AT_END_PLACES = 2;
+const LEFT_THE_SECTION = 1.05;
+/** How early, or late, the cell may open against its beat, in ms: a frame or two early, a busy frame or so late. */
+const BEAT_EARLY = 100;
+const BEAT_LATE = 300;
+/** Long enough for the cell to light and open after the step shows. */
+const OPEN_TIMEOUT = 5000;
+/** The stage's classes for a lit cell and an open panel (CSS module names end in the local name). */
+const LIT_CLASS = /cellPicked$/;
+const OPEN_CLASS = /(^|__)open$/;
 
 /** Long enough for the morph and every step's hold, one at a time, with room to spare. */
 const WALK_TIMEOUT = 30_000;
@@ -96,10 +110,13 @@ async function flick(page: Page, direction: 1 | -1 = 1) {
 const cellState = (page: Page) =>
   section(page)
     .locator("[data-board]")
-    .evaluate((board) => {
-      const classes = [...board.closest("[aria-hidden]")!.classList];
-      return [classes.some((c) => c.endsWith("cellPicked")), classes.some((c) => /(^|__)open$/.test(c))];
-    });
+    .evaluate(
+      (board, [lit, open]) => {
+        const classes = [...board.closest("[aria-hidden]")!.classList];
+        return [classes.some((c) => new RegExp(lit!).test(c)), classes.some((c) => new RegExp(open!).test(c))];
+      },
+      [LIT_CLASS.source, OPEN_CLASS.source],
+    );
 
 /** Waits until the walkthrough has caught up with the scroll and shows `title`. */
 const settlesOn = (page: Page, title: string) =>
@@ -115,7 +132,7 @@ test.describe("structure walkthrough", () => {
     test(`at ${viewport.width} px each hard flick down moves exactly one step, and the one after Cells holds, then leaves`, async ({
       page,
     }) => {
-      test.setTimeout(120_000);
+      test.setTimeout(FLICK_WALK_TIMEOUT);
       await page.setViewportSize(viewport);
       await page.goto("/");
       await watch(page);
@@ -127,13 +144,13 @@ test.describe("structure walkthrough", () => {
       }
       // The flick after Cells holds where the walkthrough lets go.
       await flick(page);
-      expect(await progress(page)).toBeCloseTo(1, 2);
+      expect(await progress(page)).toBeCloseTo(1, HELD_AT_END_PLACES);
       await settlesOn(page, titles.at(-1)!);
       expect(await seen(page)).toEqual(titles);
       expect(await jumps(page)).toBe(0);
       // The flick after that is free, and leaves the section.
       await flick(page);
-      expect(await progress(page)).toBeGreaterThan(1.05);
+      expect(await progress(page)).toBeGreaterThan(LEFT_THE_SECTION);
     });
   }
 
@@ -158,26 +175,29 @@ test.describe("structure walkthrough", () => {
     // Note when the cell lights, and when it opens.
     await section(page)
       .locator("[data-board]")
-      .evaluate((board) => {
-        const stage = board.closest("[aria-hidden]")!;
-        const w = window as unknown as { lit?: number; opened?: number };
-        const check = () => {
-          const classes = [...stage.classList];
-          if (w.lit === undefined && classes.some((c) => c.endsWith("cellPicked"))) w.lit = performance.now();
-          if (w.opened === undefined && classes.some((c) => /(^|__)open$/.test(c))) w.opened = performance.now();
+      .evaluate(
+        (board, [lit, open]) => {
+          const stage = board.closest("[aria-hidden]")!;
+          const w = window as unknown as { lit?: number; opened?: number };
+          const has = (pattern: string) => [...stage.classList].some((c) => new RegExp(pattern).test(c));
+          const check = () => {
+            if (w.lit === undefined && has(lit!)) w.lit = performance.now();
+            if (w.opened === undefined && has(open!)) w.opened = performance.now();
+            requestAnimationFrame(check);
+          };
           requestAnimationFrame(check);
-        };
-        requestAnimationFrame(check);
-      });
+        },
+        [LIT_CLASS.source, OPEN_CLASS.source],
+      );
     await flick(page);
     await settlesOn(page, "Cells");
-    await expect.poll(() => cellState(page), { timeout: 5000 }).toEqual([true, true]);
+    await expect.poll(() => cellState(page), { timeout: OPEN_TIMEOUT }).toEqual([true, true]);
     const { lit, opened } = await page.evaluate(() => {
       const w = window as unknown as { lit: number; opened: number };
       return { lit: w.lit, opened: w.opened };
     });
-    expect(opened - lit).toBeGreaterThan(TIMING.cellBeat - 100);
-    expect(opened - lit).toBeLessThan(TIMING.cellBeat + 300);
+    expect(opened - lit).toBeGreaterThan(TIMING.cellBeat - BEAT_EARLY);
+    expect(opened - lit).toBeLessThan(TIMING.cellBeat + BEAT_LATE);
 
     // Back up: the panel closes at once, with the step.
     await scrollToStep(section(page), steps, 0.5);
@@ -191,10 +211,12 @@ test.describe("structure walkthrough", () => {
     const stage = section(page).locator("[data-board]").locator("xpath=ancestor::*[@aria-hidden][1]");
     const style = await stage.evaluate((el) => {
       const computed = getComputedStyle(el);
-      return { overflow: computed.overflow, clipPath: computed.clipPath };
+      const foot = getComputedStyle(document.documentElement).getPropertyValue("--spacing-stage-foot").trim();
+      return { overflow: computed.overflow, clipPath: computed.clipPath, foot };
     });
     expect(style.overflow).toBe("visible");
-    expect(style.clipPath).toBe("inset(0px 0px -80px)");
+    expect(style.foot).toMatch(/^\d+px$/);
+    expect(style.clipPath).toBe(`inset(0px 0px -${style.foot})`);
   });
 
   test("on a phone the walkthrough reads the same steps, with nothing wider than the screen", async ({ page }) => {

@@ -10,7 +10,7 @@ import {
   TIMING,
   beamClip,
   availableStageHeight,
-  cellBeat,
+  cellOpensLate,
   fitStage,
   flatLift,
   poseOf,
@@ -83,9 +83,10 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
   const change = useScrollStep(scroller, sticky, edges, reduced, morph);
   const { step, previous } = change;
   const [layout, setLayout] = useState<StageLayout>({ narrow: false, lift: 0 });
-  // The step change whose cell beat has run out, so its cell may open.
+  // The step change whose cell beat has run out, so its cell may open. Matched by identity:
+  // `useScrollStep` makes a new change object for each move, so a later arrival waits afresh.
   const [beatOver, setBeatOver] = useState<StepChange | null>(null);
-  const beat = cellBeat(step, previous);
+  const beat = cellOpensLate(step, previous);
   const open = step >= STEP.open && (!beat || beatOver === change);
   const pose = poseOf(step, open);
 

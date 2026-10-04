@@ -11,6 +11,9 @@ export const STAGE_WIDTH = 1010;
 export const STAGE_HEIGHT = 530;
 const STAGE_CENTRE = STAGE_WIDTH / 2;
 
+/** The step where one cell is picked out and then opens in its panel. */
+const CELL_STEP = 14;
+
 /** The steps where the picture changes kind. */
 export const STEP = {
   /** The cards of a team's context, before they become the stack. */
@@ -19,10 +22,10 @@ export const STEP = {
   blueprint: 5,
   /** The columns are read. */
   steps: 13,
-  /** One cell is picked out, and opens in its panel a beat later (see `cellBeat`). */
-  cell: 14,
+  /** One cell is picked out, and opens in its panel a beat later (see `cellOpensLate`). */
+  cell: CELL_STEP,
   /** The cell's panel is open: the same step, once its beat has passed. */
-  open: 14,
+  open: CELL_STEP,
 } as const;
 
 /** Timing for the script-driven motion, in ms. */
@@ -51,6 +54,12 @@ export const TIMING = {
   cellBeat: 700,
   /** How long the page must be still before the next downward gesture counts (see `gateHold`). */
   gateIdle: 260,
+  /**
+   * A scroll that starts this soon after a wheel, a touch or a scrolling key is
+   * that gesture's; later, nothing the reader did set it going. Generous, so a
+   * busy page that reads the scroll a few frames late still gates it.
+   */
+  gestureInput: 600,
 } as const;
 
 /** How far into the opening step's scroll, as a fraction of it, the morph plays. */
@@ -86,16 +95,19 @@ export const beamClip = (to: number) => `inset(-60px ${STAGE_WIDTH - to}px -60px
 /** The stack of sheets, the flat blueprint, and the blueprint with its panel. */
 export type Pose = 0 | 1 | 2;
 
-/** The pose at `step`; `open` says whether the cell has opened, which waits for its beat (see `cellBeat`). */
-export const poseOf = (step: number, open = step >= STEP.open): Pose =>
-  step >= STEP.open && open ? 2 : step >= STEP.blueprint ? 1 : 0;
+/** Whether the panel is open at `step`, given whether the cell's beat has passed (see `cellOpensLate`). */
+const panelOpen = (step: number, opened: boolean) => step >= STEP.open && opened;
+
+/** The pose at `step`; `opened` says whether the cell has opened, which waits for its beat. */
+export const poseOf = (step: number, opened = true): Pose =>
+  panelOpen(step, opened) ? 2 : step >= STEP.blueprint ? 1 : 0;
 
 /**
  * Whether arriving at `step` from `previous` (-1 on first paint) lights the
  * cell first and opens it `TIMING.cellBeat` later: only when the cell step is
  * reached from above. Leaving it, it closes at once.
  */
-export const cellBeat = (step: number, previous: number) => step >= STEP.open && previous < STEP.open;
+export const cellOpensLate = (step: number, previous: number) => step >= STEP.open && previous < STEP.open;
 
 /** Each step's end, as a fraction of the whole scroll, from the scroll length each step gets. */
 export function stepEdges(lengths: readonly number[]): number[] {
@@ -165,7 +177,7 @@ export function stepHold(from: number, to: number): number {
   const flat = (step: number) => step >= STEP.blueprint;
   const open = (step: number) => step >= STEP.open;
   if (flat(from) !== flat(to)) return TIMING.flatten;
-  if (open(from) !== open(to)) return TIMING.openCell + (cellBeat(to, from) ? TIMING.cellBeat : 0);
+  if (open(from) !== open(to)) return TIMING.openCell + (cellOpensLate(to, from) ? TIMING.cellBeat : 0);
   return TIMING.step;
 }
 
@@ -411,13 +423,13 @@ const LINES = 3;
  * the board tips away first and the sheets return after it. The flat board is
  * moved down by `lift` stage px (see `flatLift`) while the panel is closed.
  * On the cell step the panel opens only once `opened`: the cell lights on the
- * flat board first (see `cellBeat`).
+ * flat board first (see `cellOpensLate`).
  */
-export function sceneAt(step: number, previous: number, lift = 0, opened = step >= STEP.open): Scene {
+export function sceneAt(step: number, previous: number, lift = 0, opened = true): Scene {
   const e = depthAt(step);
   const intro = step === STEP.context;
   const flat = step >= STEP.blueprint;
-  const open = step >= STEP.open && opened;
+  const open = panelOpen(step, opened);
   const wasFlat = previous >= STEP.blueprint;
   const goFlat = flat && !wasFlat;
   const goIso = !flat && wasFlat;
@@ -453,7 +465,7 @@ export function sceneAt(step: number, previous: number, lift = 0, opened = step 
 
   return {
     intro,
-    pose: poseOf(step, open),
+    pose: poseOf(step, opened),
     flat,
     open,
     named: flat && !open,

@@ -4,7 +4,7 @@ import {
   TIMING,
   availableStageHeight,
   beamClip,
-  cellBeat,
+  cellOpensLate,
   fitStage,
   flatLift,
   gateHold,
@@ -148,13 +148,13 @@ describe("poseOf", () => {
   });
 });
 
-describe("cellBeat", () => {
+describe("cellOpensLate", () => {
   it("lights the cell first, and opens it a beat later, only when the cell step is reached from above", () => {
-    expect(cellBeat(STEP.cell, STEP.steps)).toBe(true);
-    expect(cellBeat(STEP.cell, -1)).toBe(true);
-    expect(cellBeat(STEP.cell, STEP.cell)).toBe(false);
-    expect(cellBeat(STEP.steps, STEP.cell)).toBe(false);
-    expect(cellBeat(STEP.steps, STEP.steps - 1)).toBe(false);
+    expect(cellOpensLate(STEP.cell, STEP.steps)).toBe(true);
+    expect(cellOpensLate(STEP.cell, -1)).toBe(true);
+    expect(cellOpensLate(STEP.cell, STEP.cell)).toBe(false);
+    expect(cellOpensLate(STEP.steps, STEP.cell)).toBe(false);
+    expect(cellOpensLate(STEP.steps, STEP.steps - 1)).toBe(false);
   });
 
   it("is the step that both picks the cell and opens it", () => {

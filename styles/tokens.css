@@ -24,6 +24,10 @@
  *                            result-stagger/scores/answer, --duration-pop(-node), --duration-score
  *   .bxc-s Planned -> Live   --duration-status-roll/in/width(-delay), --duration-letter-roll(-fade)/out/in
  *   .bxr-w width, .lf tiles  --spacing-duo-tile, --spacing-duo-gap
+ *
+ * Walkthrough stage edges, v7.6 (the prototype writes these inline, so the names are new):
+ *   .sx clip-path foot       --spacing-stage-foot
+ *   .sx .hv-dots mask        --spacing-dots-fade-in, --spacing-dots-fade-out
  */
 
 @theme static {
