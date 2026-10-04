@@ -1898,6 +1898,184 @@ body.agent #human{display:none}body.agent #agent{display:block}
 .ctl button{border:0;border-radius:99px;padding:7px 12px;font:500 13px/1 var(--sans);background:transparent;color:var(--ink);cursor:pointer}
 .ctl button[aria-pressed="true"]{background:var(--accent);color:#06342c}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+/* ===== v7.6 ===== */
+/* rag: the question sits centred over the retriever; hovering the card sends it, then the pipeline runs */
+.bxr-w .bxq{justify-self:center;padding-right:5px}
+.bxq-s{display:grid;place-items:center;width:22px;height:22px;border-radius:7px;background:var(--card-2);color:var(--faint);margin-left:4px;transition:background var(--t-2),color var(--t-2),transform .18s var(--e-out)}
+.bxq-s{position:relative;overflow:hidden}
+.bxq-s>span{position:absolute;inset:0;display:grid;place-items:center;transition:transform .22s var(--e-out),opacity .18s}
+.bxq-s svg{width:13px;height:13px;color:inherit}
+.bxq-c{opacity:0;transform:scale(.4)}
+
+/* rag, in order: the question types itself out, is sent (the arrow becomes a tick), then the pipeline runs; about as long as the duo card */
+.bxq-t{display:inline-flex;align-items:center;white-space:pre;min-width:13.5em}
+.bxq-t i{font-style:normal;display:inline-block;max-width:0;overflow:hidden;vertical-align:bottom;transition:max-width 0s}
+.bxq-t u{display:inline-block;width:1px;height:13px;background:var(--faint);margin-left:1px;opacity:0}
+.bn .pn:is(:hover,.hot) .bxq-t i{max-width:1em;transition-delay:calc(.08s + var(--i)*.03s)}
+.bn .pn:is(:hover,.hot) .bxq-t u{opacity:1;animation:bxq-caret .5s steps(1) .9s 2}
+@keyframes bxq-caret{50%{opacity:0}}
+.bn .pn:is(:hover,.hot) .bxq{border-color:var(--brand);transition-delay:.85s}
+.bn .pn:is(:hover,.hot) .bxq-s{background:var(--brand);color:var(--panel);transition-delay:.85s;animation:bxq-send .32s var(--e-out) .85s both}
+.bn .pn:is(:hover,.hot) .bxq-a{transform:translateY(-120%);opacity:0;transition-delay:.92s}
+.bn .pn:is(:hover,.hot) .bxq-c{opacity:1;transform:scale(1);transition:transform .3s cubic-bezier(.34,1.56,.64,1) 1s,opacity .15s 1s}
+@keyframes bxq-send{0%{transform:scale(1)}45%{transform:scale(.82)}100%{transform:scale(1)}}
+/* the pipeline waits for the send */
+.bn .pn:is(:hover,.hot) .bxr-w .bxr .c.h{transition-delay:calc(1.1s + var(--n)*.07s)}
+.bn .pn:is(:hover,.hot) .bxr-w .bxr .lf.a{transition-delay:calc(1.2s + var(--n)*.07s)}
+.bn .pn:is(:hover,.hot) .bxr-w .bxr .nd,.bn .pn:is(:hover,.hot) .bxr-w .bxr .mg{transition-delay:1.55s}
+.bn .pn:is(:hover,.hot) .bxr-w .bxr .lf.z{transition-delay:calc(1.6s + var(--n)*.05s)}
+.bn .pn:is(:hover,.hot) .bxr-w .bxr .sf,.bn .pn:is(:hover,.hot) .bxr-w .bxr .sf.s1{transition-delay:1.85s}
+.bn .pn:is(:hover,.hot) .bxr-w .bxr .rw.top,.bn .pn:is(:hover,.hot) .bxr-w .bxr .rk.r1{transition-delay:2s}
+@media (prefers-reduced-motion:reduce){.bn .pn:is(:hover,.hot) .bxq-s,.bn .pn:is(:hover,.hot) .bxq-t u{animation:none}.bxq-t i{max-width:1em}}
+
+/* product context: Planned turns into Live one letter at a time, each letter rolling up out of the badge as the next one rolls in */
+.bxc-s em{overflow:hidden;transition:width .32s var(--e-io) .3s}
+.bxc-s b,.bxc-s b+b{opacity:1;white-space:pre}
+.bxc-s b i{display:inline-block;font-style:normal;transition:transform .28s var(--e-out),opacity .2s;transition-delay:calc(var(--i)*.028s)}
+.bxc-s b+b i{transform:translateY(105%);opacity:0}
+.bn .pn:is(:hover,.hot) .bxc-s b{opacity:1}
+.bn .pn:is(:hover,.hot) .bxc-s em{width:24px}
+.bn .pn:is(:hover,.hot) .bxc-s b i{transform:translateY(-105%);opacity:0;transition-delay:calc(.26s + var(--i)*.028s)}
+.bn .pn:is(:hover,.hot) .bxc-s b+b i{transform:none;opacity:1;transition-delay:calc(.34s + var(--i)*.04s)}
+@media (prefers-reduced-motion:reduce){.bxc-s b i,.bxc-s em{transition:none}}
+/* hero: the open cell's tab row never runs past its panel; labels that do not fit step out from the end */
+.hv-cp{container-type:inline-size}
+.hv-cp .cp-tabs{overflow:hidden;white-space:nowrap}
+@container (max-width:194px){.hv-cp .cp-tabs span:nth-child(3){display:none}}
+@container (max-width:125px){.hv-cp .cp-tabs span:nth-child(2){display:none}}
+/* the canvas mock: below 1000px a cell is too narrow for its words, so they are drawn as bars, as on a phone */
+@media (min-width:761px) and (max-width:1000px){
+  .mock .cells span{font-size:0;min-height:30px;padding:8px 6px;display:grid;gap:4px;align-content:start}
+  .mock .cells span::before,.mock .cells span::after{content:"";display:block;height:4px;border-radius:2px;background:color-mix(in oklab,var(--ink) 22%,transparent);width:78%}
+  .mock .cells span::after{width:48%;background:var(--line-2)}
+  .mock .cells span.gap::before,.mock .cells span.gap::after{background:var(--amber);opacity:.55}
+}
+/* a word longer than its cell breaks at a hyphen instead of running out of the cell */
+.mc,.mock .cells span{hyphens:auto;-webkit-hyphens:auto;overflow-wrap:anywhere}
+
+/* structure, first step: six cards, one per place a product team's context lives; the scroll turns them into the six layers of the stack */
+.sx-in{position:absolute;inset:0;z-index:20;pointer-events:none}
+.fr{position:absolute;left:var(--x);top:var(--y);width:168px;box-sizing:border-box;overflow:hidden;display:grid;gap:7px;align-content:start;padding:10px 11px 12px;background:var(--panel);border:1px solid var(--line-2);border-radius:12px;box-shadow:var(--shadow),0 18px 40px -22px rgba(0,0,0,.35);transform:rotate(var(--r))}
+.fr>*{opacity:var(--co,1)}
+.sx.nar .fr{left:var(--nx);top:var(--ny);width:176px;transform:rotate(var(--nr))}
+.sx-in.done .fr{opacity:0;transition:opacity .45s var(--e-out)}
+.fr-t{display:flex;align-items:center;gap:7px;font:500 11.5px/1.2 var(--sans);color:var(--ink);white-space:nowrap}
+.fr-l{display:grid;place-items:center;width:20px;height:20px;border-radius:6px;border:1px solid var(--line);background:var(--card);flex:none}
+.fr-l svg{width:12px;height:12px;fill:var(--muted)}
+.fr .sk{height:5px}
+.fr p{margin:0;display:flex;align-items:center;gap:6px}
+.fr-msg p i{width:14px;height:14px;border-radius:50%;background:var(--card-2);flex:none}
+.fr-msg p.me i{background:color-mix(in oklab,var(--brand) 45%,var(--card-2))}
+.fr-msg p .sk{height:14px;border-radius:7px;background:var(--card-2)}
+.fr-frame{position:relative;height:46px;border:1px dashed color-mix(in oklab,var(--brand) 55%,transparent);border-radius:6px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:4px;padding:5px}
+.fr-frame i{border-radius:3px;background:var(--card-2)}.fr-frame i:first-child{grid-row:span 2;background:color-mix(in oklab,var(--brand) 18%,var(--card-2))}
+.fr-row{display:flex;align-items:center;gap:7px}
+.fr-pill{font:500 10px/1 var(--sans);color:var(--brand);border:1px solid color-mix(in oklab,var(--brand) 45%,transparent);border-radius:99px;padding:3px 7px;white-space:nowrap}
+.fr-bars{display:flex;align-items:flex-end;gap:5px;height:38px}.fr-bars i{flex:1;height:var(--h);border-radius:3px 3px 1px 1px;background:color-mix(in oklab,var(--brand) 40%,var(--card-2))}.fr-bars i:first-child{background:var(--brand)}
+.fr-code{gap:5px}.fr-code.i{padding-left:12px}.fr-code .sk.kw{background:color-mix(in oklab,var(--brand) 55%,var(--card-2))}.fr-code.add{margin:0 -5px;padding:3px 5px 3px 17px;border-radius:3px;background:color-mix(in oklab,var(--brand) 14%,transparent)}.fr-code.add .sk{background:color-mix(in oklab,var(--brand) 45%,var(--card-2))}
+.sx.intro :is(.sh,.brd,.brd-gh){opacity:0}
+/* hero: people and agents walk the whole stage; a field they stop on in the panel pings */
+.hv-stage>.tok{z-index:30}
+.hv-cp .hit{animation:cp-hit .7s var(--e-out)}
+@keyframes cp-hit{0%{box-shadow:0 0 0 0 color-mix(in oklab,var(--brand) 55%,transparent)}100%{box-shadow:0 0 0 7px transparent}}
+
+/* ---- v7.6 motion pass ----
+   Linear stays only where motion is constant or tied to the scroll: the marquee, flowing dashes, scroll-linked rails, the chart count-up, the ideas rail.
+   Everything that arrives eases out; everything that lands springs. --e-spring-s is a real spring (overshoot, then settle) where linear() is supported. */
+:root{--e-spring-s:var(--e-spring);--e-spring-soft:cubic-bezier(.3,1.25,.5,1)}
+@supports (transition-timing-function:linear(0,1)){
+ :root{--e-spring-s:linear(0,.22 6%,.6 14%,.9 22%,1.05 30%,1.09 36%,1.06 44%,1.01 56%,.993 68%,1);
+       --e-spring-soft:linear(0,.25 7%,.66 16%,.93 25%,1.03 33%,1.04 40%,1.015 52%,.998 66%,1)}}
+
+/* RAG: letters arrive at a typist's rhythm and settle; the arrow leaves, the check springs in; matched cells and the top answer pop; score bars spring to length */
+.bxq-t{min-width:12.5em}
+.bxq-t i{opacity:0;transform:translateY(3px)}
+.bn .pn:is(:hover,.hot) .bxq-t i{opacity:1;transform:none;transition:max-width 0s,opacity .12s,transform .2s var(--e-out);transition-delay:calc(.08s + var(--d))}
+.bn .pn:is(:hover,.hot) .bxq-a{transition:transform .2s var(--e-in) .92s,opacity .16s .96s}
+.bn .pn:is(:hover,.hot) .bxq-c{transition:transform .5s var(--e-spring-s) 1s,opacity .15s 1s}
+.bxr .c,.bxr .nd,.bxr .rw{transform-box:fill-box;transform-origin:center}
+@keyframes bx-pop{from{transform:scale(.84)}to{transform:none}}
+.bn .pn:is(:hover,.hot) .bxr-w .bxr .c.h{animation:bx-pop .6s var(--e-spring-s) calc(1.1s + var(--n)*.07s)}
+.bn .pn:is(:hover,.hot) .bxr-w .bxr .nd{animation:bx-pop .55s var(--e-spring-s) 1.55s}
+.bn .pn:is(:hover,.hot) .bxr-w .bxr .rw.top{animation:bx-pop .6s var(--e-spring-soft) 2s}
+.bxr .sf{transition:transform .9s var(--e-spring-soft),fill var(--t-2)}
+.rag-a span i{transition:opacity .25s,transform .45s var(--e-spring-s)}
+
+/* elsewhere: arrivals ease out instead of the default ease */
+.idea{transition:flex-basis .5s var(--e-io)}
+.ly,.sx-lb{transition:opacity .5s,transform .5s var(--e-out)}
+.bn-rr{transition:opacity .45s,transform .5s var(--e-out),border-color .15s,background .15s}
+.bn-chip{transition:opacity .4s,transform .45s var(--e-spring-soft),border-color .15s,padding .2s var(--e-out)}
+.bn-src2 .bn-chip{transition:opacity .4s,transform .45s var(--e-out)}
+.bn-chip svg.lucide{transition:width .25s var(--e-out)}
+.vb-def{transition:opacity .15s,transform .2s var(--e-out)}
+/* people and agents walk, then settle with a small overshoot */
+.tok{transition:transform .7s cubic-bezier(.5,0,.25,1.12),opacity .4s}
+@media (prefers-reduced-motion:reduce){.bn .pn:is(:hover,.hot) .bxr-w .bxr :is(.c.h,.nd,.rw.top){animation:none}.bxq-t i{opacity:1;transform:none}}
+.mp-svg path{animation-timing-function:var(--e-out)}
+
+/* projection lines end on the curve of each rounded corner: a marker moves in by r(1 - 1/sqrt 2) on both axes */
+.sh,.brd{--ci:4.7px}.tl3{--ci:2.9px}
+.cn.k0{translate:var(--ci) var(--ci)}.cn.k1{translate:calc(-1*var(--ci)) var(--ci)}.cn.k2{translate:calc(-1*var(--ci)) calc(-1*var(--ci))}.cn.k3{translate:var(--ci) calc(-1*var(--ci))}
+
+/* code in dark mode sits one step above the page, with a hairline, instead of sinking below it */
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--term:oklch(0.235 0.006 175)}:root:not([data-theme="light"]) .code{box-shadow:inset 0 0 0 1px var(--line-2)}}
+:root[data-theme="dark"]{--term:oklch(0.235 0.006 175)}:root[data-theme="dark"] .code{box-shadow:inset 0 0 0 1px var(--line-2)}
+
+/* FAQ: a rule under every question, none above the first; the heading already opens the list */
+details:first-child,.qa:first-child{border-top:0}
+.brd .c{--ci:2.3px}
+
+/* FAQ: with no rule above the first question, its text lines up with the section heading */
+/* the first question sits on the centre of the heading's first line, the way Install sits beside its headline */
+.qa:first-child .qa-q{padding-top:0}details:first-child{padding-top:0}
+@media (min-width:761px){.qa:first-child .qa-q{padding-top:calc(.6em - 2px)}}
+/* hero, solo: the board alone and larger while the panel is closed */
+.hv-bp,.hv-cp{transition:transform .65s var(--e-io),opacity .45s var(--e-io)}
+.hv-bp{transform-origin:left center}
+.hv-stage.solo .hv-bp{transform:translateY(var(--solo-ty,0px)) scale(var(--solo-s,1))}
+/* hero row: tools, mark, board and panel sized to their content and spaced by one gap; the row is centred, so the frame's margins match left and right */
+@media (min-width:761px){
+  .hv-stage{--hg:clamp(18px,2.6vw,40px);grid-template-columns:auto minmax(0,500px) auto;justify-content:center;column-gap:var(--hg)}
+  .hv-in{justify-content:flex-start;padding-left:0;gap:var(--hg)}
+  .hv-cp{width:clamp(168px,17vw,240px)}
+}
+.hv-stage.solo .hv-cp{opacity:0;transform:translateX(28px);pointer-events:none}
+@media (max-width:760px){.hv-bp{transform-origin:center}.hv-stage.solo .hv-bp{transform:scale(1.04)}.hv-stage.solo .hv-cp{transform:translateY(16px)}}
+@media (prefers-reduced-motion:reduce){.hv-bp,.hv-cp{transition:none}}
+/* hero logo: always square, whatever the row around it does */
+.hv-node{flex:none}.hv-node img{aspect-ratio:1;object-fit:contain;flex:none;min-width:0;max-width:none}
+.hv-node .um-l,.hv-node .um-d{height:auto}
+/* hero panel, narrow: it sizes from its own width; under 200px the paired fields stack, so each keeps its full width */
+.hv-cp{container-type:inline-size}
+@container (max-width:170px){
+  .hv-cp .cp-row:not(:last-child){display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+  .hv-cp .cp-row:not(:last-child) .cp-own{width:100%}
+  .hv-cp .cp-row:not(:last-child) .cp-own .sk{flex:1;width:auto}
+  .hv-cp .hv-vp{display:none}
+}
+
+/* structure: the opening cards and the real sheets cross-fade on one curve, so the stack the cards became is the stack Services starts from */
+.sx-in.done .fr{transition:opacity .5s var(--e-io)}
+@keyframes sx-arrive{from{opacity:0}}
+.sx:not(.intro) :is(.sh,.brd,.brd-gh){animation:sx-arrive .5s var(--e-io)}
+@media (prefers-reduced-motion:reduce){.sx:not(.intro) :is(.sh,.brd,.brd-gh){animation:none}}
+/* PLUS case card: the screenshot fills its window at every width, cropped from the top left */
+.cs-im img{position:absolute;inset:0;width:100%;height:100%;margin:0;object-fit:cover;object-position:left top}
+.cs-im{aspect-ratio:1500/988}
+
+/* panel tabs: the active tab's underline is a line inside the tab, so no row clips or smears it */
+.cp-tabs span:first-child{position:relative;box-shadow:none!important}
+.cp-tabs span:first-child::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1.5px;border-radius:1px;background:var(--ink)}
+/* bento, one column: the RAG picture is as wide as the two tiles in the card above it */
+.bxr-w{width:min(100%,calc(50% + 237px));justify-self:center;margin-inline:auto}
+
+/* hero panel: fields read from the left edge, as the app's panel does */
+.hv-cp .cp-f,.hv-cp .cp-row .cp-f{justify-items:stretch;text-align:left}
+.hv-cp .cp-f>.cp-pill{justify-self:start}
+
+/* hero on a phone: the board alone, never the panel or its beam */
+@media (max-width:760px){.hv-stage .hv-cp,.hv-stage .pjv{display:none}.hv-stage.solo .hv-bp{transform:none}}
 </style>
 
 <header class="nav"><div class="wrap">
@@ -1923,7 +2101,7 @@ body.agent #human{display:none}body.agent #agent{display:block}
   <div class="sxx" id="sxx" style="--steps:12"><div class="sx-sticky">
     <div class="head"><div class="txt">
       <h2><span class="m">Your context is everywhere.</span>Your agents need a map.</h2>
-      <p class="sub">MCP connects agents to your tools. Uno Blueprint shows them what lives where, and how it connects.</p>
+      <p class="sub">MCP connects your agents to your tools. Uno Blueprint shows them how it all fits together, so they find the right context the first time.</p>
     </div></div>
     <div class="pn"><div class="in"><div class="sx" id="sx"></div><div class="sx-cap" aria-live="polite"></div></div></div>
   </div></div>
@@ -1935,7 +2113,7 @@ body.agent #human{display:none}body.agent #agent{display:block}
 <section class="rule"><div class="wrap">
   <div class="head"><div class="txt">
     <h2>Canvas for your team.</h2>
-    <p class="sub">One blueprint for the whole service. Read it to get up to speed, edit it to keep it current, present it to bring others along.</p>
+    <p class="sub">See how your whole service works, keep it accurate together, and tailor it for every stakeholder.</p>
   </div><a class="more" href="https://uno-blueprint.netlify.app/demo/">Try the demo</a></div>
   <div class="ptabs" id="canvas-tabs" role="tablist" aria-label="What your team does on the canvas"></div>
   <div class="slot show" id="canvas-stage"></div>
@@ -1947,7 +2125,7 @@ body.agent #human{display:none}body.agent #agent{display:block}
 <section class="rule"><div class="wrap">
   <div class="head"><div class="txt">
     <h2>Harness for your agents.</h2>
-    <p class="sub">Four skills your agents run on the blueprint: map it, slice it, audit it, and trace a change before you make it.</p>
+    <p class="sub">Four skills teach your agents to build the map from your docs, keep it accurate, and test changes against it.</p>
   </div><a class="more" href="https://github.com/BilLogic/uno-blueprint">Read the skills</a></div>
   <div class="ptabs" id="harness-tabs" role="tablist" aria-label="The four skills"></div>
   <div class="slot show" id="harness-stage"></div>
@@ -1959,7 +2137,7 @@ body.agent #human{display:none}body.agent #agent{display:block}
 <section class="rule"><div class="wrap">
   <div class="head"><div class="txt">
     <h2><span class="m">One blueprint.</span>Every place you work.</h2>
-    <p class="sub">People and agents get the same answer, wherever they ask.</p>
+    <p class="sub">Open it in the app, call it from your coding agent, or bring it into team chat. It plugs into the way your team already works.</p>
   </div></div>
   <div class="ptabs" id="tp-tabs" role="tablist" aria-label="Where agents reach the blueprint"></div>
   <div class="slot show" id="tp-stage"></div>
@@ -1971,7 +2149,7 @@ body.agent #human{display:none}body.agent #agent{display:block}
 <section class="rule div"><div class="wrap">
   <div class="head"><div class="txt">
     <h2><span class="m">Same agent, same sources.</span>Better answers with a map.</h2>
-    <p class="sub">Early results from a real service: the same questions, asked with and without the blueprint.</p>
+    <p class="sub">On a real service, the map more than doubled accuracy and cut what agents read by a third.</p>
   </div></div>
   <div class="pn"><div class="in vb" id="vb"></div></div>
 
@@ -1981,7 +2159,7 @@ body.agent #human{display:none}body.agent #agent{display:block}
 <section class="rule div sec7"><div class="wrap">
   <div class="idhead">
     <h2>Ideas we build on.</h2>
-    <p class="sub">Forty years of service design gave us the map. Context and harness engineering explain why agents need it.</p>
+    <p class="sub">Uno Blueprint sits where service design meets context and harness engineering.</p>
   </div>
   <div class="snk" id="snk"></div>
   <div class="cs snk-end" id="plus">
@@ -1994,11 +2172,12 @@ body.agent #human{display:none}body.agent #agent{display:block}
 <!-- 8 GET STARTED -->
 <section class="rule div" id="start" style="scroll-margin-top:64px"><div class="wrap">
   <div class="start">
-    <div class="txt" style="display:grid;gap:16px;align-content:start"><h2><span class="m">Free and open source.</span>Uno command to start.</h2><p class="sub">MIT licensed. Run it locally with no database, then host it on your own database.</p></div>
+    <div class="txt" style="display:grid;gap:16px;align-content:start"><h2><span class="m">Free and open source.</span>Uno command to start.</h2><p class="sub">Start with a working template and sample data, then map your own service.</p></div>
     <div class="steps">
       <div class="step"><div class="labrow"><h3 class="lab">Install</h3><a href="https://github.com/BilLogic/uno-blueprint" aria-label="Uno Blueprint on GitHub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a></div><div class="tabs" id="inst-tabs"></div><div class="code" id="inst-code"></div></div>
-      <div class="step"><h3 class="lab">Skills</h3><p class="sub" style="max-width:none">Four skills, run from your coding agent.</p><div class="tabs" id="sk-tabs" aria-label="Coding agent"></div><div class="code" id="plug-code"></div><p class="sk-n" id="sk-note"></p><div class="skl" id="use-code"></div></div>
-      <div class="step"><h3 class="lab">Prompts</h3><p class="sub" style="max-width:none">Or say what you want, and let your agent pick the skill.</p><div class="prompts" id="prompts"></div></div>
+      <div class="step"><h3 class="lab">Database</h3><p class="sub" style="max-width:none">Your blueprint lives in your own database. Pick your host and paste the prompt into your agent.</p><div class="tabs" id="db-tabs" aria-label="Database host"></div><div class="prompt" id="db-prompt"></div></div>
+      <div class="step"><h3 class="lab">Skills</h3><p class="sub" style="max-width:none">Add the skills to the coding agent you already use.</p><div class="tabs" id="sk-tabs" aria-label="Coding agent"></div><div class="code" id="plug-code"></div><p class="sk-n" id="sk-note"></p><div class="skl" id="use-code"></div></div>
+      <div class="step"><h3 class="lab">Prompts</h3><p class="sub" style="max-width:none">Describe what you want, and let your coding agent do the work.</p><div class="prompts" id="prompts"></div></div>
     </div>
   </div>
 
@@ -2024,7 +2203,7 @@ body.agent #human{display:none}body.agent #agent{display:block}
 <section class="close"><div class="wrap"><div class="stack">
   <h2 style="max-width:none">Uno map for your human and AI teammates.</h2>
   <div class="ctas"><a class="btn primary" href="#start">Get the template</a><a class="btn ghost" href="https://uno-blueprint.netlify.app/demo/">Try the demo</a></div>
-  <p class="sub">MIT licensed. Runs locally with no database.</p>
+ 
 </div>
 
 </div></section>
@@ -2042,6 +2221,22 @@ body.agent #human{display:none}body.agent #agent{display:block}
 
 
 <script>
+/* an in-page link glides the whole way: ease in, ease out, longer for longer trips, never more than 1.6s.
+   A pinned section on the way (the walkthrough) is unpinned for the trip, so the page never seems to stall on it;
+   on arrival it is pinned again and the view is held exactly where it landed. */
+function glide(t){const RMg=matchMedia('(prefers-reduced-motion:reduce)').matches,m=parseFloat(getComputedStyle(t).scrollMarginTop)||0,y0=scrollY;
+  const at=()=>scrollY+t.getBoundingClientRect().top-m;
+  const pins=[...document.querySelectorAll('#sxx')].filter(p=>{const r=p.getBoundingClientRect(),top=r.top+scrollY,end=top+r.height,y1=at();return Math.min(y0,y1)<end&&Math.max(y0,y1)>top-innerHeight});
+  const held=pins.map(p=>{const h=p.style.height,st=p.querySelector('.sx-sticky');p.style.height=(st?st.offsetHeight:innerHeight)+'px';return [p,h]});
+  const y1=Math.max(0,Math.min(document.documentElement.scrollHeight-innerHeight,at())),D=y1-y0;
+  const restore=()=>{if(!held.length)return;const a=t.getBoundingClientRect().top;document.documentElement.style.overflowAnchor='none';
+    held.forEach(([p,h])=>p.style.height=h);held.length=0;scrollTo({top:scrollY+t.getBoundingClientRect().top-a,behavior:'instant'});document.documentElement.style.overflowAnchor=''};
+  if(RMg||Math.abs(D)<2){scrollTo({top:y1,behavior:'instant'});restore();dispatchEvent(new Event('scroll'));return}
+  const ms=Math.min(1600,Math.max(650,520+Math.abs(D)/innerHeight*170)),ez=p=>p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;
+  let t0=0,stop=false;const cancel=()=>{stop=true},end=()=>{removeEventListener('wheel',cancel);removeEventListener('touchstart',cancel);restore();window.GLIDE=0;dispatchEvent(new Event('scroll'))};
+  window.GLIDE=1;addEventListener('wheel',cancel,{passive:true});addEventListener('touchstart',cancel,{passive:true});
+  const f=n=>{if(stop)return end();if(!t0)t0=n;const p=Math.min(1,(n-t0)/ms);scrollTo({top:y0+D*ez(p),behavior:'instant'});p<1?requestAnimationFrame(f):end()};
+  requestAnimationFrame(f)}
 const $=s=>document.querySelector(s);
 const ICON=n=>`<i data-lucide="${n}"></i>`;
 const refresh=()=>{if(window.lucide)lucide.createIcons()};
@@ -2101,6 +2296,8 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
   refresh();
   const beams=stage.querySelector('.beams'),pjv=stage.querySelector('.pjv'),pj=pjv.querySelector('.pj'),sheet=stage.querySelector('.sheet'),grid=stage.querySelector('.sheet-g'),nodeEl=stage.querySelector('.hv-node'),cp=stage.querySelector('.hv-cp');
   const src=[...stage.querySelectorAll('.src .tl2')],cells=[...stage.querySelectorAll('.bc')],toks=[...stage.querySelectorAll('.tok')];
+  /* the people and agents live on the stage, not the sheet, so they can walk to the tools and the panel too */
+  toks.forEach(t=>stage.appendChild(t));
   const cellAt=(r,c)=>cells[r*6+c],nsrc=c=>c.querySelectorAll('.ss i').length,pick=a=>a[Math.floor(Math.random()*a.length)];
   const vert=()=>matchMedia('(max-width:760px)').matches;
   let IN=[],MID=null,focus=null;const busy=new Set();
@@ -2132,8 +2329,14 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
 
   /* people and agents: each sits on the corner of a cell and walks to a neighbouring one */
   const at=toks.map(()=>null);
-  const spot=(cell,slot)=>[cell.offsetLeft+cell.offsetWidth-(slot+1)*(toks[0].offsetWidth-5)+4,cell.offsetTop-toks[0].offsetHeight*.42];
-  function place(now){toks.forEach((t,i)=>{const c=at[i];if(!c)return;const slot=toks.filter((_,j)=>j<i&&at[j]===c).length,[x,y]=spot(c,slot);
+  const spot=(el,slot)=>{const b=stage.getBoundingClientRect(),r=el.getBoundingClientRect(),k=stage.offsetWidth/(b.width||1);const w=toks[0].offsetWidth,h=toks[0].offsetHeight,W=stage.offsetWidth,H=stage.offsetHeight;
+    /* a spot stays inside the frame, whatever the target */
+    const R=cp.contains(el)?(cp.getBoundingClientRect().right-b.left)*k-w-10:W-w-4;
+    return [Math.max(4,Math.min(R,(r.right-b.left)*k-(slot+1)*(w-5)+4)),Math.max(4,Math.min(H-h-4,(r.top-b.top)*k-h*.42))]};
+  const shown=el=>{const r=el.getBoundingClientRect();return r.width>0&&r.height>0};
+  function place(now){toks.forEach((t,i)=>{let c=at[i];if(!c)return;
+    /* a target hidden by a resize sends its walker back to a cell that shows */
+    if(!shown(c)){const on=cells.filter(x=>x.classList.contains('on')&&shown(x));if(on.length){c=at[i]=pick(on);carry[i]=-1}}const slot=toks.filter((_,j)=>j<i&&at[j]===c).length,[x,y]=spot(c,slot);
     if(now){t.style.transition='none';t.style.transform=`translate(${x}px,${y}px)`;void t.offsetWidth;t.style.transition=''}else t.style.transform=`translate(${x}px,${y}px)`;t.classList.add('in')})}
   const near=(c,pool)=>{const r=+c.dataset.r,k=+c.dataset.c,n=pool.filter(x=>x!==c&&Math.abs(+x.dataset.r-r)+Math.abs(+x.dataset.c-k)<=2);return n.length?n:pool.filter(x=>x!==c)};
   const STATUS=['Live','Built','Planned','Live','At risk','Live'];
@@ -2155,18 +2358,52 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
     if(V)sweep(`inset(0 0 ${b.bottom-c.bottom}px 0)`,`inset(0 0 ${b.bottom-p.top-1}px 0)`,anim);
     else sweep(`inset(0 ${b.right-c.right}px 0 0)`,`inset(0 ${b.right-p.left-1}px 0 0)`,anim);
   }
-  let ot=0;
-  function open(c){if(focus)focus.classList.remove('foc');pj.classList.remove('in');cp.classList.remove('cpsw');cp.classList.add('cpo');clearTimeout(ot);
+  /* solo: the board by itself, larger and nudged into the panel's space; it gives the room back before the panel opens */
+  let SOLO=false,HOLD=false,rideId=0,ot=0,soloAt=0,openSince=0;
+  function ride(ms){const id=++rideId,end=performance.now()+ms;HOLD=true;
+    (function f(){if(id!==rideId)return;layout();place(true);if(focus)project();if(performance.now()<end)requestAnimationFrame(f);else HOLD=false})()}
+  /* the board's size alone: as wide as its own room plus the panel's, less the stacked sheets behind it, and no taller than the frame allows; measured again whenever the window changes */
+  /* STACK: how far the sheets stacked behind the board stick out; RISE: half of how far they rise above it; FRAME: the frame's own top and bottom room */
+  const STACK=18,RISE=8,FRAME=56;
+  function soloSize(){
+    if(vert()){stage.style.setProperty('--solo-s','1');stage.style.setProperty('--solo-ty','0px');return}
+    const bp=stage.querySelector('.hv-bp'),cs=getComputedStyle(stage),gap=parseFloat(cs.columnGap)||0,room=bp.offsetWidth+gap+cp.offsetWidth,
+      k=Math.max(1,Math.min(room/(bp.offsetWidth+STACK),(stage.clientHeight-FRAME)/(sheet.offsetHeight+STACK)));
+    /* the sheets stacked behind rise above the board, so it moves down by half their rise to sit mid-frame */
+    stage.style.setProperty('--solo-s',k.toFixed(3));stage.style.setProperty('--solo-ty',(RISE*k).toFixed(1)+'px')}
+  let resizeTimer=0;addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(SOLO){soloSize();ride(0)}},140)});
+  function solo(on){SOLO=on;
+    if(on){if(focus)focus.classList.remove('foc');focus=null;pj.classList.remove('in');clearTimeout(ot);cp.classList.remove('cpsw');cp.classList.add('cpo');
+      soloSize();
+      soloAt=performance.now()}else openSince=performance.now();
+    /* anyone standing on the panel when it closes walks back to a cell, never left on a field that is no longer there */
+    if(on){const shownCells=cells.filter(c=>c.classList.contains('on'));toks.forEach((_,i)=>{if(at[i]&&cp.contains(at[i])&&shownCells.length)at[i]=pick(shownCells)})}
+    stage.classList.toggle('solo',on);ride(RM?0:720)}
+  /* one cell at a time: a new one opens only once the last has had time to be read */
+  let lastOpen=-1e9;
+  /* on a phone the hero is the board alone: no panel, so the first screen stays short */
+  function open(c){if(vert())return;const t=performance.now();if(t-lastOpen<2600)return;lastOpen=t;
+    if(SOLO){solo(false);setTimeout(()=>show(c),RM?0:760);return}show(c)}
+  function show(c){if(focus)focus.classList.remove('foc');pj.classList.remove('in');cp.classList.remove('cpsw');cp.classList.add('cpo');clearTimeout(ot);
     setTimeout(()=>{focus=c;c.classList.add('foc');fill(c);project(true);
       ot=setTimeout(()=>{cp.classList.remove('cpo');void cp.offsetWidth;cp.classList.add('cpsw')},RM?0:340)},RM?0:260)}
-  function step(){
+  /* now and then an agent walks to a tool and carries a source back into a cell, and a person walks into the panel to edit the cell they opened */
+  const SPOTS=[...cp.querySelectorAll('.cp-pill,.cp-own')],carry=toks.map(()=>-1);
+  const ping=el=>{el.classList.remove('hit');void el.offsetWidth;el.classList.add('hit')};
+  function step(){if(HOLD)return;if(!SOLO&&!RM&&performance.now()-openSince>11000){solo(true);return}
     const pool=cells.filter(x=>x.classList.contains('on'));if(pool.length<3)return;
-    const i=Math.floor(Math.random()*toks.length),from=at[i]||pick(pool),to=pick(near(from,pool));
+    const i=Math.floor(Math.random()*toks.length),agent=WHO[i][0]==='a',from=at[i]||pick(pool),onMap=cells.includes(from),r=Math.random();
+    if(onMap&&agent&&r<.3&&src.some(shown)){const t=pick(src.map((_,j)=>j).filter(j=>shown(src[j])));carry[i]=t;at[i]=src[t];place();
+      setTimeout(()=>{src[t].classList.add('on');setTimeout(()=>src[t].classList.remove('on'),700)},RM?0:650);return}
+    if(onMap&&!agent&&focus&&r<.3&&SPOTS.some(shown)){const sp=pick(SPOTS.filter(shown));at[i]=sp;place();
+      setTimeout(()=>{ping(sp);if(sp.classList.contains('cp-pill'))sp.textContent=pick(STATUS.filter(x=>x!==sp.textContent))},RM?0:650);return}
+    const roomy=pool.filter(x=>nsrc(x)<2),to=onMap?pick(near(from,pool)):carry[i]>=0&&roomy.length?pick(roomy):pick(focus?near(focus,pool):pool);
     /* now and then a person and an agent go together */
-    const pair=Math.random()<.3?toks.findIndex((_,j)=>j!==i&&WHO[j][0]!==WHO[i][0]):-1;
+    const pair=onMap&&Math.random()<.3?toks.findIndex((_,j)=>j!==i&&WHO[j][0]!==WHO[i][0]&&cells.includes(at[j])):-1;
     at[i]=to;if(pair>=0)at[pair]=to;place();
-    setTimeout(()=>{to.classList.remove('hit');void to.offsetWidth;to.classList.add('hit');
-      const person=WHO[i][0]==='p'?i:pair>=0&&WHO[pair][0]==='p'?pair:-1;if(person>=0&&to!==focus)open(to)},RM?0:650);
+    setTimeout(()=>{ping(to);
+      if(carry[i]>=0){if(nsrc(to)<2)land(to,carry[i]);carry[i]=-1}
+      const person=WHO[i][0]==='p'?i:pair>=0&&WHO[pair][0]==='p'?pair:-1;if(person>=0&&to!==focus&&!(SOLO&&performance.now()-soloAt<5000))open(to)},RM?0:650);
   }
   if(RM){FILLS.forEach(([r,c],i)=>land(cellAt(r,c),i%T.length));[[0,1],[1,2],[2,3],[3,0]].forEach(([r,c],i)=>at[i]=cellAt(r,c));layout();focus=cellAt(0,1);focus.classList.add('foc');fill(focus);cp.classList.add('cpsw');project();return;}
   let queue=[],n=0;
@@ -2176,8 +2413,8 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
     f.splice(0,7).forEach(([r,c])=>land(cellAt(r,c),Math.floor(Math.random()*T.length)));
     queue=f.map(x=>x.slice());
     for(let i=0;i<4;i++)queue.splice(3+Math.floor(Math.random()*(queue.length-2)),0,'E');
-    n=0;const pool=cells.filter(x=>x.classList.contains('on')).sort(()=>Math.random()-.5);toks.forEach((_,i)=>at[i]=pool[i]);place(true);
-    focus=null;pj.classList.remove('in');open(at[0]);
+    n=0;const pool=cells.filter(x=>x.classList.contains('on')).sort(()=>Math.random()-.5);toks.forEach((_,i)=>at[i]=pool[i]);carry.fill(-1);place(true);
+    solo(true);
   }
   /* a document leaves a tool, passes through the node, and lands in a cell (or adds a source to a filled one) */
   function fire(ev){
@@ -2204,7 +2441,7 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
 /* structure: services, phases, scenarios, then a stack of path blueprints. The sheets above leave for the top right first; once they are almost gone the stack below turns to face you. It is then read one lane and one line at a time, down to one cell, which is projected left to right into its panel. Driven by scroll; the headline stays pinned with the frame. */
 (function(){
   const scr=$('#sxx');if(!scr)return;const root=$('#sx'),cap=scr.querySelector('.sx-cap'),sticky=scr.querySelector('.sx-sticky'),head=sticky.querySelector('.head');
-  const CN=c=>['0;top:0','100%;top:0','100%;top:100%','0;top:100%'].map(p=>`<i class="cn ${c}" style="left:${p}"></i>`).join('');
+  const CN=c=>['0;top:0','100%;top:0','100%;top:100%','0;top:100%'].map((p,j)=>`<i class="cn ${c} k${j}" style="left:${p}"></i>`).join('');
   const tile=(cls,st,t)=>`<div class="tl3 ${cls}" style="${st}">${t||''}${cls.includes('sel')?CN('m-t'):''}</div>`;
   /* two services, three phases, four scenarios; the first tile of each sheet is the one followed down */
   const SH=[
@@ -2218,27 +2455,40 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
   const board=`<div class="brd-h">${wd('Service')}<s>/</s>${wd('Phase')}<s>/</s>${wd('Scenario','k')}<em class="psel">${wd('Path 1')}</em></div><div class="brd-g"><div class="brd-r hd"><span style="visibility:hidden"></span>${'<span></span>'.repeat(6)}</div>${LNA.map(([n,k,c],r)=>`<div class="brd-r" data-r="${r}" style="--la:${c}"><em>${wd(n)}</em>${FILL[r].map((f,ci)=>`<span class="c${f?' f':''}${r===PK[0]&&ci===PK[1]?' pkc':''}">${r===PK[0]&&ci===PK[1]?CN('m-k'):''}</span>`).join('')}</div>`).join('')}<div class="brd-cols">${[0,1,2,3,4,5].map(i=>`<i style="--i:${i}"></i>`).join('')}</div>${LINES.map((l,a)=>`<div class="brd-ln" data-a="${a}"><span>${l}</span></div>`).join('')}</div>${CN('m-p')}`;
   /* [title, caption, how much scrolling the step gets, in vh] */
   const LB=[
-   ['Services','Start with everything you run. One workspace holds one service, or all of them.',40],
-   ['Phases','Each service runs in phases: the big stages a user moves through, in order.',40],
-   ['Scenarios','Each phase holds scenarios: the situations that come up.',40],
-   ['Paths','A scenario can play out in more than one way. Each path is its own blueprint.',46],
-   ['Blueprint','Pick a path and you are looking at one blueprint: who does what, and when.',70],
-   ['User','What the person you serve does, step by step: each action, choice and wait, from their side.',36],
-   ['Line of interaction','Where the user and your service meet. Every exchange between them crosses this line.',30],
-   ['Frontstage','Who and what they meet: the teammate or agent who responds, and the screens, messages and products they touch.',36],
-   ['Line of visibility','Everything above it, the user can see. Everything below it happens out of their view.',30],
-   ['Backstage','The work that makes the frontstage possible: preparing, checking, deciding, fixing. Users feel its results without seeing it.',36],
-   ['Line of internal interaction','Separates the people doing the work from the systems and partners that support them.',30],
-   ['Support','The systems, data and partners your team relies on to do that work.',36],
-   ['Steps','Each column is one moment of the journey, read left to right.',42],
-   ['Cells','Where a lane meets a step: one action, by one actor, at one moment.',46],
-   ['Inside a cell','Each cell carries its owner, its status, its value, what it leads to, and the evidence behind it.',120]];
+   ['Your context','Your product knowledge is spread across PRDs, designs, code, dashboards and threads.',130],
+   ['Services','It all comes together in a service: the whole experience you deliver, end to end. Everything else on the map sits inside it.',40],
+   ['Phases','A service unfolds in phases: chapters of the experience, in time order.',40],
+   ['Scenarios','Each phase holds scenarios: the specific situations that can happen during it.',40],
+   ['Paths','Each scenario has paths: the main route, plus its variants and exceptions.',46],
+   ['Blueprint','Open a path to see its blueprint: who does what, step by step, across every lane.',70],
+   ['User','The user journey: what the user does, thinks and decides at each step.',36],
+   ['Line of interaction','Where the user and your service meet.',30],
+   ['Frontstage','The touchpoints the user sees: the people, screens and messages that respond.',36],
+   ['Line of visibility','What sits below this line, the user never sees.',30],
+   ['Backstage','The work behind the scenes that makes the frontstage possible.',36],
+   ['Line of internal interaction','Where your team hands off to the systems and partners behind it.',30],
+   ['Support','The tools, data and partners every step relies on.',36],
+   ['Steps','Each column is one moment in time, read down every lane at once.',42],
+   ['Cells','Where a lane meets a step: what one participant does at one moment.',46],
+   ['Inside a cell','Each cell carries the detail: owner, status, value, dependencies and the sources behind it.',120]];
   const TAGS=['Services','Phases','Scenarios','Paths'];
+  const LINEAR_D='M2.886 4.18A11.982 11.982 0 0 1 11.99 0C18.624 0 24 5.376 24 12.009c0 3.64-1.62 6.903-4.18 9.105L2.887 4.18ZM1.817 5.626l16.556 16.556c-.524.33-1.075.62-1.65.866L.951 7.277c.247-.575.537-1.126.866-1.65ZM.322 9.163l14.515 14.515c-.71.172-1.443.282-2.195.322L0 11.358a12 12 0 0 1 .322-2.195Zm-.17 4.862 9.823 9.824a12.02 12.02 0 0 1-9.824-9.824Z',MIXPANEL_D='M6.967 9.996h3.053c-.763-.477-1.048-1.145-1.431-2.384L7.443 3.366C6.919 1.458 6.49.551 4.39.551H.004v1.145h.621c1.286 0 1.431.477 1.814 1.908L3.44 7.326c.524 1.814 1.337 2.67 3.53 2.67h-.003Zm7.06 0h3.053c2.194 0 2.956-.86 3.484-2.67l1.001-3.722c.382-1.431.57-1.908 1.814-1.908H24V.551h-4.34c-2.146 0-2.576.86-3.053 2.815l-1.145 4.246c-.384 1.286-.673 1.907-1.435 2.384Zm-4.007 4.008h4.007V9.996H10.02v4.008ZM0 23.449h4.39c2.1 0 2.529-.907 3.053-2.815l1.146-4.246c.383-1.239.668-1.907 1.431-2.384H6.967c-2.194 0-3.007.86-3.531 2.67l-1.001 3.722c-.383 1.431-.524 1.907-1.814 1.907H0v1.146Zm19.65 0h4.343v-1.146h-.622c-1.239 0-1.431-.476-1.814-1.907l-1.001-3.722c-.524-1.814-1.286-2.67-3.483-2.67h-3.046c.762.477 1.041 1.098 1.424 2.384l1.145 4.246c.477 1.955.907 2.815 3.054 2.815Z';
+  const sk=(w,c)=>`<span class="sk${c?' '+c:''}" style="width:${w}%"></span>`;
+  const xlogo=n=>`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${n==='Linear'?LINEAR_D:MIXPANEL_D}"/></svg>`;
+  /* six places a product team's context lives, one card per layer of the stack they become */
+  const FR=[
+   ['doc','Notion','PRD: Checkout',`${sk(92)}${sk(84)}${sk(60)}`,[140,104,-5],[322,92,-4]],
+   ['msg','Slack','#support',`<p><i></i>${sk(78)}</p><p class="me"><i></i>${sk(56)}</p>`,[372,76,3],[514,100,3]],
+   ['fig','Figma','Checkout flow',`<div class="fr-frame"><i></i><i></i><i></i></div>`,[604,90,-3],[322,198,3]],
+   ['tkt','Linear','Sprint board',`<div class="fr-row"><span class="fr-pill">In review</span>${sk(40)}</div>${sk(70)}`,[826,132,5],[514,206,-3]],
+   ['ana','Mixpanel','Checkout funnel',`<div class="fr-bars"><i style="--h:90%"></i><i style="--h:64%"></i><i style="--h:41%"></i><i style="--h:28%"></i></div>`,[236,292,4],[322,304,4]],
+   ['code','GitHub','checkout-service',`<p class="fr-code">${sk(18,'kw')}${sk(42)}</p><p class="fr-code i">${sk(58)}</p><p class="fr-code i add">${sk(46)}</p>`,[594,302,-4],[514,312,-4]]];
+  const INTRO=`<div class="sx-in">${FR.map(([k,t,h,body,W,P],i)=>`<div class="fr fr-${k}" data-i="${i}" style="--x:${W[0]}px;--y:${W[1]}px;--r:${W[2]}deg;--nx:${P[0]}px;--ny:${P[1]}px;--nr:${P[2]}deg"><div class="fr-t"><span class="fr-l">${t==='Linear'||t==='Mixpanel'?xlogo(t):logo(t)}</span>${h}</div>${body}</div>`).join('')}</div>`;
   const N=LB.length,DY=100,CY=255,T='rotateX(58deg) rotateZ(-45deg)',S_BP=4,S_STEPS=12,S_CELL=13,S_OPEN=14;
   const TOT=LB.reduce((a,l)=>a+l[2],0);let acc=0;const EDGE=LB.map(l=>(acc+=l[2])/TOT);
   const ev=(n,w)=>`<div><i>${logo(n)}</i><span class="sk" style="width:${w}%"></span></div>`;
   /* each set of projection lines is drawn under the sheet it comes from and over the sheet it lands on */
-  root.innerHTML=`<div class="sx-w"><div class="hv-dots"></div>
+  root.innerHTML=`<div class="sx-w"><div class="hv-dots"></div>${INTRO}
     ${SH.map((h,i)=>`<div class="sh" data-i="${i}" style="z-index:${12-2*i};--i:${i}">${h}${CN('m-p')}</div><svg class="sx-svg" style="z-index:${11-2*i}"><g data-i="${i}">${'<line/>'.repeat(4)}</g></svg>`).join('')}
     <div class="brd-gh" style="z-index:1"></div><div class="brd-gh" style="z-index:2"></div>
     <div class="brd" style="z-index:3">${board}</div>
@@ -2258,18 +2508,18 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
   const placeLines=()=>lns.forEach((l,a)=>{l.style.top=((rows[a].offsetTop+rows[a].offsetHeight+rows[a+1].offsetTop)/2)+'px'});
   let k=1,cur=-1,top=72,wasFlat=false,wasOpen=false,pjt=0,PX=[0,0];
   /* three poses: the stack, the flat blueprint, the blueprint with its panel. On a wide screen they share one scale. On a phone each gets the scale that fills the frame, centred on what it shows. */
-  let KS=[1,1,1],H=530,nar=false,mode=0;const MID=[292,319,258],CX=[505,516,494];
+  let KS=[1,1,1],H=530,nar=false,mode=0;const MID=[260,250,229],CX=[505,516,494];
   /* on a phone the caption sits at the foot of the frame; the picture is centred, as measured, in the space between the top of the frame and the caption's first line */
   const room=()=>{const t=cap.firstElementChild;return t?t.getBoundingClientRect().top-root.getBoundingClientRect().top-12:H};
   const pose=()=>{k=KS[mode];w.style.transform=nar?`translate(${((505-CX[mode])*k).toFixed(1)}px,${(room()/2-MID[mode]*k).toFixed(1)}px) scale(${k})`:`scale(${k})`};
   /* scale the stage to what is left under the headline; hold headline and frame together in the middle of the screen; give the section exactly the scroll length its steps add up to */
   const fit=()=>{const hh=head?head.offsetHeight+(parseFloat(getComputedStyle(head).marginBottom)||0):0;
     const cw=root.clientWidth||1010,av=innerHeight-64-32-hh-(cap.offsetHeight||110);nar=cw<700;
-    if(nar){H=Math.max(220,Math.min(av,cw*.95));KS=[Math.min(cw/372,H/580),Math.min(cw/700,H/440),Math.min(cw/800,H/500)]}
-    else{const k1=Math.max(.25,Math.min(1,cw/1010,av/530));KS=[k1,k1,k1];H=530*k1}
-    root.style.height=H+'px';pose();
-    top=Math.max(76,64+(innerHeight-64-sticky.offsetHeight)/2);sticky.style.top=top+'px';
-    scr.style.height=RM?'auto':`calc(${TOT}vh + ${sticky.offsetHeight}px)`};
+    if(nar){const Hw=cw*.95;H=Math.max(220,Math.min(Hw,Math.max(av,Hw*.85)));KS=[Math.min(cw/372,H/580),Math.min(cw/700,H/440),Math.min(cw/800,H/500)]}
+    else{const kw=Math.min(1,cw/1010),avB=av+hh,k1=Math.max(.25,Math.max(kw*.85,Math.min(kw,avB/530)));KS=[k1,k1,k1];H=530*k1}
+    root.style.height=H+'px';if(cur===0){cur=-1;set(0)}pose();
+    const sh0=sticky.offsetHeight;top=sh0<=innerHeight-72?Math.max(76,64+(innerHeight-64-sh0)/2):Math.min(76,innerHeight-sh0-12);sticky.style.top=top+'px';
+    scr.style.height=RM?'auto':`calc(${(TOT*2/3).toFixed(1)}vh + ${sticky.offsetHeight}px)`};
   /* positions are read at the scale the stage has at this instant, which on a phone is still changing while a pose settles */
   const pt=(e,b)=>{const r=e.getBoundingClientRect(),q=b.width/1010||1;return [(r.left-b.left)/q,(r.top-b.top)/q]};
   function lines(){
@@ -2291,44 +2541,82 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
       pjs.style.transition='clip-path .5s var(--e-io)';pjs.style.clipPath=`inset(-60px ${1010-PX[1]-1}px -60px 0)`},520)};
   let until=0,rf=0;const track=()=>{lines();if(performance.now()<until)rf=requestAnimationFrame(track);else rf=0};
   const FLAT='rotateX(0deg) rotateZ(0deg)';
-  function apply(s){
+  const FY=()=>(nar?-7:22)/((w.getBoundingClientRect().width/1010)||1);
+  function apply(S){
+    const intro=S===0,s=Math.max(0,S-1),IX=0,IY=0;
+    const sxin=w.querySelector('.sx-in');if(sxin)sxin.classList.toggle('done',!intro);
     const e=Math.min(s,3),flat=s>=S_BP,open=s>=S_OPEN,goFlat=flat&&!wasFlat,goIso=!flat&&wasFlat;
     mode=open?2:flat?1:0;
     /* the stack stays centred on the stage as it grows */
-    const ty=i=>CY-95-e*DY/2+(i<=e?i*DY:e*DY+(i-e)*8);
+    const ty=i=>{const d=e===3?86:DY;return CY-95-e*d/2+[0,0,8,22][e]+(i<=e?i*d:e*d+(i-e)*8)};
     const by=ty(3)+95-CY;
     /* leaving: sheets go first, the board follows. Coming back: the board tips away first, then the sheets return. */
     sheets.forEach((p,i)=>{p.style.transitionDelay=goFlat?`${i*70}ms`:goIso?`${420+(2-i)*70}ms`:'0ms'});
     [brd,...ghosts].forEach(g=>{g.style.transitionDelay=goFlat?'460ms':'0ms'});
+    
     if(flat){
       sheets.forEach((p,i)=>{p.style.transform=`translate(${560-i*30}px,${-430+i*26}px) ${T} scale(.82)`;p.classList.add('gone')});
-      brd.style.transform=`translate(${open?-215:0}px,0px) ${FLAT} scale(${open?.62:1.1})`;
-      ghosts.forEach((g,j)=>{const n=j+1;g.style.transform=`translate(${(open?-215:0)+n*13}px,${-n*11}px) ${FLAT} scale(${open?.62:1.1})`});
+      brd.style.transform=`translate(${open?-215:0}px,${open?0:FY()}px) ${FLAT} scale(${open?.62:1.1})`;
+      ghosts.forEach((g,j)=>{const n=j+1;g.style.transform=`translate(${(open?-215:0)+n*13}px,${-n*11+(open?0:FY())}px) ${FLAT} scale(${open?.62:1.1})`});
     }else{
-      sheets.forEach((p,i)=>{p.style.transform=`translate(0px,${ty(i)}px) ${T}`;p.classList.remove('gone');p.classList.toggle('out',i<e)});
-      brd.style.transform=`translate(0px,${by}px) ${T} scale(.5)`;
-      ghosts.forEach((g,j)=>g.style.transform=`translate(0px,${by+(j+1)*10}px) ${T} scale(.5)`);
+      sheets.forEach((p,i)=>{p.style.transform=`translate(${IX}px,${ty(i)+IY}px) ${T}`;p.classList.remove('gone');p.classList.toggle('out',i<e)});
+      brd.style.transform=`translate(${IX}px,${by+IY}px) ${T} scale(.5)`;
+      ghosts.forEach((g,j)=>g.style.transform=`translate(${IX}px,${by+IY+(j+1)*10}px) ${T} scale(.5)`);
     }
-    root.className='sx'+(flat?' flat':'')+(flat&&!open?' named':'')+(s===S_STEPS?' hl-steps':'')+(s>=S_CELL?' hl-cell':'')+(open?' open':'');
+    root.className='sx'+(intro?' intro':'')+(nar?' nar':'')+(flat?' flat':'')+(flat&&!open?' named':'')+(s===S_STEPS?' hl-steps':'')+(s>=S_CELL?' hl-cell':'')+(open?' open':'');
     /* lanes and lines arrive one at a time, top to bottom: lane r at step 5+2r, the line under it at 6+2r */
     const reading=s>S_BP&&s<S_STEPS;
     rows.forEach((r,i)=>{const at=S_BP+1+2*i;r.classList.toggle('cur',at===s);r.classList.toggle('dimr',reading&&at>s);r.classList.toggle('nm',s>=at&&!open)});
     lns.forEach((l,a)=>{const at=S_BP+2+2*a;l.classList.toggle('lon',s===S_BP||s>=S_STEPS||(reading&&at<=s));l.classList.toggle('cur',at===s)});
     groups.forEach((g,i)=>g.classList.toggle('in',!flat&&i<e));cl.classList.toggle('in',open);
     if(open!==wasOpen)beam(open);
-    tags.forEach((t,i)=>{t.style.top=(ty(i)+95)+'px';t.classList.toggle('in',!flat&&i<=e);t.classList.toggle('cur',i===e)});
-    cap.innerHTML=`<b>${LB[s][0]}</b><p>${LB[s][1]}</p>`;pose();
+    tags.forEach((t,i)=>{t.style.top=(ty(i)+95)+'px';t.classList.toggle('in',!flat&&!intro&&i<=e);t.classList.toggle('cur',i===e)});
+    cap.innerHTML=`<b>${LB[S][0]}</b><p>${LB[S][1]}</p>`;pose();
     cap.classList.remove('capsw');void cap.offsetWidth;cap.classList.add('capsw');
     wasFlat=flat;wasOpen=open;
     until=performance.now()+2400;if(!rf)track();
   }
+  /* the first step is what a team already has, scattered. Scrolling through it, each card tilts and grows into one of the six layers of the stack (three sheets, the board and the two behind it), landing out of order; then they shuffle into place, and the real stack takes over with its content. Driven by the scroll, so scrolling back plays it backwards and nothing runs ahead. */
+  const LAY=()=>[sheets[0],sheets[1],sheets[2],brd,...ghosts];
+  const PERM=[3,5,0,4,1,2],c01=x=>Math.min(1,Math.max(0,x)),ez=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,lerp=(a,b,t)=>a+(b-a)*t;
+  let FS=null;
+  function fragMeasure(){const fs=[...w.querySelectorAll('.fr')];if(!fs.length)return;
+    fs.forEach(f=>['left','top','width','height','transform','border-radius','z-index','--co'].forEach(k=>f.style.removeProperty(k)));
+    FS=fs.map(f=>{const cs=getComputedStyle(f);return {f,x:parseFloat(cs.getPropertyValue(nar?'--nx':'--x')),y:parseFloat(cs.getPropertyValue(nar?'--ny':'--y')),r:parseFloat(cs.getPropertyValue(nar?'--nr':'--r')),w:f.offsetWidth,h:f.offsetHeight}})}
+  const box=el=>{const m=/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/.exec(el.style.transform)||[0,0,0],k=/scale\(([\d.]+)\)/.exec(el.style.transform);return {x:el.offsetLeft,y:el.offsetTop,w:el.offsetWidth,h:el.offsetHeight,tx:+m[1],ty:+m[2],sc:k?+k[1]:1}};
+  function introP(p){if(!FS)fragMeasure();if(!FS)return;
+    if(p<=0){FS.forEach(o=>['left','top','width','height','transform','border-radius','z-index','--co'].forEach(k=>o.f.style.removeProperty(k)));return}
+    const L=LAY().map(box);
+    const m=ez(c01(p/.42)),q=c01((p-.46)/.4),qe=ez(q),co=1-c01(p/.22);
+    FS.forEach((o,i)=>{const a=L[PERM[i]],b=L[i],T={x:lerp(a.x,b.x,qe),y:lerp(a.y,b.y,qe),w:lerp(a.w,b.w,qe),h:lerp(a.h,b.h,qe),tx:lerp(a.tx,b.tx,qe),ty:lerp(a.ty,b.ty,qe),sc:lerp(a.sc,b.sc,qe)};
+      const side=i%2?1:-1,out=PERM[i]===i?0:Math.sin(Math.PI*q)*(nar?46:64+i*6),jit=(1-qe)*(i%2?7:-6);
+      const st=o.f.style;st.left=lerp(o.x,T.x,m)+'px';st.top=lerp(o.y,T.y,m)+'px';st.width=lerp(o.w,T.w,m)+'px';st.height=lerp(o.h,T.h,m)+'px';
+      st.transform=`translate(${lerp(0,T.tx,m)}px,${lerp(0,T.ty,m)}px) rotateX(${58*m}deg) rotateZ(${lerp(o.r,-45+jit,m)}deg) translate(${side*out}px,${-out*.25}px) scale(${lerp(1,T.sc,m)})`;
+      st.borderRadius=lerp(12,16,m)+'px';st.setProperty('--co',co.toFixed(3));
+      /* the order is wrong as they land, and right once the shuffle passes its middle */
+      st.zIndex=q<.5?20-PERM[i]:20-i})}
+  /* a little scroll past the threshold plays the whole morph, like the steps after it; scrolling back above it plays it in reverse, from wherever it has got to */
+  let ipv=0,igoal=0,iraf=0,ilast=0;const IDUR=1700;
+  function introGoal(g){if(g===igoal&&(iraf||ipv===g))return;igoal=g;if(RM){ipv=g;introP(g);return}
+    if(!iraf){ilast=performance.now();iraf=requestAnimationFrame(istep)}}
+  function istep(n){const dt=Math.min(64,n-ilast);ilast=n;ipv=Math.min(1,Math.max(0,ipv+(igoal?1:-1)*dt/IDUR));introP(ipv);
+    iraf=ipv===igoal?0:requestAnimationFrame(istep);if(!iraf&&ipv===1)onScroll()}
+  /* the walkthrough moves one step at a time, however fast the page scrolls, so no step is skipped;
+     it leaves the opening cards only once they have finished becoming the stack */
+  let SG=0,stT=0;
+  function goal(i){SG=i;if(!stT)advance()}
+  function advance(){stT=0;if(cur===SG)return;if(cur===0&&SG>0&&ipv<1)return;
+    const was=cur;set(cur+(SG>cur?1:-1));
+    /* a step that folds the stack flat, or opens the cell, gets the time its choreography needs before the next one */
+    const fl=i=>i-1>=S_BP,op=i=>i-1>=S_OPEN,long=fl(was)!==fl(cur)?1250:op(was)!==op(cur)?950:560;
+    if(cur!==SG)stT=setTimeout(advance,RM?0:long)}
   const set=i=>{if(i!==cur){cur=i;apply(i)}};
   let raf=0;
-  function onScroll(){if(raf)return;raf=requestAnimationFrame(()=>{raf=0;if(RM){set(N-1);return}
-    const r=scr.getBoundingClientRect(),sh=sticky.offsetHeight,t=Math.min(.9999,Math.max(0,(top-r.top)/(r.height-sh)));set(EDGE.findIndex(x=>t<x))})}
+  function onScroll(){if(raf||window.GLIDE)return;raf=requestAnimationFrame(()=>{raf=0;if(RM){set(N-1);return}
+    const r=scr.getBoundingClientRect(),sh=sticky.offsetHeight,t=Math.min(.9999,Math.max(0,(top-r.top)/(r.height-sh)));const past=t>=EDGE[0]||t/EDGE[0]>.42;let ix=EDGE.findIndex(x=>t<x);if(ix===0&&past&&ipv===1)ix=1;goal(ix);introGoal(past?1:0)})}
   /* lines follow the sheets while they move, and settle again when each move ends */
   w.addEventListener('transitionend',e=>{if(e.propertyName==='transform'||e.propertyName==='top')lines()});
-  set(0);fit();placeLines();addEventListener('scroll',onScroll,{passive:true});let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{fit();placeLines();lines();if(wasOpen&&!RM){pjs.style.transition='none';pjs.style.clipPath=`inset(-60px ${1010-PX[1]-1}px -60px 0)`}onScroll()},120)});
+  set(0);fit();fragMeasure();introP(0);placeLines();addEventListener('scroll',onScroll,{passive:true});let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{fit();FS=null;fragMeasure();introP(ipv);placeLines();lines();if(wasOpen&&!RM){pjs.style.transition='none';pjs.style.clipPath=`inset(-60px ${1010-PX[1]-1}px -60px 0)`}onScroll()},120)});
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{fit();placeLines();lines()});
   onScroll();
 })();
@@ -2349,17 +2637,17 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
    </svg>`;
   const stack=(n,o,c)=>`<div class="bxs-k ${c||''}" style="--n:${n};--o:${o}s">${Array.from({length:n},(_,k)=>`<i style="--k:${k}"></i>`).join('')}</div>`;
   const C=[
-   ['w7','users','Uno map, duo users','People work on the canvas. Agents work on the same blueprint as structured data. One map, two ways in.',
+   ['w7','users','Uno map, duo users','Your team works on a visual canvas. Your agents query the same blueprint as structured data.',
     `<div class="bxd"><div class="bxd-bp">${grid}<span class="bxt p">${ICON('user-round')}</span><span class="bxt a">${ICON('bot')}</span></div>
       <div class="bxd-br"><i></i></div>
       <div class="bxd-lv"><div class="bxd-lf"><div class="bxp"><i class="im"></i><u></u><u></u><span class="pl"></span></div></div><div class="bxd-lf"><pre class="bxj"><span style="--n:0">{ <i style="--n:0">"lane"</i>: "front",</span>\n<span style="--n:1">  <i style="--n:1">"step"</i>: 3,</span>\n<span style="--n:2">  <i style="--n:2">"status"</i>: "live",</span>\n<span class="jd" style="--n:3">  <i style="--n:3">"leads_to"</i>: ["step-4"] }</span><span class="jm" style="--n:3">  … }</span></pre></div></div></div>`],
-   ['w5','database','Built for RAG','Every cell is a typed row in Postgres. Agents pull only the cells and evidence a question needs, and answer with sources. Add a vector index for semantic search.',
-    `<div class="bxr-w"><div class="bxq">${ICON('search')}<span>“who approves a refund?”</span></div>${rag}</div>`],
-   ['','layers','Uno team or every team','One flow for a small team. Every service for a whole organization. The structure stays the same.',
+   ['w5','database','Built for RAG','Agents search every step by meaning, then pull only the ones a question needs.',
+    `<div class="bxr-w"><div class="bxq">${ICON('search')}<span class="bxq-t" aria-label="Who approves a refund?"><i style="--d:0.0s">W</i><i style="--d:0.025s">h</i><i style="--d:0.046s">o</i><i style="--d:0.127s"> </i><i style="--d:0.147s">a</i><i style="--d:0.176s">p</i><i style="--d:0.201s">p</i><i style="--d:0.221s">r</i><i style="--d:0.249s">o</i><i style="--d:0.268s">v</i><i style="--d:0.295s">e</i><i style="--d:0.315s">s</i><i style="--d:0.385s"> </i><i style="--d:0.412s">a</i><i style="--d:0.496s"> </i><i style="--d:0.517s">r</i><i style="--d:0.54s">e</i><i style="--d:0.57s">f</i><i style="--d:0.607s">u</i><i style="--d:0.637s">n</i><i style="--d:0.663s">d</i><i style="--d:0.7s">?</i><u></u></span><span class="bxq-s"><span class="bxq-a">${ICON('arrow-up')}</span><span class="bxq-c">${ICON('check')}</span></span></div>${rag}</div>`],
+   ['','layers','Scalable structure','Map one focused journey for a small project, or every service in a large organization.',
     `<div class="bxs">${stack(5,.14)}${stack(7,0,'mid')}${stack(4,.24)}</div>`],
-   ['','clipboard-list','Product context, built in','Owner, status, value and dependencies live on every cell.',
-    `<div class="bxc"><div class="bxc-n"><u></u></div><i class="bxc-w"></i><div class="bxc-c"><u></u><u></u><span class="bxc-o">${ICON('user-round')}</span><span class="bxc-s"><em><b>Planned</b><b>Live</b></em></span><span class="bxc-v">${ICON('gem')}<u></u></span></div><i class="bxc-w"></i><div class="bxc-n"><u></u></div></div>`],
-   ['','link','Sources stay attached','Every cell links to the doc, design or thread behind it.',
+   ['','clipboard-list','Product context, built in','Each step carries what your team tracks: owner, status, value and dependencies.',
+    `<div class="bxc"><div class="bxc-n"><u></u></div><i class="bxc-w"></i><div class="bxc-c"><u></u><u></u><span class="bxc-o">${ICON('user-round')}</span><span class="bxc-s"><em><b><i style="--i:0">P</i><i style="--i:1">l</i><i style="--i:2">a</i><i style="--i:3">n</i><i style="--i:4">n</i><i style="--i:5">e</i><i style="--i:6">d</i></b><b><i style="--i:0">L</i><i style="--i:1">i</i><i style="--i:2">v</i><i style="--i:3">e</i></b></em></span><span class="bxc-v">${ICON('gem')}<u></u></span></div><i class="bxc-w"></i><div class="bxc-n"><u></u></div></div>`],
+   ['','link','Sources stay attached','Every step links to its sources, so anyone can trace it back to the PRD, design or thread behind it.',
     `<div class="bxl"><div class="bxl-c"><u></u><u></u></div><svg class="w" viewBox="0 0 40 106" aria-hidden="true"><path style="--j:0" d="M0 53C20 53 20 15 40 15"/><path style="--j:1" d="M0 53H40"/><path style="--j:2" d="M0 53C20 53 20 91 40 91"/></svg><div class="bxl-k">${['Notion','Figma','Slack'].map((n,j)=>`<span style="--j:${j}">${logo(n)}<i class="sk"></i></span>`).join('')}</div></div>`]];
   el.innerHTML=C.map(c=>card(c[0],c[1],c[2],c[3],c[4])).join('');
   refresh();
@@ -2396,9 +2684,9 @@ const laneGrid=fn=>LNS.map(([n,k,row],r)=>`<div class="lane" style="--la:${LCOL[
 const board=(cls,title='Repair intake, walk-in path')=>`<b>${title}</b>`+laneGrid((r,c)=>{const k=r===0?cls[c]:r===1?(cls.r2||{})[c]:null;return k?[k,0,k==='gap'?'No owner':null]:null});
 const mockw=(l,r)=>`<div class="mock"><div class="b">${l}</div><div class="p">${r}</div></div>`;
 const CANVAS=[
- ['layout-grid','Understand the service','See how the whole service runs, step by step, without reading forty docs or the code.','Start zoomed out on the phases, then push in to one path until the lanes and cells are readable',()=>mockw(board({}),`<b>Phases</b><span class="tag">01 · Intake</span><span>02 · Repair</span><span>03 · Pick-up</span><b style="margin-top:8px">Paths</b><span>Walk-in</span><span>Online booking</span>`)],
- ['square-pen','Check and correct','Open a cell, read it against its sources, and fix it in place. The map stays true.','Open “Repair done”; the owner is empty; type one in; the gap marker clears',()=>mockw(board({4:'gap'}),`<b>Repair done</b><span>Owner · <span class="tag a">Missing</span></span><span>Status · Live</span><b>Sources</b><span class="tag">Intake SOP · Notion</span><div style="border:1px solid var(--hi-line);border-radius:8px;padding:8px">Lead technician ▍</div>`)],
- ['presentation','Present a view','Cut the blueprint down to what one audience cares about, and walk them through it.','Pick the exec slice; the board narrows to four steps; step through them full screen',()=>mockw(`<b>Repair intake, for the exec</b><div class="lane" style="--la:#3f8fd6"><span class="lp">User</span><div class="cells" style="--c:4">${['Books a slot','Technician diagnoses','Quote approved','Picks up'].map((t,i)=>`<span class="${i===2?'hi':''}">${t}</span>`).join('')}</div></div>${rowi('Most repairs wait on quote approval, a phone call today')}${rowi('Pick-up has no owner yet')}`,`<b>Slices</b><span class="tag">For the exec</span><span>For a new hire</span><span>For the client</span>`)]
+ ['layout-grid','Get up to speed','New to the service? See it end to end, then open any step for the detail.','Start zoomed out on the phases, then push in to one path until the lanes and cells are readable',()=>mockw(board({}),`<b>Phases</b><span class="tag">01 · Intake</span><span>02 · Repair</span><span>03 · Pick-up</span><b style="margin-top:8px">Paths</b><span>Walk-in</span><span>Online booking</span>`)],
+ ['square-pen','Keep it current','Something out of date? Check it against its source and fix it in place.','Open “Repair done”; the owner is empty; type one in; the gap marker clears',()=>mockw(board({4:'gap'}),`<b>Repair done</b><span>Owner · <span class="tag a">Missing</span></span><span>Status · Live</span><b>Sources</b><span class="tag">Intake SOP · Notion</span><div style="border:1px solid var(--hi-line);border-radius:8px;padding:8px">Lead technician ▍</div>`)],
+ ['presentation','Tailor it','Need stakeholders aligned? Cut the map down to what each one needs, and walk them through it.','Pick the exec slice; the board narrows to four steps; step through them full screen',()=>mockw(`<b>Repair intake, for the exec</b><div class="lane" style="--la:#3f8fd6"><span class="lp">User</span><div class="cells" style="--c:4">${['Books a slot','Technician diagnoses','Quote approved','Picks up'].map((t,i)=>`<span class="${i===2?'hi':''}">${t}</span>`).join('')}</div></div>${rowi('Most repairs wait on quote approval, a phone call today')}${rowi('Pick-up has no owner yet')}`,`<b>Slices</b><span class="tag">For the exec</span><span>For a new hire</span><span>For the client</span>`)]
 ];
 const DOC=(n,t)=>{const l=LOGOS.find(q=>q.n===n);return `<div class="docc a-pop" style="--d:${t}s"><svg viewBox="0 0 24 24"><path d="${l.d}"/></svg><span>${n==='Notion'?'Intake SOP':n==='Figma'?'Drop-off flow':'Price list'}</span></div>`;};
 const grid=laneGrid;
@@ -2418,7 +2706,7 @@ const MAPK=[[0,0,'Drops off the device'],[1,2,'Calls with a quote'],[1,0,'Logs t
 /* the order the phrases are read in: everything at drop-off first, then the quote, then the diagnosis that belongs between them and the system it leans on */
 const MAPO=[0,2,3,1,4,5];
 const MAPT=1150;
-const mapIll=()=>`<div class="flow mp"><svg class="mp-svg"></svg><div class="fl"><span class="cap2">Your existing context</span>${MAPD.map(([n,w,parts])=>`<div class="mdoc"><div class="mh">${logo(n)}<span class="sk" style="width:${w}%"></span></div><p>${parts.map(p=>p.length===1?`<span class="sk" style="width:${p[0]}%"></span>`:`<mark data-k="${p[0]}">${p[1]}</mark>`).join('')}</p></div>`).join('')}</div>${node('/ub:map')}<div class="fl"><span class="cap2">Your blueprint</span><div class="bd"><div class="mp-g"><div class="mp-r hd"><span></span>${[0,1,2].map(c=>`<span class="mpc" data-c="${c}"><i class="sk"></i></span>`).join('')}</div>${LNA.map(([n,k,c],r)=>`<div class="mp-r mpx" data-r="${r}" style="--la:${c}"><em>${n}</em>${[0,1,2].map(ci=>`<span class="mpc" data-c="${ci}"><span class="mc" data-r="${r}" data-c="${ci}"></span></span>`).join('')}</div>`).join('')}</div><span class="tag a mp-done">Draft, waiting for your sign-off</span></div></div></div>`;
+const mapIll=()=>`<div class="flow mp"><svg class="mp-svg"></svg><div class="fl"><span class="cap2">Your existing context</span>${MAPD.map(([n,w,parts])=>`<div class="mdoc"><div class="mh">${logo(n)}<span class="sk" style="width:${w}%"></span></div><p>${parts.map(p=>p.length===1?`<span class="sk" style="width:${p[0]}%"></span>`:`<mark data-k="${p[0]}">${p[1]}</mark>`).join('')}</p></div>`).join('')}</div>${node('/ub:map')}<div class="fl"><span class="cap2">Your blueprint</span><div class="bd"><div class="mp-g"><div class="mp-r hd"><span></span>${[0,1,2].map(c=>`<span class="mpc" data-c="${c}"><i class="sk"></i></span>`).join('')}</div>${LNA.map(([n,k,c],r)=>`<div class="mp-r mpx" data-r="${r}" style="--la:${c}"><em>${n}</em>${[0,1,2].map(ci=>`<span class="mpc" data-c="${ci}"><span class="mc" data-r="${r}" data-c="${ci}"></span></span>`).join('')}</div>`).join('')}</div></div></div></div>`;
 const mapRun=stage=>{
   const fl=stage.querySelector('.mp');if(!fl)return;const sv=fl.querySelector('.mp-svg'),nm=fl.querySelector('.node .nm'),g=fl.querySelector('.mp-g');
   const cols=[0,0,0],vert=getComputedStyle(fl).gridTemplateColumns.trim().split(/\s+/).length<2;
@@ -2487,15 +2775,15 @@ const whatifRun=stage=>{
   const slots=[...fl.querySelectorAll('.vr2')],left=[...fl.querySelectorAll('.fl:first-child .mb .r')].map(r=>[...r.querySelectorAll(':scope>span')]),nm=fl.querySelector('.node .nm');
   const cellsOf=sl=>[...sl.querySelectorAll('i[data-k]')],pos=c=>c.dataset.p.split(',').map(Number);
   const mark=(c,on)=>{const [r,k]=pos(c);if(left[r]&&left[r][k]&&!(r===0&&k===2))left[r][k].classList.toggle('wf',on)};
-  const clear=()=>left.flat().forEach(c=>c.classList.remove('wf'));
   const later=(f,ms)=>setTimeout(()=>{if(fl.isConnected)f()},RM?0:ms);
-  let t=900,best=0;
-  slots.forEach((sl,k)=>{const cs=cellsOf(sl),n=sl.querySelector('.vr-n b');if(cs.length<cellsOf(slots[best]).length)best=k;
-    later(()=>{slots.forEach(x=>x.classList.remove('cur'));sl.classList.add('in','cur');clear();if(!RM){nm.classList.remove('png');void nm.offsetWidth;nm.classList.add('png')}},t);
-    cs.forEach((c,j)=>later(()=>{c.classList.add(c.dataset.k);n.textContent=j+1;mark(c,true)},t+300+j*100));
-    later(()=>sl.classList.add('ev'),t+300+cs.length*100+120);
-    t+=300+cs.length*100+760});
-  later(()=>{clear();slots.forEach((x,k)=>{x.classList.remove('cur');x.classList.toggle('best',k===best);x.classList.toggle('rest',k!==best)});cellsOf(slots[best]).forEach(c=>mark(c,true))},t);
+  /* all three options are drafted at once, each on its own copy; their changed cells are traced side by side while each count runs up; all three are weighed together; then the one that disturbs least is suggested */
+  const T=900,most=Math.max(...slots.map(sl=>cellsOf(sl).length));let best=0;
+  slots.forEach((sl,k)=>{if(cellsOf(sl).length<cellsOf(slots[best]).length)best=k});
+  later(()=>{slots.forEach(sl=>sl.classList.add('in','cur'));if(!RM){nm.classList.remove('png');void nm.offsetWidth;nm.classList.add('png')}},T);
+  slots.forEach(sl=>{const n=sl.querySelector('.vr-n b');cellsOf(sl).forEach((c,j)=>later(()=>{c.classList.add(c.dataset.k);n.textContent=j+1},T+300+j*140))});
+  const ev=T+300+most*140+200;
+  later(()=>slots.forEach(sl=>sl.classList.add('ev')),ev);
+  later(()=>{slots.forEach((x,k)=>{x.classList.remove('cur');x.classList.toggle('best',k===best);x.classList.toggle('rest',k!==best)});cellsOf(slots[best]).forEach(c=>mark(c,true))},ev+1100);
 };
 const HARNESS=[
  ['file-plus-2','Map','/ub:map','Point it at your docs. It works out the lanes and steps, places what it finds, and holds the draft until you sign off.','',mapIll,mapRun],
@@ -2537,7 +2825,7 @@ showcase('tp',TP);
   const vb=$('#vb'),gs=[...vb.querySelectorAll('.vb-g')],nar=matchMedia('(max-width:760px)');let rf=0,shot=false;
   const prog=()=>{rf=0;
     /* on a phone the chart is revealed whole, once, when it is well into view */
-    if(nar.matches){if(shot||!(RM||vb.getBoundingClientRect().top<innerHeight*.58))return;shot=true;gs.forEach((g,i)=>{g.style.setProperty('--d',(RM?0:i*.13)+'s');g.style.setProperty('--p',1);setTimeout(()=>g.classList.add('go'),RM?0:i*130+520)});return}
+    {const b=vb.getBoundingClientRect();if(shot||!(RM||b.bottom<innerHeight-24||b.top<innerHeight*.45))return;shot=true;gs.forEach((g,i)=>{g.style.setProperty('--d',(RM?0:i*.13)+'s');g.style.setProperty('--p',1);setTimeout(()=>g.classList.add('go'),RM?0:i*130+520)});return}
     gs.forEach(g=>{g.style.setProperty('--d','0s');const base=g.querySelector('.vb-bars').getBoundingClientRect().bottom,p=RM?1:Math.max(0,Math.min(1,(innerHeight-base)/(innerHeight*.34)));g.style.setProperty('--p',p.toFixed(3));g.classList.toggle('go',p>.97)})};
   addEventListener('scroll',()=>{if(!rf)rf=requestAnimationFrame(prog)},{passive:true});addEventListener('resize',prog);prog();
 })();
@@ -2603,13 +2891,25 @@ showcase('tp',TP);
 const copyBtn=`<button class="copy" type="button" aria-label="Copy">${ICON('copy')}</button>`;
 const INSTALL=[
  ['npm','npm create uno-blueprint@latest\ncd uno-blueprint\nnpm run dev'],
- ['agent','Set up Uno Blueprint for me. Clone https://github.com/BilLogic/uno-blueprint and read its README.md and AGENTS.md first. Then run npm install and npm run dev, and tell me the local address. It needs Node 22 or later, and no database to start.'],
+ ['agent','Set up Uno Blueprint for me. Run npm create uno-blueprint@latest, then cd uno-blueprint and npm run dev, and tell me the local address. Read AGENTS.md in the new folder before you change anything. It needs Node 22 or later, and no database to start.'],
  ['pnpm','pnpm create uno-blueprint\ncd uno-blueprint\npnpm dev'],
- ['yarn 1','yarn create uno-blueprint\ncd uno-blueprint\nyarn dev'],
+ ['yarn','# Yarn 1 (Classic). Yarn 2 and later skip the setup scripts the template needs.\nyarn create uno-blueprint\ncd uno-blueprint\nyarn dev'],
  ['bun','bun create uno-blueprint\ncd uno-blueprint\nbun dev']];
 $('#inst-tabs').innerHTML=INSTALL.map((t,i)=>`<button role="tab" aria-selected="${i===0}" data-i="${i}">${t[0]}</button>`).join('');
 const setInst=i=>{$('#inst-code').innerHTML=INSTALL[i][1].replace(/</g,'&lt;')+copyBtn;$('#inst-tabs').querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected',b.dataset.i==i));};
 $('#inst-tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setInst(+b.dataset.i)});setInst(0);
+/* database: Supabase is the reference setup and works as shipped; any other Postgres takes the portable core plus a small data layer the agent writes against the adapter contract */
+const PORT='Apply supabase/generated/portable-core.generated.sql, which runs on any Postgres. The app reads through Supabase today, so follow references/adapter-contract.md and use the shipped Supabase calls as the worked example to write a small data layer for this host.';
+const KEEP='Keep every key and connection string in .env, never in a tracked file.';
+const DB=[
+ ['Supabase',`Connect this Uno Blueprint workspace to a Supabase project, following SETUP.md from step 3. I will create the project and give you its URL and anon key. ${KEEP} Link the project, push the migrations and load the seed, then run npm run check:target and show me the schema version it reports.`],
+ ['Neon',`Connect this Uno Blueprint workspace to a Neon Postgres database. ${PORT} ${KEEP} Then show me the app reading the blueprint from Neon.`],
+ ['Firebase',`Connect this Uno Blueprint workspace to Firebase Data Connect, which runs on Cloud SQL for Postgres. ${PORT} ${KEEP} Then show me the app reading the blueprint from Firebase.`],
+ ['Postgres',`Connect this Uno Blueprint workspace to our own Postgres database (self-hosted, RDS, Railway or similar). ${PORT} ${KEEP} Then show me the app reading the blueprint from it.`],
+ ['Other',`I want to run this Uno Blueprint workspace on [our database]. Read the README section on the portable Postgres core and references/adapter-contract.md, tell me whether [our database] can meet that contract, and propose a plan before you change anything.`]];
+$('#db-tabs').innerHTML=DB.map((t,i)=>`<button role="tab" aria-selected="${i===0}" data-i="${i}">${t[0]}</button>`).join('');
+const setDb=i=>{$('#db-prompt').innerHTML=`<span>${DB[i][1]}</span>`+copyBtn;$('#db-tabs').querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected',b.dataset.i==i));refresh()};
+$('#db-tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setDb(+b.dataset.i)});setDb(0);
 /* skills: the same four in every coding agent; what differs is how the agent gets them and how a skill is called */
 const SKT=[
  ['Claude Code','claude plugin marketplace add BilLogic/uno-blueprint\nclaude plugin install ub@ub-marketplace','Installs the four skills as slash commands, in any project.','/'],
@@ -2626,7 +2926,7 @@ $('#prompts').innerHTML=[['Map a service from your docs','Read the docs in this 
 document.addEventListener('click',e=>{const b=e.target.closest('.copy');if(!b)return;const t=b.parentElement.cloneNode(true);t.querySelector('.copy').remove();const txt=(t.querySelector('span')||t).textContent.trim();try{navigator.clipboard.writeText(txt)}catch(_){}b.innerHTML=ICON('check');refresh();setTimeout(()=>{b.innerHTML=ICON('copy');refresh()},1200);});
 
 /* agent view */
-$('#agent-md').textContent="# Uno Blueprint\n\n> An open-source toolkit for context engineering. One service blueprint that people read as a canvas and agents read as structured data.\n\nBuilt by Bill Guo and Meryem Marasli. MIT license.\n\n- Source, README and AGENTS.md: https://github.com/BilLogic/uno-blueprint\n- Demo blueprint: https://uno-blueprint.netlify.app/demo/\n- A blueprint in production: https://plus-uno.netlify.app/blueprint/\n\n## What it is for\n\nA team's context is spread across docs, designs, tickets and threads. MCP lets you reach each tool. A blueprint tells you which page answers which question: it lays a service out step by step, by who does the work, and links every cell to its sources.\n\nUse it to:\n\n- Answer how the service runs, with the cells and sources behind the answer.\n- Find a gap: a step with no owner, two sources that disagree, a source gone stale.\n- Trace a change before anyone makes it.\n- Cut a view for one audience: a journey, a lane, a step, a cell.\n\n## How a blueprint is laid out\n\nService > phase > scenario > path. One path is one blueprint: a grid of lanes and steps.\n\n- Lanes, top to bottom: User, Frontstage, Backstage, Support.\n- Lines between them: interaction, visibility, internal interaction.\n- Step: a column, one moment of the journey.\n- Cell: one lane at one step, one action by one actor. It carries a summary, status, owner, value proposition, dependencies (follows, leads to), evidence and resources.\n- Status: proposed, planned, built, live, at_risk or deprecated.\n\n## Skills\n\n- ub:map: a blueprint has to be created, imported or updated from documents.\n- ub:slice: someone needs one part of it: a journey, a lane, a step, a cell or a custom set.\n- ub:audit: the blueprint has to be checked for gaps, conflicts and stale sources.\n- ub:whatif: a change is proposed and its effects have to be traced first.\n\nEach skill's SKILL.md is its contract. Read it before the first run in a session.\n\n## Workflow for coding agents\n\n1. Locate the blueprint. A workspace has a `blueprint-workspace.json` or a `blueprint/` folder at its root. Done when you can name the service, scenario and path the request is about, or have told the user that none exists.\n2. Read `AGENTS.md` at the workspace root. It routes each request to a skill. Done when you have opened the SKILL.md it points to.\n3. Answer from the blueprint first. Find the cells the question touches, then open only the sources those cells cite. Done when every claim in your answer names its cell or its source.\n4. Report the gap. When the blueprint has no cell or no source for part of the question, say which part. A named gap is a complete answer.\n5. Propose every change as a draft. Validate it with `scripts/validate_ir.py`; exit 0 is the whole verdict. Done when the draft validates and the user has signed off. The blueprint changes after sign-off.\n6. Keep secrets in the gitignored `.env`.\n\n## Set up\n\nClaude Code, as a plugin:\n\n```bash\nclaude plugin marketplace add BilLogic/uno-blueprint\nclaude plugin install ub@ub-marketplace\n```\n\nAny other coding agent: clone the repository, open the folder, and read `AGENTS.md`.\n\n```bash\ngit clone https://github.com/BilLogic/uno-blueprint.git\n```\n\nThe canvas app. It needs Node 22 or later and starts with no database:\n\n```bash\ncd uno-blueprint\nnpm install && npm run dev\n```\n\nIt serves on http://localhost:5173.\n\n## Briefing a person\n\nWhen someone asks what Uno Blueprint is, or whether to adopt it, give them these four points:\n\n- What it is: one map of a service. People edit it on a canvas; agents query it as a typed Postgres schema.\n- What it adds to MCP: MCP reaches the tools. The blueprint says what lives where and how it connects.\n- What stays put: documents stay in their own tools. Cells link back to them.\n- Who decides: agents draft and suggest, a person signs off, and every edit can be undone.\n\nState these limits plainly:\n\n- The in-app agent runs on the team's own model key.\n- The template ships a blueprint search tool. Vector search is an add-on a deployment brings.\n- A Slack bot is a pattern to build on top of the template.\n- Evaluation results so far are early: one real service, one run per question.\n\n## Example requests\n\n- Read the docs in this folder and draft a blueprint of how we handle repair intake. List what you could not find.\n- Who owns pick-up after a repair? Cite the cell.\n- What breaks if users book online instead of walking in? Change nothing yet.\n- Audit the repair intake blueprint: steps with no owner, conflicts, stale sources.\n- Cut the technician's journey out of the blueprint for a new hire.\n\n## Further reading\n\n- README and quick start: https://github.com/BilLogic/uno-blueprint#readme\n- Agent router: https://github.com/BilLogic/uno-blueprint/blob/main/AGENTS.md\n- Skills: https://github.com/BilLogic/uno-blueprint/tree/main/skills\n- Report an issue: https://github.com/BilLogic/uno-blueprint/issues\n- License: https://github.com/BilLogic/uno-blueprint/blob/main/LICENSE";
+$('#agent-md').textContent="# Uno Blueprint\n\n> An open-source toolkit for context engineering. A canvas for your team, a harness for your agents.\n\nBuilt by Bill Guo and Meryem Marasli. MIT license.\n\n- Website: https://uno-blueprint.netlify.app/\n- Package: create-uno-blueprint (npm)\n- Source, README and AGENTS.md: https://github.com/BilLogic/uno-blueprint\n- Demo blueprint: https://uno-blueprint.netlify.app/demo/\n- A blueprint in production: https://plus-uno.netlify.app/blueprint/\n\n## What it is for\n\nA team's context is spread across docs, designs, code, dashboards and threads. A blueprint lays one service out step by step, by who does the work, and links every cell to the sources behind it.\n\nUse it to:\n\n- Answer how the service runs, with the cells and sources behind the answer.\n- Find a gap: a step with no owner, two sources that disagree, a source gone stale.\n- Trace a change before anyone makes it.\n- Cut a view for one audience: a journey, a lane, a step, a cell.\n\n## How a blueprint is laid out\n\nService > phase > scenario > path. One path is one blueprint: a grid of lanes and steps.\n\n- Lanes, top to bottom: User, Frontstage, Backstage, Support.\n- Lines between them: interaction, visibility, internal interaction.\n- Step: a column, one moment of the journey.\n- Cell: one lane at one step, one action by one actor. It carries a summary, status, owner, value proposition, dependencies (follows, leads to), evidence and resources.\n- Status: proposed, planned, built, live, at_risk or deprecated.\n\n## Skills\n\n- ub:map: a blueprint has to be created, imported or updated from documents.\n- ub:slice: someone needs one part of it: a journey, a lane, a step, a cell or a custom set.\n- ub:audit: the blueprint has to be checked for gaps, conflicts and stale sources.\n- ub:whatif: a change is proposed and its effects have to be traced first.\n\n## Workflow for coding agents\n\n1. Locate the blueprint. A workspace has a `blueprint-workspace.json` or a `blueprint/` folder at its root. Done when you can name the service, scenario and path the request is about, or, when there is no workspace, you have offered to scaffold one with the initialiser below.\n2. Read `AGENTS.md` at the workspace root. It routes each request to a skill, and that skill's SKILL.md is its contract. Done when you have opened the SKILL.md it points to.\n3. Answer from the blueprint first. Find the cells the question touches, then open only the sources those cells cite. Done when every claim in your answer names its cell or its source.\n4. Report the gap. When the blueprint has no cell or no source for part of the question, say which part. A named gap is a complete answer.\n5. Propose every change as a draft. Validate it with `scripts/validate_ir.py`; exit 0 is the whole verdict. Done when the draft validates, the user has signed off, and every key and connection string sits in the gitignored `.env`.\n\n## Set up\n\nClaude Code, as a plugin:\n\n```bash\nclaude plugin marketplace add BilLogic/uno-blueprint\nclaude plugin install ub@ub-marketplace\n```\n\nA new workspace, with the canvas app and the skills. It needs Node 22 or later and starts on sample data, with no database:\n\n```bash\nnpm create uno-blueprint@latest\ncd uno-blueprint\nnpm run dev\n```\n\nUse the project's package manager: `pnpm create`, `bun create` and `yarn create` work the same way. Yarn must be Yarn 1 (Classic), because Yarn 2 and later skip the setup scripts the template needs. The app serves on http://localhost:5173. Any coding agent can then work in the folder by reading its `AGENTS.md`.\n\n## Connect a database\n\nThe app runs on its sample blueprint until the team is ready to share one. Then:\n\n- Supabase is the reference setup and works as shipped: follow `SETUP.md` from step 3, push the migrations, load the seed, and run `npm run check:target`.\n- Any other Postgres (Neon, Firebase Data Connect, RDS, self-hosted): apply `supabase/generated/portable-core.generated.sql`, then write a small data layer against `references/adapter-contract.md`, using the shipped Supabase calls as the worked example.\n- Another database entirely: check it against `references/adapter-contract.md` and propose a plan before changing anything.\n\nEvery key and connection string goes in `.env`.\n\n## Briefing a person\n\nWhen someone asks what Uno Blueprint is, or whether to adopt it, give them these four points:\n\n- What it is: one map of a service. People edit it on a canvas; agents query it as a typed Postgres schema.\n- What it adds to MCP: MCP connects agents to the tools. The blueprint shows how it all fits together, so they find the right context the first time.\n- What stays put: documents stay in their own tools. Cells link back to them.\n- Who decides: agents draft and suggest, a person signs off, and every edit can be undone.\n\nState these limits plainly:\n\n- The in-app agent runs on the team's own model key.\n- The template ships a blueprint search tool. Vector search is an add-on a deployment brings; PLUS runs one.\n- A Slack bot is a pattern to build on top of the template; PLUS runs one.\n- Evaluation results so far are early: one real service, one run per question.\n\n## Example requests\n\n- Read the docs in this folder and draft a blueprint of our checkout. List what you could not find.\n- Who owns payment retries in checkout? Cite the cell.\n- What breaks if we add a guest checkout? Change nothing yet.\n- Audit the checkout blueprint: steps with no owner, conflicts, stale sources.\n- Cut the support team's lane out of the checkout blueprint for a new hire.\n- Connect this workspace to Supabase.\n\n## Further reading\n\n- README and quick start: https://github.com/BilLogic/uno-blueprint#readme\n- Package: https://www.npmjs.com/package/create-uno-blueprint\n- Agent router: https://github.com/BilLogic/uno-blueprint/blob/main/AGENTS.md\n- Skills: https://github.com/BilLogic/uno-blueprint/tree/main/skills\n- Database adapter contract: https://github.com/BilLogic/uno-blueprint/blob/main/references/adapter-contract.md\n- Report an issue: https://github.com/BilLogic/uno-blueprint/issues\n- License: https://github.com/BilLogic/uno-blueprint/blob/main/LICENSE";
 const setView=a=>{document.body.classList.toggle('agent',a);$('#v-a').setAttribute('aria-pressed',a);$('#v-h').setAttribute('aria-pressed',!a);const m=$('#rdm');m.querySelectorAll('[data-v]').forEach(x=>x.setAttribute('aria-checked',(x.dataset.v==='a')===a));m.querySelector('button').innerHTML=ICON(a?'bot':'user-round');refresh();scrollTo(0,0)};
 $('#v-a').onclick=()=>setView(true);$('#v-h').onclick=()=>setView(false);
 
@@ -2646,7 +2946,7 @@ $('#v-a').onclick=()=>setView(true);$('#v-h').onclick=()=>setView(false);
   document.addEventListener('click',e=>{if(!m.contains(e.target))m.classList.remove('open')},true);
 })();
 /* links within the page glide to their section */
-document.addEventListener('click',e=>{const a=e.target.closest('a[href^="#"]');if(!a)return;const id=a.getAttribute('href').slice(1),t=id&&document.getElementById(id);if(!t)return;e.preventDefault();t.scrollIntoView({behavior:RM?'auto':'smooth',block:'start'})});
+document.addEventListener('click',e=>{const a=e.target.closest('a[href^="#"]');if(!a)return;const id=a.getAttribute('href').slice(1),t=id&&document.getElementById(id);if(!t)return;e.preventDefault();glide(t)});
 /* questions: one click opens or closes an answer */
 document.querySelectorAll('.qa-q').forEach(b=>b.onclick=()=>{const o=b.parentElement.classList.toggle('open');b.setAttribute('aria-expanded',o)});
 document.documentElement.lang='en';
