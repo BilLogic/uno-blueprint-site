@@ -9,7 +9,7 @@ export const structure = {
     { title: "Phases", caption: "A service unfolds in phases: chapters of the experience, in time order.", scroll: 40 },
     { title: "Scenarios", caption: "Each phase holds scenarios: the specific situations that can happen during it.", scroll: 40 },
     { title: "Paths", caption: "Each scenario has paths: the main route, plus its variants and exceptions.", scroll: 46 },
-    { title: "Blueprint", caption: "Open a path to see its blueprint: who does what, step by step, across every lane.", scroll: 70 },
+    { title: "Blueprint", caption: "Open a path to see its blueprint: who does what, step by step, across every lane.", scroll: 90 },
     { title: "User", caption: "The user journey: what the user does, thinks and decides at each step.", scroll: 36 },
     { title: "Line of interaction", caption: "Where the user and your service meet.", scroll: 30 },
     { title: "Frontstage", caption: "The touchpoints the user sees: the people, screens and messages that respond.", scroll: 36 },
@@ -18,7 +18,7 @@ export const structure = {
     { title: "Line of internal interaction", caption: "Where your team hands off to the systems and partners behind it.", scroll: 30 },
     { title: "Support", caption: "The tools, data and partners every step relies on.", scroll: 36 },
     { title: "Steps", caption: "Each column is one moment in time, read down every lane at once.", scroll: 42 },
-    { title: "Cells", caption: "Where a lane meets a step, one cell holds the detail: owner, status, value, dependencies and the sources behind it.", scroll: 46 },
+    { title: "Cells", caption: "Where a lane meets a step, one cell holds the detail: owner, status, value, dependencies and the sources behind it.", scroll: 64 },
   ],
   /**
    * The opening step's six cards, one per place a product team's context

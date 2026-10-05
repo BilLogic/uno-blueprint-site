@@ -58,8 +58,8 @@ export const TIMING = {
 const INTRO_TRIGGER = 0.42;
 /** The widest viewport that scrolls like a phone, in px. */
 const PHONE_MAX_WIDTH = 760;
-/** A desktop gets this share of each step's scroll; a phone gets all of it. */
-const DESKTOP_SCROLL_SHARE = 0.9;
+/** A phone gets this multiple of each step's scroll, since a swipe travels further than a wheel notch; a desktop gets the steps' own. */
+const PHONE_SCROLL_STRETCH = 1.1;
 
 /** The fixed nav's height, and the margin kept above and below the pinned frame, in px. */
 const NAV_HEIGHT = 64;
@@ -175,7 +175,7 @@ export function stepHold(from: number, to: number): number {
 
 /** The section's scroll length in viewport heights, from its steps' total. */
 export const scrollLength = (totalVh: number, viewportWidth: number) =>
-  Number((totalVh * (viewportWidth <= PHONE_MAX_WIDTH ? 1 : DESKTOP_SCROLL_SHARE)).toFixed(1));
+  Number((totalVh * (viewportWidth <= PHONE_MAX_WIDTH ? PHONE_SCROLL_STRETCH : 1)).toFixed(1));
 
 type ScrollGeometry = {
   /** Where the pinned frame sticks, from the top of the viewport. */

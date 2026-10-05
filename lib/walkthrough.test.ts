@@ -75,11 +75,11 @@ describe("stickyTopFor", () => {
 });
 
 describe("scrollLength", () => {
-  it("gives a desktop nine tenths of the steps' scroll, and a phone all of it", () => {
-    expect(scrollLength(100, 1440)).toBe(90);
-    expect(scrollLength(100, 761)).toBe(90);
-    expect(scrollLength(100, 760)).toBe(100);
-    expect(scrollLength(767, 1440)).toBe(690.3);
+  it("gives a desktop the steps' own scroll, and a phone a tenth more", () => {
+    expect(scrollLength(100, 1440)).toBe(100);
+    expect(scrollLength(100, 761)).toBe(100);
+    expect(scrollLength(100, 760)).toBe(110);
+    expect(scrollLength(767, 390)).toBe(843.7);
   });
 });
 
