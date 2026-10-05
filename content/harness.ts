@@ -152,7 +152,6 @@ export const harness = {
     "Four skills teach your agents to build the map from your docs, keep it accurate, and test changes against it.",
   more: { label: "Read the skills", link: links.github },
   tabsLabel: "The four skills",
-  replay: "Play again",
   skills: [
     {
       id: "map",
