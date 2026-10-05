@@ -1,6 +1,6 @@
 import { canvas } from "@/content/canvas";
 import { repairBoard } from "@/content/repair-board";
-import { mergePaths, swapSteps } from "@/lib/path-merge";
+import { mergePaths, partedColumns } from "@/lib/path-merge";
 import { Board, Cell, Lane, LaneRow, MockWindow, Note, OptionList, StepDetail, Tag } from "@/components/showcase/mock";
 
 const userLane = repairBoard.lanes[0];
@@ -37,21 +37,37 @@ export function CheckMock() {
 }
 
 /**
- * A path's tag on a parted step, its name wrapping inside a narrow slot; up to
- * 1000 px wide, where the cells are bars, a bar in the tag's colour.
+ * A path's tag on a parted step, its name wrapping inside a narrow slot. Up to
+ * 1000 px wide, where the cells are bars, the name stays, in smaller type.
  */
-const pathTag = "max-w-full leading-tight max-xl:h-1 max-xl:w-(--spacing-bar-short) max-xl:p-0 max-xl:text-0 max-xl:bg-link";
+const pathTag = "max-w-full leading-tight max-xl:px-1 max-xl:text-tag-narrow";
+
+/** Each path's own steps where it parts from the board, by path; a path not named follows the board. */
+const swaps: Readonly<Partial<Record<string, Readonly<Partial<Record<string, string>>>>>> = canvas.compare.swaps;
 
 /**
  * Two paths merged on one board: one set of lanes and one step axis. Where the
  * paths agree a slot draws one cell; at the booking step, where they part, it
- * holds a cell for each path, tagged with the path. A toggle beside the
+ * holds a cell for each path, tagged with the path. Up to 1000 px wide the
+ * parted slots take more room, so the path names fit. A toggle beside the
  * board's title shows the merged view open, and the side panel lists both paths.
  */
 export function CompareMock() {
-  const { views, title, walkIn } = canvas.compare;
+  const { views, open, title } = canvas.compare;
   const { pathsTitle, paths } = canvas.understand;
-  const [walkInPath, bookingPath] = paths;
+  const lanes = repairBoard.lanes.map((lane) => ({
+    lane,
+    slots: mergePaths(
+      paths.map((path) => ({
+        path,
+        steps: lane.steps.map((step) => swaps[path]?.[step] ?? step),
+      })),
+    ),
+  }));
+  const narrowColumns = partedColumns(
+    repairBoard.lanes[0].steps.length,
+    lanes.flatMap(({ slots }) => slots.flatMap((slot, index) => ("apart" in slot ? [index] : []))),
+  );
   return (
     <MockWindow
       board={
@@ -59,31 +75,30 @@ export function CompareMock() {
           <div className="flex min-w-0 items-center justify-between gap-3">
             <b className="min-w-0 truncate">{title}</b>
             <span className="flex flex-none gap-0.5 rounded-pill border border-line p-0.5 text-11 leading-normal font-medium">
-              {views.map((view, index) => (
+              {views.map((view) => (
                 <span
                   key={view}
-                  className={`rounded-pill px-(--spacing-tag-x) py-0.5 ${index === 1 ? "bg-hi text-link" : "text-muted"}`}
+                  className={`rounded-pill px-(--spacing-tag-x) py-0.5 ${view === open ? "bg-hi text-link" : "text-muted"}`}
                 >
                   {view}
                 </span>
               ))}
             </span>
           </div>
-          {repairBoard.lanes.map((lane) => (
-            <LaneRow key={lane.key} lane={lane.key} name={lane.name} count={lane.steps.length}>
-              {mergePaths([
-                { path: walkInPath, steps: swapSteps(lane.steps, walkIn) },
-                { path: bookingPath, steps: lane.steps },
-              ]).map((slot, index) =>
+          {lanes.map(({ lane, slots }) => (
+            <LaneRow key={lane.key} lane={lane.key} name={lane.name} count={lane.steps.length} narrowColumns={narrowColumns}>
+              {slots.map((slot, index) =>
                 "step" in slot ? (
-                  <Cell key={index} mark={undefined} className="self-center">
+                  <Cell key={index} className="self-center">
                     {slot.step}
                   </Cell>
                 ) : (
                   <span key={index} data-testid="parted-slot" className="grid content-start gap-1">
                     {slot.apart.map(({ path, step }) => (
                       <span key={path} className="grid gap-0.5">
-                        <Tag className={pathTag}>{path}</Tag>
+                        <Tag className={pathTag} testId="path-tag">
+                          {path}
+                        </Tag>
                         <Cell mark="hi">{step}</Cell>
                       </span>
                     ))}

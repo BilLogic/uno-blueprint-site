@@ -311,6 +311,9 @@
   --spacing-bar-long: 78%;
   --spacing-bar-short: 48%;
   --color-bar: color-mix(in oklab, var(--color-ink) 22%, transparent);
+  /* A path's tag on a parted slot keeps its words on a phone, only smaller. */
+  --text-tag-narrow: 9px;
+  --text-tag-narrow--line-height: 1.2;
   /* Lane accents, the same in both themes. */
   --color-lane-user: #3f8fd6;
   --color-lane-front: #d9902f;

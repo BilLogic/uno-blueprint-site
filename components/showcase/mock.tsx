@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { repairBoard, type CellMark, type LaneKey, type Marks, type Steps } from "@/content/repair-board";
 
 /**
@@ -32,7 +32,10 @@ const laneDot: Record<LaneKey, string> = {
   support: "before:bg-lane-support",
 };
 
-const columns: Record<Steps["length"], string> = { 4: "grid-cols-4", 6: "grid-cols-6" };
+const columns: Record<Steps["length"], string> = {
+  4: "grid-cols-4",
+  6: "grid-cols-6",
+};
 
 /** Each state sets its own border and bar colours, so no base colour competes with it in the cascade. */
 const neutralBars = "max-xl:before:bg-bar max-xl:after:bg-line-2";
@@ -47,10 +50,10 @@ const cellMarks: Record<CellMark | "none", string> = {
  * One cell. Up to 1000 px wide its words would not fit, so they are drawn as
  * two bars instead; above that a word longer than the cell breaks inside it.
  */
-export function Cell({ mark, className = "", children }: { mark: CellMark | undefined; className?: string; children: string }) {
+export function Cell({ mark, className = "", children }: { mark?: CellMark | undefined; className?: string; children: string }) {
   return (
     <span
-      className={`${className} min-h-(--spacing-cell) rounded-6 border p-1.5 text-11 leading-tight hyphens-auto wrap-anywhere max-xl:grid max-xl:min-h-(--spacing-cell-bars) max-xl:content-start max-xl:gap-1 max-xl:px-1.5 max-xl:py-2 max-xl:text-0 max-xl:before:block max-xl:before:h-1 max-xl:before:w-(--spacing-bar-long) max-xl:before:rounded-2 max-xl:before:content-[''] max-xl:after:block max-xl:after:h-1 max-xl:after:w-(--spacing-bar-short) max-xl:after:rounded-2 max-xl:after:content-[''] ${cellMarks[mark ?? "none"]}`}
+      className={`min-h-(--spacing-cell) rounded-6 border p-1.5 text-11 leading-tight hyphens-auto wrap-anywhere max-xl:grid max-xl:min-h-(--spacing-cell-bars) max-xl:content-start max-xl:gap-1 max-xl:px-1.5 max-xl:py-2 max-xl:text-0 max-xl:before:block max-xl:before:h-1 max-xl:before:w-(--spacing-bar-long) max-xl:before:rounded-2 max-xl:before:content-[''] max-xl:after:block max-xl:after:h-1 max-xl:after:w-(--spacing-bar-short) max-xl:after:rounded-2 max-xl:after:content-[''] ${cellMarks[mark ?? "none"]} ${className}`}
     >
       {mark === "gap" ? repairBoard.gapLabel : children}
     </span>
@@ -62,11 +65,13 @@ type LaneRowProps = {
   name: string;
   /** How many slots the lane has across. */
   count: Steps["length"];
+  /** A grid template for the slots up to 1000 px wide, where even columns would be too narrow. */
+  narrowColumns?: string;
   children: ReactNode;
 };
 
 /** A swimlane's frame: its name with a dot in the lane's colour, then its slots in `count` columns. */
-export function LaneRow({ lane, name, count, children }: LaneRowProps) {
+export function LaneRow({ lane, name, count, narrowColumns, children }: LaneRowProps) {
   return (
     <div className="grid grid-cols-[var(--spacing-lane-label)_minmax(0,1fr)] items-center gap-(--spacing-lane-gap) py-(--spacing-lane-y) [&+&]:border-t [&+&]:border-dashed [&+&]:border-line-2">
       <span
@@ -74,7 +79,12 @@ export function LaneRow({ lane, name, count, children }: LaneRowProps) {
       >
         {name}
       </span>
-      <div className={`grid gap-1.5 ${columns[count]}`}>{children}</div>
+      <div
+        className={`grid gap-1.5 ${columns[count]} ${narrowColumns ? "max-xl:grid-cols-(--narrow-columns)" : ""}`}
+        style={narrowColumns ? ({ "--narrow-columns": narrowColumns } as CSSProperties) : undefined}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -111,10 +121,18 @@ export function Board({ marks = {} }: { marks?: Marks }) {
   );
 }
 
+type TagProps = {
+  amber?: boolean;
+  className?: string;
+  testId?: string;
+  children: string;
+};
+
 /** A small pill; amber when it flags something missing. */
-export function Tag({ amber = false, className = "", children }: { amber?: boolean; className?: string; children: string }) {
+export function Tag({ amber = false, className = "", testId, children }: TagProps) {
   return (
     <span
+      data-testid={testId}
       className={`justify-self-start rounded-pill px-(--spacing-tag-x) py-0.5 text-11 leading-normal font-medium ${amber ? "bg-amber-bg text-amber" : "bg-hi text-link"} ${className}`}
     >
       {children}

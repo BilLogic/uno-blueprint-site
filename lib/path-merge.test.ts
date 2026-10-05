@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergePaths, swapSteps } from "./path-merge";
+import { mergePaths, partedColumns } from "./path-merge";
 
 describe("mergePaths", () => {
   it("draws a step every path shares once", () => {
@@ -64,12 +64,16 @@ describe("mergePaths", () => {
   });
 });
 
-describe("swapSteps", () => {
-  it("replaces the named steps and keeps the rest", () => {
-    expect(swapSteps(["a", "b", "c"], { b: "B" })).toEqual(["a", "B", "c"]);
+describe("partedColumns", () => {
+  it("gives the parted slots twice the room", () => {
+    expect(partedColumns(3, [0])).toBe("minmax(0,2fr) minmax(0,1fr) minmax(0,1fr)");
   });
 
-  it("keeps every step when nothing is swapped", () => {
-    expect(swapSteps(["a", "b"], {})).toEqual(["a", "b"]);
+  it("widens a slot once however often it is named", () => {
+    expect(partedColumns(2, [1, 1])).toBe("minmax(0,1fr) minmax(0,2fr)");
+  });
+
+  it("keeps the columns even when nothing parts", () => {
+    expect(partedColumns(2, [])).toBe("minmax(0,1fr) minmax(0,1fr)");
   });
 });

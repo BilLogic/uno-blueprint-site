@@ -3,18 +3,31 @@ import type { Marks, StepName } from "./repair-board";
 
 export type CanvasTab = "understand" | "check" | "compare" | "present";
 
+/** The service's paths, so content naming a path fails the typecheck when it is renamed. */
+const paths = ["Walk-in", "Online booking"] as const;
+type PathName = (typeof paths)[number];
+
+/** The two ways to lay out more than one path: one board each, or one board the paths share. */
+const views = ["Stacked", "Merged"] as const;
+
 type Canvas = {
   headline: string;
   subheadline: string;
   more: { label: string; link: SiteLink };
   tabsLabel: string;
   tabs: readonly { value: CanvasTab; label: string; caption: string }[];
-  understand: { phasesTitle: string; phases: readonly string[]; pathsTitle: string; paths: readonly string[] };
+  understand: {
+    phasesTitle: string;
+    phases: readonly string[];
+    pathsTitle: string;
+    paths: readonly PathName[];
+  };
   check: { step: string; marks: Marks; draft: string };
   compare: {
-    views: readonly [string, string];
+    views: readonly (typeof views)[number][];
+    open: (typeof views)[number];
     title: string;
-    walkIn: Readonly<Partial<Record<StepName<"user"> | StepName<"back">, string>>>;
+    swaps: Readonly<Partial<Record<PathName, Readonly<Partial<Record<StepName<"user"> | StepName<"back">, string>>>>>>;
   };
   present: {
     title: string;
@@ -59,7 +72,7 @@ export const canvas = {
     /** The first phase is the one open on the board. */
     phases: ["01 · Intake", "02 · Repair", "03 · Pick-up"],
     pathsTitle: "Paths",
-    paths: ["Walk-in", "Online booking"],
+    paths,
   },
   check: {
     /** The step opened in the side panel, which has no owner yet. */
@@ -69,11 +82,17 @@ export const canvas = {
     draft: "Lead technician ▍",
   },
   compare: {
-    /** One board per path, or one board the paths share; the second is the one open. */
-    views: ["Stacked", "Merged"],
+    views,
+    /** The view shown: the paths share the lanes and the step axis. */
+    open: "Merged",
     title: "Repair intake, two paths merged",
-    /** Where a walk-in parts from an online booking: its own step in place of the board's. Online booking follows the board. */
-    walkIn: { "Books a slot": "Walks in", "Confirms the slot": "Checks the queue" },
+    /** Where a path parts from the board: its own step in place of the board's, by path. Online booking follows the board. */
+    swaps: {
+      "Walk-in": {
+        "Books a slot": "Walks in",
+        "Confirms the slot": "Checks the queue",
+      },
+    },
   },
   present: {
     title: "Repair intake, for the exec",

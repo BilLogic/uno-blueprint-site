@@ -24,11 +24,21 @@ export function mergePaths(paths: readonly PathSteps[]): Slot[] {
   return first.steps.map((step, index) =>
     paths.every((other) => other.steps[index] === step)
       ? { step }
-      : { apart: paths.map((other) => ({ path: other.path, step: other.steps[index]! })) },
+      : {
+          apart: paths.map((other) => ({
+            path: other.path,
+            step: other.steps[index]!,
+          })),
+        },
   );
 }
 
-/** A path's steps: the board's, with the steps named in `swaps` replaced by its own. */
-export function swapSteps(steps: readonly string[], swaps: Readonly<Partial<Record<string, string>>>): string[] {
-  return steps.map((step) => swaps[step] ?? step);
+/**
+ * A grid template for `count` slots in which the slots at `wide` take twice
+ * the room of the rest, so a slot holding more than one path has space for
+ * their names.
+ */
+export function partedColumns(count: number, wide: Iterable<number>): string {
+  const widened = new Set(wide);
+  return Array.from({ length: count }, (_, index) => `minmax(0,${widened.has(index) ? 2 : 1}fr)`).join(" ");
 }
