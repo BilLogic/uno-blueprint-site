@@ -23,7 +23,7 @@ const bar = "block h-1 flex-none rounded-2 bg-line-2";
  * that starts empty. A lane or a step exists only once a phrase calls for it,
  * and a step found later opens up between its neighbours.
  */
-export function MapPicture({ running, onStale }: PictureProps) {
+export function MapPicture({ running, onStale, onDone }: PictureProps) {
   // Stacked below the lg breakpoint, as the flow's max-lg: classes are.
   const stacked = useMediaQuery("(max-width: 900px)");
   const flow = useRef<HTMLDivElement>(null);
@@ -51,7 +51,7 @@ export function MapPicture({ running, onStale }: PictureProps) {
       lane: row.getBoundingClientRect(),
     });
     setLines((drawn) => ({ size: `0 0 ${frame.width} ${frame.height}`, paths: [...drawn.paths, paths] }));
-  });
+  }, onDone);
 
   // A resize moves everything the lines join, so the picture starts again.
   const hasLines = lines.paths.length > 0;

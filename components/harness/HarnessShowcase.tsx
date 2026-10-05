@@ -1,10 +1,11 @@
 "use client";
 
-import { Presentation, RotateCcw, SearchCheck } from "lucide-react";
-import { useCallback, useState, type ComponentType } from "react";
+import { Presentation, SearchCheck } from "lucide-react";
+import { useCallback, useEffect, useReducer, useState, type ComponentType } from "react";
 import { harness, skill as skillOf, type SkillId } from "@/content/harness";
 import { TabList, tabId, tabPanelId } from "@/components/ui/Tabs";
 import { useInView } from "@/hooks/use-in-view";
+import { HARNESS_HOLD, HARNESS_LOOP_START, harnessLoop } from "@/lib/harness-loop";
 import { AuditPicture } from "./AuditPicture";
 import { MapPicture } from "./MapPicture";
 import type { PictureProps } from "./pictures";
@@ -36,24 +37,28 @@ const tabs = harness.skills.map((skill) => ({
 
 /**
  * The four skills behind one tab row: a picture of each on a dotted stage,
- * with what the skill does underneath. A picture plays once when the stage
- * comes into view, again on each tab, and again from the button in its corner;
- * the slice picture loops by itself, so it has no button.
+ * with what the skill does underneath. A picture plays when the stage comes
+ * into view and again on each tab; once it finishes it holds its last frame,
+ * then plays again from the start, for as long as the stage stays in view.
+ * The slice picture loops by itself.
  */
 export function HarnessShowcase() {
   const [skill, setSkill] = useState<SkillId>("map");
-  const [run, setRun] = useState(0);
-  const [asked, setAsked] = useState(false);
-  const [stage, seen] = useInView<HTMLDivElement>({ threshold: 0.3, once: true });
-  const running = seen || asked;
+  const [loop, dispatch] = useReducer(harnessLoop, HARNESS_LOOP_START);
+  const [stage, inView] = useInView<HTMLDivElement>({ threshold: 0.3 });
+  if (inView !== loop.shown) dispatch(inView ? "shown" : "hidden");
 
-  const replay = useCallback(() => {
-    setAsked(true);
-    setRun((n) => n + 1);
-  }, []);
+  useEffect(() => {
+    if (!loop.holding) return;
+    const timer = window.setTimeout(() => dispatch("held"), HARNESS_HOLD);
+    return () => clearTimeout(timer);
+  }, [loop.holding]);
+
+  const restart = useCallback(() => dispatch("restart"), []);
+  const done = useCallback(() => dispatch("done"), []);
   const choose = (next: SkillId) => {
     setSkill(next);
-    replay();
+    restart();
   };
 
   const current = skillOf(skill);
@@ -79,18 +84,7 @@ export function HarnessShowcase() {
         className="relative aspect-video max-w-full overflow-hidden rounded-16 border border-line bg-card bg-dots max-lg:aspect-auto"
       >
         {/* A new key starts the picture from its first frame. */}
-        <Picture key={`${skill}-${run}-${running}`} running={running} onStale={replay} />
-        {skill === "slice" ? null : (
-          <button
-            type="button"
-            aria-label={harness.replay}
-            title={harness.replay}
-            onClick={replay}
-            className="absolute top-2.5 right-2.5 z-6 grid size-8 cursor-pointer place-items-center rounded-8 border border-line-2 bg-panel text-muted transition-[color,border-color] duration-t-1 motion-reduce:transition-none hover:border-line-hot hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand max-lg:top-2 max-lg:right-2"
-          >
-            <RotateCcw className="size-icon-sm" strokeWidth={1.75} />
-          </button>
-        )}
+        <Picture key={`${skill}-${loop.run}`} running={loop.shown} onStale={restart} onDone={done} />
       </div>
       <p id={CAPTION_ID} className="mt-4 flex justify-between gap-6 text-14 text-muted">
         <span className="max-w-caption">

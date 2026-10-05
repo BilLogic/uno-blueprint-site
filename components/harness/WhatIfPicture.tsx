@@ -66,8 +66,8 @@ function OptionBoard({ changes, traced }: { changes: readonly CellChangeAt[]; tr
  * it costs; then the one that disturbs least is suggested and marked on today's
  * board.
  */
-export function WhatIfPicture({ running }: PictureProps) {
-  const count = useSteps(TIMES, running);
+export function WhatIfPicture({ running, onDone }: PictureProps) {
+  const count = useSteps(TIMES, running, undefined, onDone);
   const frame = whatIfFrame(STEPS, count, CELL_COUNTS);
   const marked = markedToday(
     frame,
