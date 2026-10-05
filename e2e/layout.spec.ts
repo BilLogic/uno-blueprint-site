@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { site } from "@/content/site";
 
 test("nothing is wider than a 375 px screen", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
@@ -24,10 +25,33 @@ test("the page loads without console errors or policy violations", async ({ page
 
 test("the head describes the page for search and link previews", async ({ page }) => {
   await page.goto("/");
-  await expect(page).toHaveTitle("Uno Blueprint");
-  await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /.+/);
+  await expect(page).toHaveTitle(site.title);
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", site.description);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", `${site.url}/`);
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", site.share.title);
+  await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute("content", site.share.title);
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", /^https:\/\//);
+  await expect(page.locator('meta[property="og:image:alt"]')).toHaveAttribute("content", /.+/);
   await expect(page.locator('link[rel="icon"]').first()).toHaveAttribute("href", /.+/);
+});
+
+test("the head carries the site and its source code as structured data", async ({ page }) => {
+  await page.goto("/");
+  const text = await page.locator('head script[type="application/ld+json"]').textContent();
+  const types = JSON.parse(text ?? "{}")["@graph"]?.map((node: { "@type": string }) => node["@type"]);
+  expect(types).toEqual(["WebSite", "SoftwareSourceCode"]);
+});
+
+test("crawlers find a robots file that allows them and a sitemap", async ({ request }) => {
+  const robots = await request.get("/robots.txt");
+  expect(robots.ok()).toBe(true);
+  const rules = await robots.text();
+  expect(rules).not.toMatch(/Disallow: \//);
+  for (const crawler of ["GPTBot", "ClaudeBot", "PerplexityBot", "Google-Extended"]) expect(rules).toContain(crawler);
+  expect(rules).toContain(`Sitemap: ${site.url}/sitemap.xml`);
+  const sitemap = await request.get("/sitemap.xml");
+  expect(sitemap.ok()).toBe(true);
+  expect(await sitemap.text()).toContain(`<loc>${site.url}/</loc>`);
 });
 
 test("the page is served with the generated content security policy", async ({ page }) => {

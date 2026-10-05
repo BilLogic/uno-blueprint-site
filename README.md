@@ -15,6 +15,7 @@ npm ci
 npm run dev        # http://localhost:3000
 npm run build      # static export into out/, plus out/_headers
 npm run serve      # serves out/ on http://localhost:4173 with those headers
+npm run og-image   # after a build: renders app/opengraph-image.png from the hero picture, via out/ on port 4177
 ```
 
 ## Where things live
