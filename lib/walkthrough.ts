@@ -58,7 +58,7 @@ export const TIMING = {
 const INTRO_TRIGGER = 0.42;
 /** The widest viewport that scrolls like a phone, in px. */
 const PHONE_MAX_WIDTH = 760;
-/** A phone gets this multiple of each step's scroll, since a swipe travels further than a wheel notch; a desktop gets the steps' own. */
+/** A phone gets this multiple of each step's scroll; a desktop gets the steps' own. */
 const PHONE_SCROLL_STRETCH = 1.1;
 
 /** The fixed nav's height, and the margin kept above and below the pinned frame, in px. */

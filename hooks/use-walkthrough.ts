@@ -60,8 +60,8 @@ function setLine(line: Element | undefined, [x1, y1]: readonly number[], [x2, y2
  *
  * The stage is scaled to what the viewport leaves under the headline, the
  * headline and frame are held together in the middle of the screen, and the
- * section gets the scroll length its steps add up to (a little less on a
- * desktop). The opening cards are drawn here, wherever their morph into the
+ * section gets the scroll length its steps add up to (a little more on a
+ * phone). The opening cards are drawn here, wherever their morph into the
  * stack has got to, and re-measured on a resize. Arriving at the cell from
  * above, it lights on the flat board and opens `TIMING.cellBeat` later; `open`
  * says whether it has. With reduced motion nothing is pinned and the last step

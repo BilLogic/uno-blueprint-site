@@ -79,7 +79,7 @@ describe("scrollLength", () => {
     expect(scrollLength(100, 1440)).toBe(100);
     expect(scrollLength(100, 761)).toBe(100);
     expect(scrollLength(100, 760)).toBe(110);
-    expect(scrollLength(767, 390)).toBe(843.7);
+    expect(scrollLength(726, 390)).toBe(798.6);
   });
 });
 
