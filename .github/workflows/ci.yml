@@ -16,10 +16,13 @@ permissions:
 env:
   NEXT_TELEMETRY_DISABLED: "1"
 
+# On a push to main only the build runs, so a deploy is never of a broken build; the
+# end-to-end tests and Lighthouse already ran on the pull request that brought it.
 jobs:
   build:
     name: Typecheck, lint, unit tests, build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -40,8 +43,10 @@ jobs:
 
   e2e:
     name: End-to-end, axe and visual snapshots
+    if: github.event_name == 'pull_request'
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     # The image pins the browser and its fonts, so snapshots render the same here as in
     # the local `docker run` command in the README.
     container:
@@ -78,25 +83,12 @@ jobs:
           path: e2e/__snapshots__
           retention-days: 7
 
-  # The /demo/ forward is a Netlify rewrite, so it is checked on the pull request's deploy preview.
-  demo-forward:
-    name: Demo through the forward (deploy preview)
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    env:
-      # The Netlify site that builds this repository; its previews live under its name.
-      SITE: uno-blueprint
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-      - run: node scripts/check-demo-forward.mjs "https://deploy-preview-${{ github.event.pull_request.number }}--$SITE.netlify.app" https://uno-blueprint-demo.netlify.app
-
   lighthouse:
     name: Lighthouse (phone)
+    if: github.event_name == 'pull_request'
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

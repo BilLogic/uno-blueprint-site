@@ -1,0 +1,31 @@
+name: Demo forward
+
+# The /demo/ forward is a Netlify rewrite, so it is checked on the pull request's deploy
+# preview, and only when the rewrite or its check changes.
+on:
+  pull_request:
+    paths:
+      - netlify.toml
+      - scripts/check-demo-forward.mjs
+
+concurrency:
+  group: demo-forward-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  demo-forward:
+    name: Demo through the forward (deploy preview)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # The Netlify site that builds this repository; its previews live under its name.
+      SITE: uno-blueprint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/check-demo-forward.mjs "https://deploy-preview-${{ github.event.pull_request.number }}--$SITE.netlify.app" https://uno-blueprint-demo.netlify.app

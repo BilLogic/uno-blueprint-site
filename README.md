@@ -25,7 +25,7 @@ npm run og-image   # after a build: renders app/opengraph-image.png from the her
 | `app/` | The page, its metadata, icons and preview image |
 | `components/` | One folder per part of the page; components only render and animate |
 | `content/` | Every word and link the page shows, apart from the components |
-| `content/links.ts` | All links. One not ready yet carries `notReady: true` and renders disabled in every build, `npm run dev` included (no `href`, `aria-disabled`); a button or nav item also takes focus and shows "Coming soon" as a tooltip on hover or focus. List them with `grep -rn "notReady: true" content` |
+| `content/links.ts` | All links. One not ready yet carries `notReady: true` and renders disabled in every build, `npm run dev` included (no `href`, `aria-disabled`). A button with a `soonLabel` says so in its own label ("Case study coming soon"); a nav item takes focus and shows "Coming soon" as a tooltip on hover or focus; a name in the footer is simply disabled. List them with `grep -rn "notReady: true" content` |
 | `styles/tokens.css` | Design tokens, declared once, exposed to Tailwind (see the mapping at its top) |
 | `hooks/`, `lib/` | Small typed hooks, and the pure logic they use |
 | `e2e/` | End-to-end, accessibility and visual tests against the built site |
@@ -33,7 +33,7 @@ npm run og-image   # after a build: renders app/opengraph-image.png from the her
 
 ## Test it
 
-Every pull request runs all of these in CI (`.github/workflows/ci.yml`).
+Every pull request runs all of these in CI (`.github/workflows/ci.yml`); a push to `main` runs only the build, as the rest ran on its pull request. A pull request that changes `netlify.toml` or `scripts/check-demo-forward.mjs` also checks the demo through its deploy preview (`.github/workflows/demo-forward.yml`).
 
 ```bash
 npm run typecheck
@@ -58,10 +58,10 @@ A changed snapshot is reviewed in the pull request like code, never updated just
   ```bash
   docker run --rm --ipc=host -v "$PWD":/work -v /work/node_modules -w /work \
     mcr.microsoft.com/playwright:v1.63.0-noble \
-    bash -c "npm ci && npx playwright test e2e/visual.spec.ts --update-snapshots"
+    bash -c "npm ci && npx playwright test e2e/visual --update-snapshots"
   ```
 
-  The second `-v` keeps the container's `node_modules` apart from yours. Keep the image tag equal to the `@playwright/test` version.
+  `e2e/visual` matches every visual spec (`visual.spec.ts` and each `visual-*.spec.ts`). The second `-v` keeps the container's `node_modules` apart from yours. Keep the image tag equal to the `@playwright/test` version.
 
 - **From CI.** Delete the snapshots that should change and push. Where a baseline is missing, the visual tests write the fresh render and fail (there are no retries, so a run never passes against a baseline it wrote itself); download the `snapshots` artifact from that run (`gh run download <run-id> -n snapshots -D e2e/__snapshots__`), look at the images, and commit them.
 
