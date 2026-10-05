@@ -1,5 +1,6 @@
 import { devices, expect, test, type Page } from "@playwright/test";
 import { bento } from "@/content/bento";
+import { ARRIVAL_STEP_MS } from "@/lib/bento";
 
 const titles = [
   bento.duo.title,
@@ -25,33 +26,70 @@ const typed = (page: Page) =>
 
 test.describe("bento", () => {
   test("panels arrive as they scroll into view, one beat apart along a row", async ({ page }) => {
+    // The page's clock stands still and is stepped by hand, so each beat is
+    // measured exactly rather than by how fast a busy machine draws frames.
+    await page.clock.install({ time: new Date("2026-01-01T09:00:00Z") });
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");
-    await expect(panel(page, titles[0])).toHaveCSS("opacity", "0");
+    await page.clock.pauseAt(new Date("2026-01-01T09:01:00Z"));
+    for (const title of titles) await expect(panel(page, title)).toHaveCSS("opacity", "0");
 
-    // Note when each panel first shows, frame by frame, while the reader scrolls down.
-    const panels = await Promise.all(titles.map((title) => panel(page, title).elementHandle()));
-    await page.evaluate((panels) => {
-      const shown: number[] = [];
-      Object.assign(window, { shown });
-      const watch = () => {
-        panels.forEach((p, i) => {
-          if (shown[i] === undefined && Number(getComputedStyle(p!).opacity) > 0)
-            shown[i] = performance.now();
-        });
-        if (shown.filter((t) => t !== undefined).length < panels.length)
-          requestAnimationFrame(watch);
-      };
-      watch();
-    }, panels);
-    await panel(page, titles[4]).scrollIntoViewIfNeeded();
-    await page.mouse.wheel(0, 400);
+    /** Scroll until the panel's top edge sits `y` pixels down the screen. */
+    const bringTo = (title: (typeof titles)[number], y: number) =>
+      panel(page, title).evaluate((p, y) => {
+        window.scrollTo({ top: p.getBoundingClientRect().top + window.scrollY - y, behavior: "instant" });
+      }, y);
+    /**
+     * Let React finish rendering what the clock last set in motion: its
+     * renders are queued as messages, which the stopped clock does not hold.
+     */
+    const settle = () =>
+      page.evaluate(
+        () =>
+          new Promise<void>((done) => {
+            const { port1, port2 } = new MessageChannel();
+            port1.onmessage = () => done();
+            port2.postMessage(null);
+          }),
+      );
+    const arrived = (title: (typeof titles)[number]) =>
+      expect(panel(page, title)).toHaveAttribute("data-arrived");
+    const waiting = async (title: (typeof titles)[number]) => {
+      await settle();
+      await expect(panel(page, title)).not.toHaveAttribute("data-arrived");
+    };
 
-    await expect(panel(page, titles[4])).toHaveCSS("opacity", "1");
-    const shown = await page.evaluate(() => (window as unknown as { shown: number[] }).shown);
-    // The bottom row: left to right, each a beat (140 ms) after the one before.
-    expect(shown[3]! - shown[2]!).toBeGreaterThan(100);
-    expect(shown[4]! - shown[3]!).toBeGreaterThan(100);
+    /** The row's first panel arrives at once; each after it exactly a beat later, left to right. */
+    const arriveOneBeatApart = async (row: (typeof titles)[number][]) => {
+      // The first panel lands as soon as the row is seen, without the clock moving on.
+      await expect
+        .poll(async () => {
+          await page.clock.runFor(0);
+          return panel(page, row[0]!).getAttribute("data-arrived");
+        })
+        .not.toBeNull();
+      for (const title of row.slice(1)) {
+        await waiting(title);
+        await page.clock.runFor(ARRIVAL_STEP_MS - 1);
+        await waiting(title);
+        await page.clock.runFor(1);
+        await arrived(title);
+      }
+    };
+
+    // The top row comes into view; the bottom row, still below the line, waits unseen.
+    await bringTo(titles[0], 450);
+    await arriveOneBeatApart([titles[0], titles[1]]);
+    await page.clock.runFor(2000);
+    for (const title of titles.slice(2)) {
+      await waiting(title);
+      await expect(panel(page, title)).toHaveCSS("opacity", "0");
+    }
+
+    // Scrolled on, the bottom row arrives in turn.
+    await bringTo(titles[2], 300);
+    await arriveOneBeatApart([titles[2], titles[3], titles[4]]);
+    for (const title of titles) await expect(panel(page, title)).toHaveCSS("opacity", "1");
   });
 
   test("a picture plays while the pointer is on its panel, and rests when it leaves", async ({

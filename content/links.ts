@@ -4,7 +4,7 @@ export type SiteLink = {
   notReady?: true;
 };
 
-/** What a button or nav item whose target is not ready yet says, beside its label. */
+/** What a button or nav item whose target is not ready yet says, in a tooltip, when it is hovered or focused. */
 export const comingSoon = "Coming soon";
 
 export const links = {

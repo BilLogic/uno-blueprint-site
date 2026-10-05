@@ -24,17 +24,50 @@ test.describe("harness showcase", () => {
     await expect(harness.getByText(/Nothing is applied until you sign off\.$/)).toBeVisible();
   });
 
-  test("the replay button plays the picture again from the start", async ({ page }) => {
+  test("a finished picture holds its last frame, then plays again from the start", async ({ page }) => {
+    test.setTimeout(40_000);
     await page.goto("/");
     const harness = section(page);
     await harness.scrollIntoViewIfNeeded();
-    const placed = harness.getByText("Drops off the device", { exact: true });
-    // The first phrase lands about a second and a half in.
-    await expect(placed).toHaveCount(1, { timeout: 5000 });
+    const first = harness.getByText("Drops off the device", { exact: true });
+    const last = harness.getByText(map.placements.at(-1)!.text, { exact: true });
+    // The first phrase lands about a second and a half in, the last about seven.
+    await expect(first).toHaveCount(1, { timeout: 5000 });
+    await expect(last).toHaveCount(1, { timeout: 10_000 });
+    // The finished board holds for a while...
+    await page.waitForTimeout(1500);
+    await expect(first).toHaveCount(1);
+    // ...then empties and plays again.
+    await expect(first).toHaveCount(0, { timeout: 5000 });
+    await expect(first).toHaveCount(1, { timeout: 5000 });
+  });
 
-    await harness.getByRole("button", { name: "Play again" }).click();
-    await expect(placed).toHaveCount(0);
-    await expect(placed).toHaveCount(1, { timeout: 5000 });
+  test("off screen a picture stops looping, and starts over when back", async ({ page }) => {
+    test.setTimeout(40_000);
+    await page.goto("/");
+    const harness = section(page);
+    await harness.scrollIntoViewIfNeeded();
+    const first = harness.getByText("Drops off the device", { exact: true });
+    const last = harness.getByText(map.placements.at(-1)!.text, { exact: true });
+    await expect(last).toHaveCount(1, { timeout: 12_000 });
+
+    await page.evaluate(() => window.scrollTo(0, 0));
+    // Longer than the hold: on screen it would have started again by now.
+    await page.waitForTimeout(4000);
+    await expect(first).toHaveCount(1);
+
+    await harness.scrollIntoViewIfNeeded();
+    await expect(first).toHaveCount(0, { timeout: 2000 });
+    await expect(first).toHaveCount(1, { timeout: 5000 });
+  });
+
+  test("no picture has a replay button", async ({ page }) => {
+    await page.goto("/");
+    const harness = section(page);
+    for (const tab of ["Map", "Slice", "Audit", "What-if"]) {
+      await harness.getByRole("tab", { name: tab }).click();
+      await expect(harness.getByRole("tabpanel").getByRole("button", { name: /play again|replay/i })).toHaveCount(0);
+    }
   });
 
   test("with reduced motion every picture shows its end state", async ({ page }) => {
@@ -68,11 +101,13 @@ test.describe("harness showcase", () => {
     await expect(harness.getByText("Do first")).toHaveCSS("opacity", "1");
   });
 
-  test("slice loops by itself, holds the kind the pointer is on, and has no replay button", async ({ page }) => {
+  test("slice loops by itself and holds the kind the pointer is on", async ({ page }) => {
     await page.goto("/");
     const harness = section(page);
     await harness.getByRole("tab", { name: "Slice" }).click();
-    await expect(harness.getByRole("button", { name: "Play again" })).toHaveCount(0);
+    // A picture plays only while its stage is in view, and a kind under the pointer holds the loop.
+    await harness.getByRole("tabpanel").scrollIntoViewIfNeeded();
+    await page.mouse.move(0, 0);
     await expect(harness.getByRole("button", { name: "Lane" })).toHaveAttribute("aria-pressed", "true", {
       timeout: 4000,
     });

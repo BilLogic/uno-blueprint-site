@@ -18,7 +18,7 @@ const flagAnimation = { warn: "animate-to-warn", gap: "animate-to-gap" } as cons
  * place on an impact and effort graph, and once they are all plotted the
  * corner to do first lights up.
  */
-export function AuditPicture({ running }: PictureProps) {
+export function AuditPicture({ running, onDone }: PictureProps) {
   const skill = useRef<HTMLSpanElement>(null);
   const dots = useRef<(HTMLElement | null)[]>([]);
 
@@ -35,7 +35,7 @@ export function AuditPicture({ running }: PictureProps) {
       // A finding slows into its place on the house curve, as everything that arrives does.
       { duration: AUDIT_FLIGHT, easing: getComputedStyle(dot).getPropertyValue("--ease-out") || "ease-out" },
     );
-  });
+  }, onDone);
   const frame = auditFrame(audit.findings.length, count);
 
   return (

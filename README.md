@@ -13,6 +13,7 @@ npm ci
 npm run dev        # http://localhost:3000
 npm run build      # static export into out/, plus out/_headers
 npm run serve      # serves out/ on http://localhost:4173 with those headers
+npm run og-image   # after a build: renders app/opengraph-image.png from the hero picture, via out/ on port 4177
 ```
 
 ## Where copy lives
@@ -21,7 +22,7 @@ Every word and link the page shows lives in `content/`, one file per section; co
 
 | Path | What |
 | --- | --- |
-| `content/links.ts` | Every link. One not ready yet carries `notReady: true` and renders disabled in every build, `npm run dev` included (no `href`, `aria-disabled`); a button or nav item also says "Coming soon". List them with `grep -rn "notReady: true" content` |
+| `content/links.ts` | Every link. One not ready yet carries `notReady: true` and renders disabled in every build, `npm run dev` included (no `href`, `aria-disabled`); a button or nav item also takes focus and shows "Coming soon" as a tooltip on hover or focus. List them with `grep -rn "notReady: true" content` |
 | `public/uno-blueprint.md`, `public/llms.txt` | The page as markdown for agents, and the index they read first |
 | `app/` | The page, its metadata, icons and preview image |
 | `components/`, `hooks/`, `lib/` | One folder per part of the page; small typed hooks and the pure logic they use |
