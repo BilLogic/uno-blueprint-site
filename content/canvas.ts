@@ -14,7 +14,6 @@ type Canvas = {
   compare: {
     views: readonly [string, string];
     title: string;
-    kinds: readonly [string, string];
     walkIn: Readonly<Partial<Record<StepName<"user"> | StepName<"back">, string>>>;
   };
   present: {
@@ -30,7 +29,7 @@ type Canvas = {
 export const canvas = {
   headline: "Canvas for your team.",
   subheadline:
-    "See how your whole service works, keep it accurate together, compare the ways it can go, and tailor it for every stakeholder.",
+    "See how your whole service works, keep it accurate together, weigh one path against another, and tailor it for every stakeholder.",
   more: { label: "Try the demo", link: links.demo },
   tabsLabel: "What your team does on the canvas",
   tabs: [
@@ -47,8 +46,7 @@ export const canvas = {
     {
       value: "compare",
       label: "Compare paths",
-      caption:
-        "Not everything goes to plan? Set the main route beside its variants and exceptions, and see exactly where they split.",
+      caption: "Weighing the options? Line up a scenario's paths and see how the journey, and the work behind it, differ.",
     },
     {
       value: "present",
@@ -74,8 +72,6 @@ export const canvas = {
     /** One board per path, or one board the paths share; the second is the one open. */
     views: ["Stacked", "Merged"],
     title: "Repair intake, two paths merged",
-    /** What kind of path each one is, in the paths' order: walk-in is the main route, online booking a variant. */
-    kinds: ["Main route", "Variant"],
     /** Where a walk-in parts from an online booking: its own step in place of the board's. Online booking follows the board. */
     walkIn: { "Books a slot": "Walks in", "Confirms the slot": "Checks the queue" },
   },

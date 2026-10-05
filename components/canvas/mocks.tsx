@@ -46,14 +46,12 @@ const pathTag = "max-w-full leading-tight max-xl:h-1 max-xl:w-(--spacing-bar-sho
  * Two paths merged on one board: one set of lanes and one step axis. Where the
  * paths agree a slot draws one cell; at the booking step, where they part, it
  * holds a cell for each path, tagged with the path. A toggle beside the
- * board's title shows the merged view open, and the side panel names each
- * path's kind: the main route and a variant.
+ * board's title shows the merged view open, and the side panel lists both paths.
  */
 export function CompareMock() {
-  const { views, title, kinds, walkIn } = canvas.compare;
+  const { views, title, walkIn } = canvas.compare;
   const { pathsTitle, paths } = canvas.understand;
   const [walkInPath, bookingPath] = paths;
-  const [mainKind, variantKind] = kinds;
   return (
     <MockWindow
       board={
@@ -99,13 +97,8 @@ export function CompareMock() {
       panel={
         <>
           <b>{pathsTitle}</b>
-          {[
-            { path: walkInPath, kind: mainKind },
-            { path: bookingPath, kind: variantKind },
-          ].map(({ path, kind }) => (
-            <span key={path}>
-              {path} · <Tag>{kind}</Tag>
-            </span>
+          {paths.map((path) => (
+            <Tag key={path}>{path}</Tag>
           ))}
         </>
       }
