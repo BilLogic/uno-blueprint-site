@@ -283,7 +283,7 @@
   --aspect-stage-canvas-phone: 3 / 2; /* the canvas stage on a phone */
   --aspect-stage-tall: 4 / 5; /* the touch-points stage on a phone, tall enough for the phone's screen to read */
   --spacing-recording-inset: clamp(16px, 3.5vw, 44px); /* the dots round a recording, at least */
-  --aspect-window: 1620 / 996; /* a desktop recording's own shape: the app window, edge to edge */
+  --aspect-window: 1620 / 1004; /* a desktop recording's own shape: the app window, edge to edge */
   --radius-window: var(--radius-10);
   --shadow-window: var(--shadow-ring), 0 16px 40px -16px rgba(0, 0, 0, 0.3);
   --aspect-phone: 720 / 1510; /* the phone recording's own shape, handset included */
