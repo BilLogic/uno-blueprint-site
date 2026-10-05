@@ -22,7 +22,7 @@ const sides = {
 
 /**
  * A button or nav item whose target is not ready yet: disabled, as every such
- * link is, and quiet, with its label only. Hovering it, focusing it or, on a
+ * link is, in its own look, with its label only. Hovering it, focusing it or, on a
  * touch screen, tapping it shows a "Coming soon" tooltip, which is its
  * description rather than part of its name. It takes focus so a keyboard can
  * reach that tooltip; the tooltip itself never takes a click.

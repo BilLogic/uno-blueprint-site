@@ -16,17 +16,15 @@ const variants = {
   ghost: "border-line-2 bg-panel text-ink hover:border-line-hot",
 } as const;
 
-const soon = "cursor-not-allowed border-line-2 bg-panel text-muted";
-
 /**
  * A link styled as a button. One whose target is not ready yet is disabled, as
- * every such link is, with its label muted and "Coming soon" as a tooltip.
+ * every such link is, and keeps its own look, with "Coming soon" as a tooltip.
  * Setting the real href and dropping `notReady` makes it live.
  */
 export function ButtonLink({ link, variant, children }: ButtonLinkProps) {
   if (link.notReady) {
     return (
-      <SoonLink link={link} side="above" wrapClassName="inline-flex" className={`${base} ${soon}`}>
+      <SoonLink link={link} side="above" wrapClassName="inline-flex" className={`${base} cursor-not-allowed ${variants[variant]}`}>
         {children}
       </SoonLink>
     );
