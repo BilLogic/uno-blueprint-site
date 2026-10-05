@@ -90,7 +90,7 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
             aria-label={wanted ? showcase.pause : showcase.play}
             title={wanted ? showcase.pause : showcase.play}
             onClick={() => setChoice(!wanted)}
-            className="absolute top-2.5 right-2.5 z-6 grid size-8 cursor-pointer place-items-center rounded-8 border border-line-2 bg-panel text-muted transition-[color,border-color] duration-t-1 motion-reduce:transition-none hover:border-line-hot hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand max-lg:top-2 max-lg:right-2"
+            className="absolute top-3.5 right-3.5 z-6 grid size-8 cursor-pointer place-items-center rounded-8 border border-line-2 bg-panel text-muted transition-[color,border-color] duration-t-1 motion-reduce:transition-none hover:border-line-hot hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand max-lg:top-2 max-lg:right-2"
           >
             <Icon className="size-icon-sm" strokeWidth={1.75} aria-hidden />
           </button>

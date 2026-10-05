@@ -276,19 +276,16 @@
    */
   --container-title: 620px; /* a section headline */
   --container-caption: 70ch;
-  --text-mock: clamp(12px, 1.05vw, 13px);
-  --text-mock--line-height: 1.5;
-  --shadow-mock: 0 20px 50px rgba(0, 0, 0, 0.1);
   --spacing-dots: 18px; /* the stage's dot grid */
   /* The handset, standing on the stage's foot; its screen has the phone recording's own shape. */
+  --text-handset: clamp(12px, 1.05vw, 13px); /* the em its rim and corners are sized in */
+  --text-handset--line-height: 1.5;
+  --shadow-handset: 0 20px 50px rgba(0, 0, 0, 0.1);
   --aspect-phone: 600 / 1222;
   --radius-phone: 1.8em; /* the handset's corners */
   --spacing-phone-top: 6%; /* the stage above the handset */
   --spacing-phone-bezel: 0.45em; /* the rim round the screen */
   --radius-phone-screen: calc(var(--radius-phone) - var(--spacing-phone-bezel)); /* inside that rim */
-  /* A cell drawn as two bars, as the hero's board does. */
-  --spacing-bar-long: 78%;
-  --spacing-bar-short: 48%;
   /* Lane accents, the same in both themes. */
   --color-lane-user: #3f8fd6;
   --color-lane-front: #d9902f;
@@ -328,6 +325,9 @@
   --color-sketch: color-mix(in oklab, var(--color-ink) 32%, transparent); /* the first line of sketched text */
   --spacing-hero-stage-x: clamp(16px, 2vw, 28px);
   --spacing-hero-stage-y: clamp(44px, 6vw, 88px);
+  /* A cell's sketched text, drawn as two bars. */
+  --spacing-bar-long: 78%;
+  --spacing-bar-short: 48%;
   /* One gap between tools, mark, board and panel; the row is centred, so the frame's margins match. */
   --spacing-hero-gap: clamp(18px, 2.6vw, 40px);
   --spacing-hero-panel: clamp(168px, 17vw, 240px);

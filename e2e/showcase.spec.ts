@@ -149,8 +149,20 @@ test("the phone's recording keeps its own shape inside the handset", async ({ pa
   await page.goto("/");
   const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
   await list.getByRole("tab", { name: phone.label }).click();
-  const box = (await page.getByRole("tabpanel", { name: phone.label }).locator("video").boundingBox())!;
-  expect(box.width / box.height).toBeCloseTo(600 / 1222, 2);
+  const video = page.getByRole("tabpanel", { name: phone.label }).locator("video");
+  await video.scrollIntoViewIfNeeded();
+  // The poster is the recording's first frame, so it has the recording's shape; the test browser cannot decode the video itself.
+  const shape = await video.evaluate(
+    (node: HTMLVideoElement) =>
+      new Promise<number>((resolve, reject) => {
+        const poster = new Image();
+        poster.onload = () => resolve(poster.naturalWidth / poster.naturalHeight);
+        poster.onerror = () => reject(new Error(`no poster at ${node.poster}`));
+        poster.src = node.poster;
+      }),
+  );
+  const box = (await video.boundingBox())!;
+  expect(box.width / box.height).toBeCloseTo(shape, 2);
 });
 
 /**

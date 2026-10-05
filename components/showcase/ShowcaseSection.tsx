@@ -26,6 +26,7 @@ export function ShowcaseSection<T extends string>({ head, idBase, tabsLabel, tab
           idBase={idBase}
           label={tabsLabel}
           items={tabs.map((tab) => {
+            // Annotated: TypeScript cannot render `Record<T, LucideIcon>[T]` as a component while T is generic.
             const Icon: LucideIcon = icons[tab.value];
             return { ...tab, icon: <Icon className="size-4" aria-hidden />, handset: tab.value === handset };
           })}

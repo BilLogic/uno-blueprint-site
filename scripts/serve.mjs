@@ -78,7 +78,22 @@ createServer((req, res) => {
     if (!matches(rule.pattern, path)) continue;
     for (const [name, value] of Object.entries(rule.headers)) res.setHeader(name, value);
   }
-  res.writeHead(status, { "Content-Type": types[extname(body)] ?? "application/octet-stream" });
+  const type = types[extname(body)] ?? "application/octet-stream";
+  // Safari plays video only from a server that answers byte ranges, so a single range gets a 206.
+  const range = file && /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? "");
+  if (range && (range[1] || range[2])) {
+    const size = statSync(file).size;
+    const start = range[1] ? Number(range[1]) : Math.max(size - Number(range[2]), 0);
+    const end = range[1] && range[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
+    if (start > end || start >= size) {
+      res.writeHead(416, { "Content-Range": `bytes */${size}` }).end();
+      return;
+    }
+    res.writeHead(206, { "Content-Type": type, "Accept-Ranges": "bytes", "Content-Range": `bytes ${start}-${end}/${size}`, "Content-Length": end - start + 1 });
+    createReadStream(file, { start, end }).pipe(res);
+    return;
+  }
+  res.writeHead(status, { "Content-Type": type, ...(file && { "Accept-Ranges": "bytes" }) });
   if (existsSync(body)) createReadStream(body).pipe(res);
   else res.end("Not found");
 }).listen(port, () => console.log(`Serving ${root} on http://localhost:${port}`));

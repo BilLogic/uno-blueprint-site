@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { recordingFiles } from "@/lib/recording";
 
 type RecordingProps = {
-  /** The recording's file name under public/videos. */
+  /** The recording's file name under public/videos, without its extension. */
   name: string;
   /** Plays inside a handset standing on the stage's foot, rather than filling the stage. */
   handset: boolean;
@@ -33,8 +33,11 @@ export function Recording({ name, handset, near, playing, labelledBy }: Recordin
     }
     // React sets `muted` as a property after hydration, if at all; a muted video may always play.
     element.muted = true;
-    // A pause before the play settles rejects it, which is no error.
-    element.play().catch(() => {});
+    // A pause before the play settles rejects it with an AbortError, which is no error; anything else surfaces.
+    element.play().catch((error: unknown) => {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      throw error;
+    });
   }, [playing]);
 
   const player = (
@@ -58,7 +61,7 @@ export function Recording({ name, handset, near, playing, labelledBy }: Recordin
   return (
     <div
       data-testid="phone-frame"
-      className="absolute top-(--spacing-phone-top) bottom-0 left-1/2 -translate-x-1/2 overflow-hidden rounded-t-phone border border-b-0 border-line bg-card-2 px-(--spacing-phone-bezel) pt-(--spacing-phone-bezel) text-mock shadow-mock"
+      className="absolute top-(--spacing-phone-top) bottom-0 left-1/2 -translate-x-1/2 overflow-hidden rounded-t-phone border border-b-0 border-line bg-card-2 px-(--spacing-phone-bezel) pt-(--spacing-phone-bezel) text-handset shadow-handset"
     >
       <div className="aspect-phone h-full overflow-hidden rounded-t-phone-screen bg-panel">{player}</div>
     </div>

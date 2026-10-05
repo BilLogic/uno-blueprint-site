@@ -10,6 +10,7 @@ type Canvas = {
   /** Each tab plays a screen recording, named by its file under public/videos. */
   tabs: readonly { value: CanvasTab; label: string; caption: string; recording: string }[];
 };
+
 export const canvas = {
   headline: "Canvas for your team.",
   subheadline:
