@@ -60,7 +60,7 @@ test.describe("on a wide screen", () => {
 
   test("the case study is not linked until it exists", async ({ page }) => {
     await page.goto("/");
-    const caseStudy = section(page).getByRole("link", { name: "Read the case study Coming soon" });
+    const caseStudy = section(page).getByRole("link", { name: "Case study coming soon" });
     await expect(caseStudy).toHaveAttribute("aria-disabled", "true");
     await expect(caseStudy).not.toHaveAttribute("href", /.*/);
     await expect(caseStudy).toHaveCSS("cursor", "not-allowed");
@@ -91,7 +91,7 @@ test.describe("on a phone", () => {
     await expect(section(page).getByRole("heading", { name: "Ideas we build on." })).toBeHidden();
     await expect(section(page).locator("[data-voice]").first()).toBeHidden();
     await expect(plus(page)).toBeVisible();
-    await expect(section(page).getByRole("link", { name: "Read the case study" })).toBeVisible();
+    await expect(section(page).getByRole("link", { name: "Case study coming soon" })).toBeVisible();
 
     const results = await page.locator("#proof").boundingBox();
     const card = await page.locator("#ideas [data-end]").boundingBox();

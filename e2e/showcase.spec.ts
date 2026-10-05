@@ -126,20 +126,30 @@ const posterShape = async (video: Locator) => {
   );
 };
 
-/** A desktop recording is a window inset on the stage's dots: whole, at its own shape, centred, with dots all round. */
-async function expectInsetWindow(stage: Locator) {
+/**
+ * A desktop recording is a window standing on the stage's foot: whole, at its
+ * own shape, centred across, with dots above and beside it and its frame's
+ * lower edge sunk out of sight.
+ */
+async function expectFlushWindow(stage: Locator) {
   const window = stage.getByTestId("recording-window");
   const box = (await window.boundingBox())!;
   expect(box.width / box.height).toBeCloseTo(await posterShape(window.locator("video")), 2);
   const margin = await margins(stage, window);
-  for (const side of Object.values(margin)) expect(side).toBeGreaterThanOrEqual(15);
+  // It sinks past the stage's foot by its frame's width, 0.6% of its own width,
+  // so the stage clips the frame's lower edge; the stage's one-pixel rim is in that.
+  const sink = (box.width * 0.6) / 100;
+  expect(margin.bottom).toBeLessThan(0);
+  expect(margin.bottom).toBeCloseTo(1 - sink, 0);
+  for (const side of [margin.top, margin.left, margin.right]) expect(side).toBeGreaterThanOrEqual(11);
   expect(Math.abs(margin.left - margin.right)).toBeLessThan(1);
-  expect(Math.abs(margin.top - margin.bottom)).toBeLessThan(1);
-  // The recording fills its window, which rounds its corners.
+  // The recording fills its window, which rounds its upper corners only.
   const video = (await window.locator("video").boundingBox())!;
   expect(video.width).toBeCloseTo(box.width, 0);
   expect(video.height).toBeCloseTo(box.height, 0);
-  expect(await window.evaluate((node) => parseFloat(getComputedStyle(node).borderTopLeftRadius))).toBeGreaterThan(0);
+  const radius = (corner: string) => window.evaluate((node, name) => parseFloat(getComputedStyle(node).getPropertyValue(name)), corner);
+  expect(await radius("border-top-left-radius")).toBeGreaterThan(0);
+  expect(await radius("border-bottom-left-radius")).toBe(0);
 }
 
 const phone = touchPoints.tabs.find((tab) => tab.value === "phone")!;
@@ -158,7 +168,7 @@ for (const width of [1440, 390]) {
     if (width === 390) expect(size.height / size.width).toBeCloseTo(5 / 4, 1);
     for (const tab of touchPoints.tabs.filter((candidate) => candidate !== phone)) {
       await list.getByRole("tab", { name: tab.label }).click();
-      await expectInsetWindow(page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage"));
+      await expectFlushWindow(page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage"));
     }
     await list.getByRole("tab", { name: phone.label }).click();
 
@@ -177,7 +187,7 @@ for (const width of [1440, 390]) {
 }
 
 for (const width of [1440, 390]) {
-  test(`at ${width} px every canvas tab's stage is one size, and its recording is a window inset on it`, async ({ page }) => {
+  test(`at ${width} px every canvas tab's stage is one size, and its recording is a window on the stage's foot`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/");
     const list = page.getByRole("tablist", { name: canvas.tabsLabel });
@@ -192,7 +202,7 @@ for (const width of [1440, 390]) {
       const video = stage.locator("video");
       await expect(video).toHaveAttribute("src", `/videos/${tab.recording}.mp4`);
       await expect(video).toHaveAttribute("poster", `/videos/${tab.recording}.webp`);
-      await expectInsetWindow(stage);
+      await expectFlushWindow(stage);
     }
   });
 }
