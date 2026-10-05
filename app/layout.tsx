@@ -3,6 +3,7 @@ import { Ubuntu_Sans, Ubuntu_Sans_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import { site } from "@/content/site";
 import { view } from "@/content/view";
+import { jsonLdText, structuredData } from "@/lib/structured-data";
 import { THEME_COLORS, themeBootScript } from "@/lib/theme";
 import "./globals.css";
 
@@ -17,19 +18,25 @@ const mono = Ubuntu_Sans_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
-  title: site.name,
+  title: site.title,
   description: site.description,
-  // Points agents at the same page as markdown.
-  alternates: { types: { "text/markdown": `/${view.agentFile}` } },
+  alternates: {
+    canonical: "/",
+    // Points agents at the same page as markdown.
+    types: { "text/markdown": `/${view.agentFile}` },
+  },
+  // The picture is app/opengraph-image.png, with its alt text beside it.
   openGraph: {
     type: "website",
     url: "/",
     siteName: site.name,
-    title: site.name,
-    description: site.description,
+    title: site.share.title,
+    description: site.share.description,
   },
-  twitter: { card: "summary_large_image", title: site.name, description: site.description },
+  twitter: { card: "summary_large_image", title: site.share.title, description: site.share.description },
 };
+
+const jsonLd = jsonLdText(structuredData(site));
 
 // THEME_COLORS explains why these are literals; a manual pick repoints them (boot script, useTheme).
 export const viewport: Viewport = {
@@ -45,6 +52,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+        {/* Data, not code: browsers never run it, so the content security policy does not list it. */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
       </head>
       <body>{children}</body>
     </html>
