@@ -36,3 +36,6 @@ export function buildPolicy(hashes) {
     "frame-ancestors 'none'",
   ].join("; ");
 }
+
+/** The policy as a meta tag can carry it: browsers ignore frame-ancestors there and warn about it. */
+export const metaPolicy = (hashes) => buildPolicy(hashes).replace("; frame-ancestors 'none'", "");
