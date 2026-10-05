@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { canvas } from "@/content/canvas";
+import { showcase as controls } from "@/content/showcase";
 import { touchPoints } from "@/content/touch-points";
 import { showOnly } from "./isolate";
 
@@ -48,6 +49,9 @@ for (const width of widths) {
                 poster.src = video.poster;
               }),
           );
+          // Play shows only under the pointer; parked off the stage, it is hidden.
+          await page.mouse.move(0, 0);
+          await expect(section.getByRole("button", { name: controls.play }).locator("..")).toHaveCSS("opacity", "0");
           // A section taller than the screen would have the sticky nav drawn over its top.
           await page.locator("header").evaluate((nav) => (nav.style.visibility = "hidden"));
           await expect(section).toHaveScreenshot(`${showcase.name}-${width}-${colorScheme}.png`);
