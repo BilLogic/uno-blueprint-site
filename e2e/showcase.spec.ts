@@ -215,7 +215,7 @@ test("the phone never zooms for a reader who asked for less motion", async ({ pa
   const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
   await list.getByRole("tab", { name: phone.label }).click();
   const panel = page.getByRole("tabpanel", { name: phone.label });
-  await panel.getByTestId("showcase-stage").scrollIntoViewIfNeeded();
+  await panel.getByTestId("showcase-stage").hover();
   await panel.getByRole("button", { name: showcase.play }).click();
   await expect(panel.getByTestId("phone")).toHaveCSS("transform", "none");
 });
@@ -251,7 +251,7 @@ test.describe("a showcase recording", () => {
     await expect(video).toHaveAccessibleName(`${understand.label}. ${understand.caption}`);
     await expect(video).not.toHaveAttribute("data-state", "playing");
 
-    await panel.getByTestId("showcase-stage").scrollIntoViewIfNeeded();
+    await panel.getByTestId("showcase-stage").hover();
     await expect(video).toHaveAttribute("data-state", "playing");
 
     const button = panel.getByRole("button", { name: showcase.pause });
@@ -279,7 +279,7 @@ test.describe("a showcase recording", () => {
     await page.goto("/");
     const panel = page.getByRole("tabpanel", { name: understand.label });
     const video = panel.locator("video");
-    await panel.getByTestId("showcase-stage").scrollIntoViewIfNeeded();
+    await panel.getByTestId("showcase-stage").hover();
     const play = panel.getByRole("button", { name: showcase.play });
     await expect(play).toBeVisible();
     await expect(video).not.toHaveAttribute("data-state", "playing");
@@ -288,6 +288,34 @@ test.describe("a showcase recording", () => {
     await expect(video).toHaveAttribute("data-state", "playing");
     await expect(panel.getByRole("button", { name: showcase.pause })).toBeVisible();
   });
+});
+
+test("Pause/Play shows while the stage is pointed at or focused", async ({ page }) => {
+  await page.goto("/");
+  const panel = page.getByRole("tabpanel", { name: understand.label });
+  const stage = panel.getByTestId("showcase-stage");
+  const button = panel.getByRole("button", { name: showcase.pause });
+  // The button's wrapper is what fades.
+  const reveal = button.locator("..");
+  await stage.scrollIntoViewIfNeeded();
+  await page.mouse.move(0, 0);
+  await expect(reveal).toHaveCSS("opacity", "0");
+  await stage.hover();
+  await expect(reveal).toHaveCSS("opacity", "1");
+  await page.mouse.move(0, 0);
+  await expect(reveal).toHaveCSS("opacity", "0");
+  await button.focus();
+  await expect(reveal).toHaveCSS("opacity", "1");
+});
+
+test("on a touch screen Pause/Play always shows", async ({ browser }) => {
+  const context = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  await page.goto("/");
+  const panel = page.getByRole("tabpanel", { name: understand.label });
+  await panel.getByTestId("showcase-stage").scrollIntoViewIfNeeded();
+  await expect(panel.getByRole("button", { name: showcase.pause }).locator("..")).toHaveCSS("opacity", "1");
+  await context.close();
 });
 
 for (const width of [1440, 390]) {

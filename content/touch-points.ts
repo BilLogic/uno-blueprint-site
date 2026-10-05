@@ -55,8 +55,8 @@ export const touchPoints = {
         { at: 1.8, scale: 1.7, x: 0.5, y: 0.6 },
         { at: 3.6, scale: 1.7, x: 0.5, y: 0.6 },
         // The navigation sidebar is open.
-        { at: 4, scale: 1.7, x: 0.42, y: 0.3 },
-        { at: 4.9, scale: 1.7, x: 0.42, y: 0.3 },
+        { at: 4, scale: 1.7, x: 0.5, y: 0.3 },
+        { at: 4.9, scale: 1.7, x: 0.5, y: 0.3 },
         // The Employment & Access board.
         { at: 5.2, scale: 1.6, x: 0.5, y: 0.42 },
         { at: 8.3, scale: 1.6, x: 0.5, y: 0.42 },

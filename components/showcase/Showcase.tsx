@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { Maximize2, Pause, Play } from "lucide-react";
 import { showcase } from "@/content/showcase";
+import { revealOnHover } from "@/components/reveal";
 import { TabList, tabId, tabPanelId } from "@/components/ui/Tabs";
 import { useInView } from "@/hooks/use-in-view";
 import { useReducedMotion } from "@/hooks/use-media-query";
@@ -85,7 +86,7 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
         <div
           ref={stageRef}
           data-testid="showcase-stage"
-          className={`relative aspect-video max-w-full overflow-hidden rounded-16 border border-line bg-card bg-dots ${tall ? "max-sm:aspect-stage-tall" : "max-sm:aspect-stage-canvas-phone"}`}
+          className={`group relative aspect-video max-w-full overflow-hidden rounded-16 border border-line bg-card bg-dots ${tall ? "max-sm:aspect-stage-tall" : "max-sm:aspect-stage-canvas-phone"}`}
         >
           <Recording
             key={item.value}
@@ -98,17 +99,22 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
             playing={shouldPlay({ choice, reducedMotion, inView })}
             labelledBy={captionId}
           />
-          {/* On a phone the fullscreen button sits under Pause/Play, down the corner. */}
+          {/*
+            Pause/Play shows while the stage is pointed at or focused, and always
+            on a touch screen; there the fullscreen button sits under it.
+          */}
           <div className="absolute top-3.5 right-3.5 z-6 flex flex-col gap-2 max-lg:top-2 max-lg:right-2">
-            <button
-              type="button"
-              aria-label={wanted ? showcase.pause : showcase.play}
-              title={wanted ? showcase.pause : showcase.play}
-              onClick={() => setChoice(!wanted)}
-              className={buttonClass}
-            >
-              <Icon className="size-icon-sm" strokeWidth={1.75} aria-hidden />
-            </button>
+            <div className={`flex ${revealOnHover}`}>
+              <button
+                type="button"
+                aria-label={wanted ? showcase.pause : showcase.play}
+                title={wanted ? showcase.pause : showcase.play}
+                onClick={() => setChoice(!wanted)}
+                className={buttonClass}
+              >
+                <Icon className="size-icon-sm" strokeWidth={1.75} aria-hidden />
+              </button>
+            </div>
             <button
               type="button"
               aria-label={showcase.fullscreen}
