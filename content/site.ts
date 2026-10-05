@@ -19,7 +19,7 @@ export const site = {
     repository: links.github.href,
     language: "TypeScript",
     license: "https://opensource.org/licenses/MIT",
-    authors: ["Bill Guo", "Meryem Maraşlı"],
+    authors: ["Bill Guo", "Meryem Marasli"],
   },
   /**
    * Crawlers the site welcomes by name, answer engines included, so a blanket

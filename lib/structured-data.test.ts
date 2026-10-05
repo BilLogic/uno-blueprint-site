@@ -20,7 +20,7 @@ describe("structuredData", () => {
       license: "https://opensource.org/licenses/MIT",
       author: [
         { "@type": "Person", name: "Bill Guo" },
-        { "@type": "Person", name: "Meryem Maraşlı" },
+        { "@type": "Person", name: "Meryem Marasli" },
       ],
     });
   });

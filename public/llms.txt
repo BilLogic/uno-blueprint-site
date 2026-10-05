@@ -12,7 +12,7 @@ What it does:
 - Four skills run in Claude Code, Cursor, Codex or any agent that reads markdown: map (draft or update a blueprint from documents), slice (cut out a journey, lane, step or cell for one audience), audit (find what is missing, conflicting, unowned or stale) and what-if (trace a change before anyone makes it).
 - Documents stay in their own tools; cells link back to them. Agents draft and suggest, a person signs off, and every edit can be undone.
 
-How to start: run `npm create uno-blueprint@latest` for a workspace with the canvas and the skills, on sample data with no database. Or add the skills to Claude Code with `claude plugin marketplace add BilLogic/uno-blueprint` and `claude plugin install ub@ub-marketplace`. Built by Bill Guo and Meryem Maraşlı. MIT license.
+How to start: run `npm create uno-blueprint@latest` for a workspace with the canvas and the skills, on sample data with no database. Or add the skills to Claude Code with `claude plugin marketplace add BilLogic/uno-blueprint` and `claude plugin install ub@ub-marketplace`. Built by Bill Guo and Meryem Marasli. MIT license.
 
 ## Docs
 
