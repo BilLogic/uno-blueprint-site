@@ -6,7 +6,7 @@ const { plus } = ideas;
 function Buttons() {
   return (
     <>
-      <ButtonLink link={plus.primary.link} variant="primary">
+      <ButtonLink link={plus.primary.link} variant="primary" soonLabel={plus.primary.soonLabel}>
         {plus.primary.label}
       </ButtonLink>
       <ButtonLink link={plus.secondary.link} variant="ghost">
