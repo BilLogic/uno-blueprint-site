@@ -65,8 +65,5 @@ const SCROLL_KEYS: ReadonlySet<string> = new Set([
   " ",
 ]);
 
-/** Whether pressing `key` (a `KeyboardEvent.key`) scrolls the page. */
-export const keyScrollsPage = (key: string) => SCROLL_KEYS.has(key);
-
 /** Whether pressing `key` (a `KeyboardEvent.key`) stops a glide. */
-export const keyStopsGlide = keyScrollsPage;
+export const keyStopsGlide = (key: string) => SCROLL_KEYS.has(key);

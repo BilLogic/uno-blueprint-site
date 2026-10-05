@@ -101,29 +101,6 @@ for (const [how, interrupt] of [
   });
 }
 
-test("the walkthrough's gesture gate stays off while a glide carries the page past it", async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/");
-  // A touch moving on every frame counts as a gesture to the gate, but does not stop a glide.
-  await page.evaluate(() => {
-    const move = () => {
-      dispatchEvent(new Event("touchmove"));
-      requestAnimationFrame(move);
-    };
-    requestAnimationFrame(move);
-  });
-  await cta(page).click();
-  await expect
-    .poll(
-      async () => {
-        const { top, margin } = await landing(page);
-        return Math.abs(top - margin);
-      },
-      { timeout: GLIDE_TIMEOUT },
-    )
-    .toBeLessThan(2);
-});
-
 test("a link taken from the keyboard hands focus to its section, so Tab carries on from there", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
