@@ -6,6 +6,9 @@
   NODE_VERSION = "22"
   NEXT_TELEMETRY_DISABLED = "1"
 
+# Netlify sets CONTEXT on every build; only "production" loads Microsoft Clarity
+# (lib/analytics.ts), so deploy previews, CI and local builds carry no tag.
+
 # The content security policy is not here: it lists a hash for each inline
 # script Next.js writes, so `npm run build` generates it into out/_headers.
 [[headers]]

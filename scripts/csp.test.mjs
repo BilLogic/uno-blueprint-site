@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPolicy, hashProblem, inlineScriptHashes, sha256 } from "./csp.mjs";
+import { buildPolicy, hashProblem, inlineScriptHashes, sha256, usesClarity } from "./csp.mjs";
 
 const boot = "document.documentElement.dataset.x=1";
 
@@ -29,5 +29,24 @@ describe("buildPolicy", () => {
     const policy = buildPolicy(new Set([sha256(boot)]));
     expect(policy).toContain(`script-src 'self' ${sha256(boot)};`);
     expect(policy).not.toMatch(/script-src[^;]*unsafe-inline/);
+  });
+});
+
+describe("Clarity in the policy", () => {
+  it("lists no Clarity hosts when no page loads the tag", () => {
+    expect(buildPolicy(new Set([sha256(boot)]))).not.toMatch(/clarity|bing/);
+  });
+
+  it("allows Clarity's scripts, beacons and data when a page loads the tag", () => {
+    const policy = buildPolicy(new Set([sha256(boot)]), { clarity: true });
+    expect(policy).toMatch(/script-src [^;]*https:\/\/\*\.clarity\.ms/);
+    expect(policy).toMatch(/connect-src 'self' https:\/\/\*\.clarity\.ms https:\/\/c\.bing\.com/);
+    expect(policy).toMatch(/img-src 'self' data: https:\/\/\*\.clarity\.ms https:\/\/c\.bing\.com/);
+    expect(policy).not.toMatch(/script-src[^;]*unsafe-inline/);
+  });
+
+  it("spots the tag in a page", () => {
+    expect(usesClarity('<script>s.src="https://www.clarity.ms/tag/abc"</script>')).toBe(true);
+    expect(usesClarity("<script>boot()</script>")).toBe(false);
   });
 });
