@@ -1,7 +1,7 @@
-import { LayoutGrid, Presentation, SquarePen } from "lucide-react";
+import { GitCompareArrows, LayoutGrid, Presentation, SquarePen } from "lucide-react";
 import { canvas } from "@/content/canvas";
 import { ShowcaseSection } from "@/components/showcase/ShowcaseSection";
-import { CheckMock, PresentMock, UnderstandMock } from "./mocks";
+import { CheckMock, CompareMock, PresentMock, UnderstandMock } from "./mocks";
 
 /** What a team does with the blueprint on the canvas, one tab per job. */
 export function CanvasSection() {
@@ -14,6 +14,7 @@ export function CanvasSection() {
       pictures={{
         understand: { Icon: LayoutGrid, picture: <UnderstandMock /> },
         check: { Icon: SquarePen, picture: <CheckMock /> },
+        compare: { Icon: GitCompareArrows, picture: <CompareMock /> },
         present: { Icon: Presentation, picture: <PresentMock /> },
       }}
     />

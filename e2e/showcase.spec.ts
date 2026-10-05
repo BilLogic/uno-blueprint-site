@@ -1,5 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { canvas } from "@/content/canvas";
+import { repairBoard } from "@/content/repair-board";
 import { touchPoints } from "@/content/touch-points";
 
 /** A showcase's tab labels, in order: the first, the second, then the rest. */
@@ -82,6 +83,21 @@ for (const row of rows) {
   });
 }
 
+/**
+ * Opens each tab in turn and expects its stage to be the same size as every
+ * other's, so a tab's picture never shifts the page. Clicking may scroll the
+ * tab into view, so only the stage's size is compared.
+ */
+async function expectOneStageSize(page: Page, list: Locator, tabs: readonly { label: string }[]) {
+  const sizes = [];
+  for (const tab of tabs) {
+    await list.getByRole("tab", { name: tab.label }).click();
+    const box = await page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage").boundingBox();
+    sizes.push([box!.width, box!.height]);
+  }
+  expect(new Set(sizes.map(String)).size).toBe(1);
+}
+
 const phone = touchPoints.tabs.find((tab) => tab.value === "phone")!;
 
 for (const width of [1440, 390]) {
@@ -93,15 +109,7 @@ for (const width of [1440, 390]) {
     const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
     await expect(list.getByRole("tab")).toHaveCount(touchPoints.tabs.length);
     await expect(list.getByRole("tab").last()).toHaveText(phone.label);
-
-    // Clicking may scroll the tab into view, so only the stage's size is compared.
-    const sizes = [];
-    for (const tab of touchPoints.tabs) {
-      await list.getByRole("tab", { name: tab.label }).click();
-      const box = await page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage").boundingBox();
-      sizes.push([box!.width, box!.height]);
-    }
-    expect(new Set(sizes.map(String)).size).toBe(1);
+    await expectOneStageSize(page, list, touchPoints.tabs);
 
     const panel = page.getByRole("tabpanel", { name: phone.label });
     await expect(panel.getByText(phone.caption)).toBeVisible();
@@ -112,6 +120,49 @@ for (const width of [1440, 390]) {
     expect(frame.x).toBeGreaterThanOrEqual(stage.x);
     expect(frame.x + frame.width).toBeLessThanOrEqual(stage.x + stage.width);
     expect(frame.height).toBeGreaterThan(stage.height * 0.75);
+  });
+}
+
+const compare = canvas.tabs.find((tab) => tab.value === "compare")!;
+/** The lanes where some path takes its own step, each of which holds one parted slot. */
+const partedLanes = repairBoard.lanes.filter((lane) =>
+  lane.steps.some((step) => Object.values(canvas.compare.swaps).some((swaps) => step in swaps)),
+);
+
+for (const width of [1440, 390]) {
+  test(`at ${width} px compare paths sits where the content puts it, every tab's stage is one size, and the paths part on the board`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    const list = page.getByRole("tablist", { name: canvas.tabsLabel });
+    await expect(list.getByRole("tab")).toHaveText(canvas.tabs.map((tab) => tab.label));
+    await expect(list.getByRole("tab").nth(canvas.tabs.indexOf(compare))).toHaveText(compare.label);
+    await expectOneStageSize(page, list, canvas.tabs);
+
+    await list.getByRole("tab", { name: compare.label }).click();
+    const panel = page.getByRole("tabpanel", { name: compare.label });
+    await expect(panel.getByText(compare.caption)).toBeVisible();
+    await expect(panel.getByText(canvas.compare.open, { exact: true })).toBeVisible();
+
+    // Each parted slot holds every path, in order. The board may run past the stage's foot, as the
+    // other boards do, but each path's name stays readable inside the slot and the stage at either width.
+    const parted = panel.getByTestId("parted-slot");
+    await expect(parted).toHaveCount(partedLanes.length);
+    const first = parted.first();
+    const tags = first.getByTestId("path-tag");
+    await expect(tags).toHaveText([...canvas.understand.paths]);
+    const stage = (await panel.getByTestId("showcase-stage").boundingBox())!;
+    const slot = (await first.boundingBox())!;
+    expect(slot.x).toBeGreaterThanOrEqual(stage.x);
+    expect(slot.x + slot.width).toBeLessThanOrEqual(stage.x + stage.width);
+    for (const tag of await tags.all()) {
+      const box = (await tag.boundingBox())!;
+      expect(box.x + box.width).toBeLessThanOrEqual(slot.x + slot.width + 0.5);
+      expect(box.y + box.height).toBeLessThanOrEqual(stage.y + stage.height);
+      expect(await tag.evaluate((node) => parseFloat(getComputedStyle(node).fontSize))).toBeGreaterThan(0);
+      expect(await tag.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+    }
   });
 }
 
