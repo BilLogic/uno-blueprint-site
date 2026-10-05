@@ -15,6 +15,7 @@ npm ci
 npm run dev        # http://localhost:3000
 npm run build      # static export into out/, plus out/_headers
 npm run serve      # serves out/ on http://localhost:4173 with those headers
+npm run og-image   # after a build: renders app/opengraph-image.png from the hero picture, via out/ on port 4177
 ```
 
 ## Where things live
@@ -24,7 +25,7 @@ npm run serve      # serves out/ on http://localhost:4173 with those headers
 | `app/` | The page, its metadata, icons and preview image |
 | `components/` | One folder per part of the page; components only render and animate |
 | `content/` | Every word and link the page shows, apart from the components |
-| `content/links.ts` | All links. One not ready yet carries `notReady: true` and renders disabled in every build, `npm run dev` included (no `href`, `aria-disabled`); a button or nav item also says "Coming soon". List them with `grep -rn "notReady: true" content` |
+| `content/links.ts` | All links. One not ready yet carries `notReady: true` and renders disabled in every build, `npm run dev` included (no `href`, `aria-disabled`); a button or nav item also takes focus and shows "Coming soon" as a tooltip on hover or focus. List them with `grep -rn "notReady: true" content` |
 | `styles/tokens.css` | Design tokens, declared once, exposed to Tailwind (see the mapping at its top) |
 | `hooks/`, `lib/` | Small typed hooks, and the pure logic they use |
 | `e2e/` | End-to-end, accessibility and visual tests against the built site |

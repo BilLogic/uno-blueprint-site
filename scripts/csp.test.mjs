@@ -9,6 +9,11 @@ describe("inlineScriptHashes", () => {
     const html = `<script>${boot}</script><script src="/a.js"></script><script></script>`;
     expect([...inlineScriptHashes(html)]).toEqual([sha256(boot)]);
   });
+
+  it("skips data blocks, which the browser never runs", () => {
+    const html = `<script type="application/ld+json">{"@type":"WebSite"}</script><script type="text/javascript">a()</script><script type="module">b()</script>`;
+    expect([...inlineScriptHashes(html)]).toEqual([sha256("a()"), sha256("b()")]);
+  });
 });
 
 describe("hashProblem", () => {
