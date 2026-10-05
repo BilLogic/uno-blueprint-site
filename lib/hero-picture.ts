@@ -86,14 +86,6 @@ export const TIMING = {
 /** The curve a document follows along a beam. */
 export const BEAM_EASING = "cubic-bezier(.45,0,.25,1)";
 
-/** A CSS time token ("700ms" or "0.7s") in milliseconds; 0 when it is unset. */
-export function cssMs(value: string) {
-  const time = value.trim();
-  const number = parseFloat(time);
-  if (Number.isNaN(number)) return 0;
-  return time.endsWith("ms") ? number : time.endsWith("s") ? number * 1000 : number;
-}
-
 /**
  * The timings that follow a CSS transition, worked out from its token
  * (styles/tokens.css is the one source): a walker lands when its walk ends;

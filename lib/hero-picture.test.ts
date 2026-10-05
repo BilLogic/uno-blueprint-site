@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   FILLS,
   arrivesOnField,
-  cssMs,
   fieldsOpen,
   motionTimes,
   statusOf,
@@ -332,12 +331,6 @@ describe("the panel's fields", () => {
 });
 
 describe("motion timings", () => {
-  it("read a CSS time token", () => {
-    expect(cssMs("700ms")).toBe(700);
-    expect(cssMs(" 0.65s")).toBe(650);
-    expect(cssMs("")).toBe(0);
-  });
-
   it("land a walker when its walk ends, and ride a little past the board's resize", () => {
     expect(motionTimes({ walk: 700, soloMove: 650 })).toEqual({ arrive: 700, ride: 720, unsolo: 760 });
   });

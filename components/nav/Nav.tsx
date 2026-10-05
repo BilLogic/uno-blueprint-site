@@ -25,7 +25,7 @@ export function Nav() {
             {/* A link whose target is not ready yet is a disabled item in the same look, with "Coming soon" as a tooltip below it. */}
             {nav.links.map(({ label, link }) =>
               link.notReady ? (
-                <SoonLink key={label} link={link} side="below" wrapClassName="flex" className={soonClass}>
+                <SoonLink key={label} link={link} wrapClassName="flex" className={soonClass}>
                   {label}
                 </SoonLink>
               ) : (

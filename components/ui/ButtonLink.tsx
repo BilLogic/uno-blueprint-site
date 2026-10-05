@@ -1,12 +1,11 @@
 import type { SiteLink } from "@/content/links";
 import { anchorProps } from "./anchor-props";
-import { SoonLink } from "./SoonLink";
 
 type ButtonLinkProps = {
   link: SiteLink;
   variant: "primary" | "ghost";
   children: string;
-  /** What the button says while its target is not ready; given, it says so itself and needs no tooltip. */
+  /** What the button says while its target is not ready, such as "Case study coming soon". */
   soonLabel?: string;
 };
 
@@ -20,23 +19,16 @@ const variants = {
 
 /**
  * A link styled as a button. One whose target is not ready yet is disabled, as
- * every such link is, and keeps its own look; it says "Coming soon" in its
- * label when it has a `soonLabel`, otherwise in a tooltip.
+ * every such link is, and keeps its own look; it says so in its label, which
+ * is its `soonLabel` (the case card's "Case study coming soon").
  * Setting the real href and dropping `notReady` makes it live.
  */
 export function ButtonLink({ link, variant, children, soonLabel }: ButtonLinkProps) {
-  if (link.notReady && soonLabel) {
-    return (
-      <a {...anchorProps(link)} className={`${base} cursor-not-allowed ${variants[variant]}`}>
-        {soonLabel}
-      </a>
-    );
-  }
   if (link.notReady) {
     return (
-      <SoonLink link={link} side="above" wrapClassName="inline-flex" className={`${base} cursor-not-allowed ${variants[variant]}`}>
-        {children}
-      </SoonLink>
+      <a {...anchorProps(link)} className={`${base} cursor-not-allowed ${variants[variant]}`}>
+        {soonLabel ?? children}
+      </a>
     );
   }
   return (
