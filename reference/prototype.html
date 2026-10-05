@@ -2629,7 +2629,7 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
   const showFor=to=>to===1?IDUR:to===S_BP+1?1250:to===S_OPEN+1?950+CELL_BEAT:to>=N?GATE_EXIT:560;
   function gate(r,sh){const L=r.height-sh,y0=r.top+scrollY-top,t=(scrollY-y0)/L,was=(gLast-y0)/L,down=scrollY>gLast,now=performance.now();gLast=scrollY;
     /* the page's own jump back to a held step is not the reader scrolling, so it does not keep the gesture alive */
-    if(Math.round(scrollY)!==gHeld){clearTimeout(gT);gT=setTimeout(()=>{gBase=-1;gFree=0},GATE_IDLE)}
+    if(Math.round(scrollY)!==gHeld){clearTimeout(gT);gT=setTimeout(()=>{gBase=-1;gFree=0;gHeld=-1},GATE_IDLE)}
     if(gBase>=0&&gFree&&now>=gFree&&wNew>gAt){gBase=-1;gFree=0}
     /* a gesture counts from where the page was before it moved, so a flick that starts on a step's edge still stops at the next one;
        one that starts past the walkthrough is free, and the 2px absorbs the rounding of the held position */
@@ -2638,6 +2638,16 @@ const UNO_MARK="<img class=\"um-l\" src=\"data:image/png;base64,iVBORw0KGgoAAAAN
     const to=gBase+1;if(!down||to>N||t<(to<N?EDGE[to]:1))return;
     const from=EDGE[to-1],y=Math.round(to<N?y0+(from+(EDGE[to]-from)*GATE_LAND)*L:y0+L);
     if(scrollY>y){gHeld=y;if(!gFree){gFree=now+showFor(to);gAt=now}scrollTo({top:y,behavior:'instant'})}}
+  /* a wheel that would carry the page past the end of the step it may reach (or past where the walkthrough lets go, after the last one) is stopped
+     before it moves, and the page rests just inside that step, where the pull-back would put it. Pulling back is invisible while the stage is pinned,
+     but where the walkthrough lets go the whole page would jump down and back, which reads as shaking. */
+  const stopAt=to=>{if(to>N)return null;const r=scr.getBoundingClientRect(),L=r.height-sticky.offsetHeight,y0=r.top+scrollY-top;
+    if(to===N){const y=Math.round(y0+L);return [y,y]}const from=EDGE[to-1];return [Math.floor(y0+EDGE[to]*L)-1,Math.round(y0+(from+(EDGE[to]-from)*GATE_LAND)*L)]};
+  addEventListener('wheel',e=>{if(e.deltaY<=0||gBase<0||RM||window.GLIDE)return;const n=performance.now();
+    if(gFree&&n>=gFree&&wNew>gAt){gBase=-1;gFree=0;gHeld=-1;return}
+    const to=gBase+1,st=stopAt(to);if(!st||scrollY+e.deltaY<=st[0])return;const y=st[1];
+    e.preventDefault();clearTimeout(gT);gT=setTimeout(()=>{gBase=-1;gFree=0;gHeld=-1},GATE_IDLE);
+    if(!gFree){gFree=n+showFor(to);gAt=n}gHeld=y;if(Math.round(scrollY)!==y)scrollTo({top:y,behavior:'instant'})},{passive:false});
   function onScroll(){if(raf||window.GLIDE)return;raf=requestAnimationFrame(()=>{raf=0;if(RM){set(N-1);return}
     gate(scr.getBoundingClientRect(),sticky.offsetHeight);
     const r=scr.getBoundingClientRect(),sh=sticky.offsetHeight,t=Math.min(.9999,Math.max(0,(top-r.top)/(r.height-sh)));const past=t>=EDGE[0]||t/EDGE[0]>.42;let ix=EDGE.findIndex(x=>t<x);if(ix===0&&past&&ipv===1)ix=1;goal(ix);introGoal(past?1:0)})}

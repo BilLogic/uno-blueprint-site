@@ -217,6 +217,37 @@ export const gateReleases = ({ base, freeAt, since }: GateGesture, now: number, 
   base !== null && now >= freeAt && newSwipeAt > since;
 
 /**
+ * What the gate does with the gesture at `now`, given the running one
+ * (`null` when none runs), when the latest swipe began and when the reader
+ * last touched the page (ms): `"count"` a gesture afresh from where the page
+ * is (the reader has just touched a page no gesture holds, or a running one
+ * that holds nothing sees a new swipe), `"release"` a held step and count
+ * afresh (see `gateReleases`), or `"carry on"` as it is.
+ */
+export function gestureStart(
+  gesture: GateGesture | null,
+  now: number,
+  newSwipeAt: number,
+  lastInput: number,
+): "count" | "release" | "carry on" {
+  if (!gesture) return now - lastInput <= TIMING.gestureInput ? "count" : "carry on";
+  if (!gateReleases(gesture, now, newSwipeAt)) return "carry on";
+  return gesture.freeAt ? "release" : "count";
+}
+
+/** An element's scroll: how far down it is, how tall its content, how tall its box, in px. */
+export type ScrollBox = { scrollTop: number; scrollHeight: number; clientHeight: number };
+
+/** Short of the end by less than this, in px, is the end: scroll positions come in fractions. */
+const SCROLL_END_SLACK = 1;
+
+/** Whether `box` can still scroll the way a wheel of `delta` goes (down when positive). */
+export function scrollsFurther({ scrollTop, scrollHeight, clientHeight }: ScrollBox, delta: number): boolean {
+  if (delta > 0) return scrollTop + clientHeight < scrollHeight - SCROLL_END_SLACK;
+  return scrollTop > 0;
+}
+
+/**
  * Telling a new wheel swipe from the last one still coasting: the deltas'
  * size, whether they have been falling, the last event's time, and when the
  * latest swipe began (ms).
@@ -270,9 +301,52 @@ export function gateHold(base: number, y: number, { start, travel }: GateScroll,
   if (to > edges.length) return null;
   const last = to === edges.length;
   if ((y - start) / travel < (last ? 1 : edges[to]!)) return null;
-  if (last) return Math.round(start + travel);
+  return gateRest(to, { start, travel }, edges);
+}
+
+/** Where a held gesture rests on step `to`: 15% into it, or where the walkthrough lets go after the last step. */
+function gateRest(to: number, { start, travel }: GateScroll, edges: readonly number[]): number {
+  if (to === edges.length) return Math.round(start + travel);
   const from = edges[to - 1]!;
   return Math.round(start + (from + (edges[to]! - from) * GATE_LAND) * travel);
+}
+
+/** How far a wheel reported in lines scrolls, per line, in px. */
+const WHEEL_LINE = 40;
+
+/**
+ * A wheel's `delta` in px, from its `mode` (`WheelEvent.deltaMode`: 0 pixels,
+ * 1 lines, 2 pages) and the page's height, as some browsers report a mouse
+ * wheel in lines.
+ */
+export function wheelPixels(delta: number, mode: number, pageHeight: number): number {
+  if (mode === 1) return delta * WHEEL_LINE;
+  if (mode === 2) return delta * pageHeight;
+  return delta;
+}
+
+/**
+ * Where a downward wheel of `delta` px, from `y`, in a gesture that counts
+ * from step `base`, must stop the page instead, or `null` to let it through.
+ * A wheel that would carry the page past the end of the next step (or past
+ * where the walkthrough lets go, after the last step) is stopped before it
+ * moves, and the page rests where `gateHold` would pull it back to. Pulling
+ * back is invisible while the stage is pinned, but where the walkthrough lets
+ * go the whole page would jump down and back for a frame, and that reads as
+ * shaking.
+ */
+export function wheelStop(
+  base: number,
+  y: number,
+  delta: number,
+  { start, travel }: GateScroll,
+  edges: readonly number[],
+): number | null {
+  const to = base + 1;
+  if (to > edges.length) return null;
+  const limit = to === edges.length ? Math.round(start + travel) : Math.floor(start + edges[to]! * travel) - 1;
+  if (y + delta <= limit) return null;
+  return gateRest(to, { start, travel }, edges);
 }
 
 /** The section's scroll length in viewport heights, from its steps' total. */

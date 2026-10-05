@@ -11,6 +11,10 @@ import {
   gateHold,
   gateReleases,
   gestureBase,
+  gestureStart,
+  scrollsFurther,
+  wheelPixels,
+  wheelStop,
   noteWheel,
   showFor,
   goalStep,
@@ -400,8 +404,99 @@ describe("the gesture gate", () => {
     expect(gateHold(2, 2600, { start: 1000.6, travel: 1000 }, edges)).toBe(2001);
   });
 
+  it("lets a wheel through that stays inside the step the gesture may reach", () => {
+    expect(wheelStop(0, 1000, 120, scroll, edges)).toBeNull();
+    expect(wheelStop(0, 1700, 99, scroll, edges)).toBeNull();
+    expect(wheelStop(1, 1900, 40, scroll, edges)).toBeNull();
+  });
+
+  it("stops a wheel that would carry the page past that step, and rests it 15% into the step", () => {
+    expect(wheelStop(0, 1700, 100, scroll, edges)).toBe(1460);
+    expect(wheelStop(0, 1000, 5000, scroll, edges)).toBe(1460);
+    expect(wheelStop(1, 1900, 100, scroll, edges)).toBe(1830);
+  });
+
+  it("stops the wheel that leaves the last step where the walkthrough lets go", () => {
+    expect(wheelStop(2, 1990, 10, scroll, edges)).toBeNull();
+    expect(wheelStop(2, 1990, 11, scroll, edges)).toBe(2000);
+    expect(wheelStop(2, 2000, 70, scroll, edges)).toBe(2000);
+  });
+
+  it("rests a stopped wheel where the pull-back would have", () => {
+    for (const [base, y, delta] of [
+      [0, 1700, 300],
+      [1, 1850, 400],
+      [2, 1950, 200],
+    ] as const) {
+      expect(wheelStop(base, y, delta, scroll, edges)).toBe(gateHold(base, y + delta, scroll, edges));
+    }
+  });
+
+  it("rests a stopped wheel on whole pixels", () => {
+    expect(wheelStop(0, 1700, 300, { start: 1000.4, travel: 1000 }, edges)).toBe(1460);
+    expect(wheelStop(2, 1990, 100, { start: 1000.6, travel: 1000 }, edges)).toBe(2001);
+  });
+
   it("waits for the page to be still this long before the next gesture counts", () => {
     expect(TIMING.gateIdle).toBe(260);
+  });
+});
+
+describe("gestureStart", () => {
+  const held = { base: 3, freeAt: 1000, since: 400 };
+  const counted = { base: 3, freeAt: 0, since: 400 };
+
+  it("starts a gesture on input this recent, and leaves the page free otherwise", () => {
+    expect(gestureStart(null, 1000, 0, 1000 - TIMING.gestureInput)).toBe("count");
+    expect(gestureStart(null, 1000, 0, 1000)).toBe("count");
+    expect(gestureStart(null, 1000, 0, 999 - TIMING.gestureInput)).toBe("carry on");
+  });
+
+  it("releases a held step once it has shown and a new swipe began", () => {
+    expect(gestureStart(held, 1000, 500, 1000)).toBe("release");
+  });
+
+  it("carries on with a held step that is still showing, or whose swipe is still coasting", () => {
+    expect(gestureStart(held, 999, 500, 999)).toBe("carry on");
+    expect(gestureStart(held, 2000, 400, 2000)).toBe("carry on");
+  });
+
+  it("counts a running gesture that holds nothing afresh on a new swipe", () => {
+    expect(gestureStart(counted, 1000, 500, 1000)).toBe("count");
+    expect(gestureStart(counted, 1000, 400, 1000)).toBe("carry on");
+  });
+});
+
+describe("scrollsFurther", () => {
+  const box = { scrollTop: 100, scrollHeight: 500, clientHeight: 200 };
+
+  it("says an element can scroll on down until its foot shows, and up until its top does", () => {
+    expect(scrollsFurther(box, 40)).toBe(true);
+    expect(scrollsFurther(box, -40)).toBe(true);
+    expect(scrollsFurther({ ...box, scrollTop: 300 }, 40)).toBe(false);
+    expect(scrollsFurther({ ...box, scrollTop: 0 }, -40)).toBe(false);
+  });
+
+  it("counts a fraction of a pixel short of the end as the end", () => {
+    expect(scrollsFurther({ ...box, scrollTop: 299.5 }, 40)).toBe(false);
+  });
+
+  it("says an element whose content fits cannot scroll", () => {
+    expect(scrollsFurther({ scrollTop: 0, scrollHeight: 200, clientHeight: 200 }, 40)).toBe(false);
+  });
+});
+
+describe("wheelPixels", () => {
+  it("keeps a wheel in pixels as it is", () => {
+    expect(wheelPixels(120, 0, 900)).toBe(120);
+  });
+
+  it("counts a wheel in lines at 40 px a line", () => {
+    expect(wheelPixels(3, 1, 900)).toBe(120);
+  });
+
+  it("counts a wheel in pages at the page's height", () => {
+    expect(wheelPixels(1, 2, 900)).toBe(900);
   });
 });
 

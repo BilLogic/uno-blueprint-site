@@ -124,6 +124,57 @@ async function swipe(page: Page) {
   }
 }
 
+/** A harder flick for the shake test: many smaller notches, so several land on the stop. */
+const HARD_NOTCHES = 30;
+const HARD_NOTCH = 120;
+
+/** A hard flick down, with no pause after it. */
+async function hardFlick(page: Page) {
+  const size = page.viewportSize()!;
+  await page.mouse.move(size.width / 2, size.height / 2);
+  for (let i = 0; i < HARD_NOTCHES; i++) {
+    await page.mouse.wheel(0, HARD_NOTCH);
+    await page.waitForTimeout(NOTCH_EVERY);
+  }
+}
+
+/** Where on Cells a gesture into the stop after it starts: where the gesture before it rests. */
+const CELLS_REST = 0.15;
+/** For the nested scroller: how far above where the walkthrough lets go the page sits, the scroller's box and content, and how many notches go to it (all within its content). */
+const NEAR_THE_END = 50;
+const NESTED_BOX = 300;
+const NESTED_CONTENT = 3000;
+const NESTED_NOTCHES = 10;
+/** A move of the section smaller than this, in px, is rounding, not a reversal. */
+const REVERSAL_SLACK = 1;
+
+/** Samples the section's bottom edge every frame from now on. */
+const sampleBottom = (page: Page) =>
+  section(page).evaluate((el) => {
+    const w = window as unknown as { bottoms: number[] };
+    w.bottoms = [];
+    const sample = () => {
+      w.bottoms.push(el.getBoundingClientRect().bottom);
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+
+/** How many times the sampled section turned back by more than `REVERSAL_SLACK`. */
+async function reversals(page: Page) {
+  const bottoms = await page.evaluate(() => (window as unknown as { bottoms: number[] }).bottoms);
+  let heading = 0;
+  let count = 0;
+  for (let i = 1; i < bottoms.length; i++) {
+    const move = bottoms[i]! - bottoms[i - 1]!;
+    if (Math.abs(move) <= REVERSAL_SLACK) continue;
+    const sign = Math.sign(move);
+    if (heading && sign !== heading) count++;
+    heading = sign;
+  }
+  return count;
+}
+
 /** Whether the stage shows the cell lit, and whether its panel is open, as `[lit, open]`. */
 const cellState = (page: Page) =>
   section(page)
@@ -200,6 +251,61 @@ test.describe("structure walkthrough", () => {
       expect(await seen(page)).toEqual(titles);
     });
   }
+
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    for (const [name, gesture] of [
+      ["a trackpad swipe", swipe],
+      ["a hard flick", hardFlick],
+    ] as const) {
+      test(`at ${viewport.width} px ${name} into the stop after Cells never moves the page back`, async ({ page }) => {
+        await page.setViewportSize(viewport);
+        await page.goto("/");
+        await scrollToStep(section(page), titles.length - 1, CELLS_REST);
+        await settlesOn(page, titles.at(-1)!);
+        await page.waitForTimeout(FLICK_SETTLE);
+        await sampleBottom(page);
+        await gesture(page);
+        await page.waitForTimeout(FLICK_SETTLE);
+        expect(await progress(page)).toBeCloseTo(1, HELD_AT_END_PLACES);
+        expect(await reversals(page)).toBe(0);
+      });
+    }
+  }
+
+  test("a wheel over a scroller inside the page scrolls that, even where the page would be stopped", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    await scrollToStep(section(page), titles.length - 1, CELLS_REST);
+    await settlesOn(page, titles.at(-1)!);
+    // Just above where the walkthrough lets go, so a wheel down on the page would be stopped there.
+    const { start, travel } = await pinnedScroll(page);
+    const before = Math.round(start + travel - NEAR_THE_END);
+    await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), before);
+    await page.waitForTimeout(FLICK_SETTLE);
+    await page.evaluate(
+      ([box, content]) => {
+        const scroller = document.createElement("div");
+        scroller.id = "nested-scroller";
+        scroller.style.cssText = `position:fixed;inset:50% auto auto 50%;translate:-50% -50%;width:${box}px;height:${box}px;overflow:auto;z-index:1000;background:#fff`;
+        scroller.innerHTML = `<div style="height:${content}px"></div>`;
+        document.body.append(scroller);
+      },
+      [NESTED_BOX, NESTED_CONTENT],
+    );
+    const size = page.viewportSize()!;
+    await page.mouse.move(size.width / 2, size.height / 2);
+    for (let i = 0; i < NESTED_NOTCHES; i++) {
+      await page.mouse.wheel(0, HARD_NOTCH);
+      await page.waitForTimeout(NOTCH_EVERY);
+    }
+    await page.waitForTimeout(FLICK_SETTLE);
+    const scrolled = await page.locator("#nested-scroller").evaluate((el) => el.scrollTop);
+    expect(scrolled).toBe(NESTED_NOTCHES * HARD_NOTCH);
+    expect((await pinnedScroll(page)).y).toBe(before);
+  });
 
   test("one hard flick up goes back several steps", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
