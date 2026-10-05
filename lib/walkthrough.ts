@@ -110,6 +110,15 @@ export const cellOpensLate = (step: number, previous: number) => step >= STEP.op
 export const cellArrival = ({ cellBeat, panelDelay, panelOpen }: { cellBeat: number; panelDelay: number; panelOpen: number }) =>
   cellBeat + panelDelay + panelOpen;
 
+/** Room past the cell's arrival before the hold at the end lets go anyway, in ms, should its panel never report it has opened. */
+const HOLD_SLACK = 500;
+
+/**
+ * The longest the hold at the end lasts, in ms: the cell's arrival (see
+ * `cellArrival`) and a little room, counted from when the last step shows.
+ */
+export const holdCap = (arrival: number) => arrival + HOLD_SLACK;
+
 /** Short of where the walkthrough lets go, or past it by less than this, in px, is there: scroll positions come in fractions. */
 const EXIT_SLACK = 1;
 
@@ -275,14 +284,19 @@ export function goalStep(progress: number, edges: readonly number[], stackFormed
   return step === STEP.context && stackFormed && introTriggered(progress, edges) ? STEP.context + 1 : step;
 }
 
+/** How many steps the walkthrough may fall behind the scroll and still walk to it; further behind, it jumps. */
+export const CATCH_UP = 2;
+
 /**
- * The next step on the way from `current` to `goal`: one at a time, however
- * fast the page scrolls, so no step is skipped. The opening step is left only
- * once its cards have become the stack.
+ * The next step on the way from `current` to `goal`. At a reading pace the
+ * walkthrough walks, one step at a time; scrolled further ahead (or back) than
+ * `CATCH_UP` steps, it jumps straight to the goal, skipping the steps between.
+ * The opening step is left only once its cards have become the stack.
  */
 export function nextStep(current: number, goal: number, stackFormed: boolean): number {
   if (current === goal) return current;
   if (current === STEP.context && goal > current && !stackFormed) return current;
+  if (Math.abs(goal - current) > CATCH_UP) return goal;
   return current + (goal > current ? 1 : -1);
 }
 

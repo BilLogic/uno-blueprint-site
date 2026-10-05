@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { structure } from "@/content/structure";
 import {
+  CATCH_UP,
   STEP,
   TIMING,
   availableStageHeight,
@@ -11,6 +12,7 @@ import {
   fitStage,
   flatLift,
   goalStep,
+  holdCap,
   holdsExit,
   introTriggered,
   keyScroll,
@@ -326,15 +328,23 @@ describe("goalStep", () => {
 });
 
 describe("nextStep", () => {
-  it("moves one step toward the goal, however far away it is", () => {
-    expect(nextStep(1, 9, true)).toBe(2);
-    expect(nextStep(9, 1, true)).toBe(8);
+  it("walks one step toward a goal close by", () => {
+    expect(nextStep(1, 2, true)).toBe(2);
+    expect(nextStep(1, 1 + CATCH_UP, true)).toBe(2);
+    expect(nextStep(9, 9 - CATCH_UP, true)).toBe(8);
     expect(nextStep(4, 4, true)).toBe(4);
+  });
+
+  it("jumps straight to a goal further away, either way", () => {
+    expect(nextStep(1, 2 + CATCH_UP, true)).toBe(2 + CATCH_UP);
+    expect(nextStep(3, STEP.cell, true)).toBe(STEP.cell);
+    expect(nextStep(STEP.cell, 1, true)).toBe(1);
   });
 
   it("holds the opening step until the stack has formed", () => {
     expect(nextStep(0, 5, false)).toBe(0);
-    expect(nextStep(0, 5, true)).toBe(1);
+    expect(nextStep(0, 1, true)).toBe(1);
+    expect(nextStep(0, STEP.cell, true)).toBe(STEP.cell);
     expect(nextStep(1, 0, false)).toBe(0);
   });
 });
@@ -357,6 +367,12 @@ describe("stepHold", () => {
 describe("cellArrival", () => {
   it("adds the cell's beat, the panel's wait for the beam and its opening", () => {
     expect(cellArrival({ cellBeat: TIMING.cellBeat, panelDelay: 840, panelOpen: 620 })).toBe(2160);
+  });
+});
+
+describe("holdCap", () => {
+  it("leaves half a second past the cell's arrival", () => {
+    expect(holdCap(2160)).toBe(2660);
   });
 });
 

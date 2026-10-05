@@ -16,8 +16,10 @@ export type Morph = { progress: number; draw: (progress: number) => void };
  * its own `top`; `edges` end each step (see `stepEdges`).
  *
  * The scroll sets a goal, and the walkthrough walks to it one step at a time,
- * holding each step as long as its choreography needs (see `stepHold`), so no
- * step is skipped however fast the page scrolls. Past a buffer into the
+ * holding each step as long as its choreography needs (see `stepHold`); left
+ * further behind by a fast scroll, it jumps to the goal (see `nextStep`).
+ * `toEnd` jumps it to the last step at once, the morph finished on the way,
+ * for the hold at the section's end (see `useExitHold`). Past a buffer into the
  * opening step, the morph of `morph` plays forward on its own clock, and the
  * opening step is left only once it has finished. Above the buffer it plays
  * back, but only once the walkthrough has walked back to the opening step
@@ -31,9 +33,10 @@ export function useScrollStep(
   edges: readonly number[],
   held: boolean,
   morph: RefObject<Morph>,
-): StepChange {
+): { change: StepChange; toEnd: RefObject<() => void> } {
   const [change, setChange] = useState<StepChange>({ step: 0, previous: -1 });
   const current = useRef(0);
+  const toEnd = useRef(() => {});
   const last = edges.length - 1;
 
   useEffect(() => {
@@ -81,6 +84,23 @@ export function useScrollStep(
       }
     };
 
+    toEnd.current = () => {
+      const from = current.current;
+      const end = edges.length - 1;
+      if (from === end) return;
+      // The cards become the stack at once, so the walkthrough may leave the opening step.
+      cancelAnimationFrame(morphFrame);
+      morphFrame = 0;
+      forward = true;
+      m.progress = 1;
+      m.draw(1);
+      clearTimeout(hold);
+      hold = 0;
+      goal = end;
+      current.current = end;
+      setChange({ step: end, previous: from });
+    };
+
     const read = () => {
       frame = 0;
       const section = scroller.current;
@@ -110,6 +130,7 @@ export function useScrollStep(
     addEventListener("scroll", schedule, { passive: true });
     addEventListener("resize", onResize);
     return () => {
+      toEnd.current = () => {};
       cancelAnimationFrame(frame);
       cancelAnimationFrame(morphFrame);
       clearTimeout(settle);
@@ -119,5 +140,5 @@ export function useScrollStep(
     };
   }, [scroller, sticky, edges, held, morph]);
 
-  return held ? { step: last, previous: last } : change;
+  return { change: held ? { step: last, previous: last } : change, toEnd };
 }
