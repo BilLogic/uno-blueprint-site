@@ -101,6 +101,67 @@ export const poseOf = (step: number, opened = true): Pose =>
  */
 export const cellOpensLate = (step: number, previous: number) => step >= STEP.open && previous < STEP.open;
 
+/** How long the cell takes to arrive from above, in ms: lit for its beat, then opened (see `stepHold`). */
+export const CELL_ARRIVAL = TIMING.cellBeat + TIMING.openCell;
+
+/** Short of where the walkthrough lets go, or past it by less than this, in px, is there: scroll positions come in fractions. */
+const EXIT_SLACK = 1;
+
+/** A scroll the reader asks for at the walkthrough's end. */
+export type ExitMove = {
+  /** The step on show. */
+  step: number;
+  /** How long ago that step's animation began, in ms. */
+  since: number;
+  /** How far the move would scroll the page, in px: positive going down. */
+  delta: number;
+  /** The page's scroll position, and the one where the walkthrough lets go of its frame, in px. */
+  y: number;
+  exit: number;
+};
+
+/**
+ * Whether a move is held: stopped before the page moves, so a fast scroll does
+ * not carry the reader out of the walkthrough before the cell has opened. Only
+ * on the last step, only while the cell is still arriving (`CELL_ARRIVAL`), and
+ * only a move down that would cross where the walkthrough lets go; a page
+ * already past it, or any move up, is never held.
+ */
+export function holdsExit({ step, since, delta, y, exit }: ExitMove): boolean {
+  if (step !== STEP.cell || delta <= 0) return false;
+  if (since < 0 || since >= CELL_ARRIVAL) return false;
+  return y <= exit + EXIT_SLACK && y + delta > exit;
+}
+
+/** How far a wheel reported in lines scrolls, per line, in px. */
+const WHEEL_LINE = 40;
+
+/**
+ * A wheel's `delta` in px, from its `mode` (`WheelEvent.deltaMode`: 0 pixels,
+ * 1 lines, 2 pages) and the page's height, as some browsers report a mouse
+ * wheel in lines.
+ */
+export function wheelPixels(delta: number, mode: number, pageHeight: number): number {
+  if (mode === 1) return delta * WHEEL_LINE;
+  if (mode === 2) return delta * pageHeight;
+  return delta;
+}
+
+/** How far an arrow key scrolls, in px: a little more than browsers do, so a press that would cross the exit is caught. */
+const KEY_LINE = 60;
+
+/**
+ * How far a key (a `KeyboardEvent.key`) scrolls the page down, in px, at
+ * most: negative going up, 0 for a key that does not scroll down a page
+ * `pageHeight` tall.
+ */
+export function keyScroll(key: string, shift: boolean, pageHeight: number): number {
+  if (key === " ") return shift ? -pageHeight : pageHeight;
+  if (key === "PageDown") return pageHeight;
+  if (key === "ArrowDown") return KEY_LINE;
+  return 0;
+}
+
 /** Each step's end, as a fraction of the whole scroll, from the scroll length each step gets. */
 export function stepEdges(lengths: readonly number[]): number[] {
   const total = lengths.reduce((sum, length) => sum + length, 0);

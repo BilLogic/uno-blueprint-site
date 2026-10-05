@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useExitHold } from "@/hooks/use-exit-hold";
 import { useReducedMotion } from "@/hooks/use-media-query";
 import { useScrollStep, type Morph, type StepChange } from "@/hooks/use-scroll-step";
 import {
@@ -64,8 +65,9 @@ function setLine(line: Element | undefined, [x1, y1]: readonly number[], [x2, y2
  * phone). The opening cards are drawn here, wherever their morph into the
  * stack has got to, and re-measured on a resize. Arriving at the cell from
  * above, it lights on the flat board and opens `TIMING.cellBeat` later; `open`
- * says whether it has. With reduced motion nothing is pinned and the last step
- * shows, open.
+ * says whether it has, and until it has opened the page is held at the
+ * section's end (see `useExitHold`). With reduced motion nothing is pinned and
+ * the last step shows, open.
  *
  * `edges` end each step (see `stepEdges`); `scrollLength` is their total in
  * viewport heights. Attach the returned refs to the matching elements.
@@ -82,6 +84,7 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
   const morph = useRef<Morph>({ progress: 0, draw: () => {} });
   const change = useScrollStep(scroller, sticky, edges, reduced, morph);
   const { step, previous } = change;
+  useExitHold(scroller, sticky, change, reduced);
   const [layout, setLayout] = useState<StageLayout>({ narrow: false, lift: 0 });
   // The step change whose cell beat has run out, so its cell may open. Matched by identity:
   // `useScrollStep` makes a new change object for each move, so a later arrival waits afresh.

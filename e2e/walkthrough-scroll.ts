@@ -21,3 +21,14 @@ export async function scrollToStep(section: Locator, index: number, share = 0.5)
   const before = lengths.slice(0, index).reduce((sum, length) => sum + length, 0);
   await scrollToProgress(section, (before + lengths[index]! * share) / total);
 }
+
+/** The scroll position where the walkthrough in `section` lets go of its frame: the end of its pinned scroll. */
+export async function exitScroll(section: Locator): Promise<number> {
+  return section.evaluate((el) => {
+    const pinned = [...el.querySelectorAll<HTMLElement>("*")].find((n) => getComputedStyle(n).position === "sticky");
+    const scroller = pinned?.parentElement;
+    if (!pinned || !scroller) throw new Error("no pinned walkthrough in the section");
+    const top = scroller.getBoundingClientRect().top + window.scrollY;
+    return top - parseFloat(getComputedStyle(pinned).top) + scroller.offsetHeight - pinned.offsetHeight;
+  });
+}

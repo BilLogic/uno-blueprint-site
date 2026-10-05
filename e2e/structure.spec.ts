@@ -1,7 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { structure } from "../content/structure";
-import { TIMING } from "../lib/walkthrough";
-import { scrollToStep } from "./walkthrough-scroll";
+import { getStarted } from "../content/get-started";
+import { CELL_ARRIVAL, TIMING } from "../lib/walkthrough";
+import { exitScroll, scrollToStep } from "./walkthrough-scroll";
 
 const heading = `${structure.heading.lead} ${structure.heading.main}`;
 const titles = structure.steps.map((step) => step.title);
@@ -18,6 +19,22 @@ const OPEN_CLASS = /(^|__)open$/;
 const ROUNDING_SLACK = 1;
 /** How far above the section the wheeling starts, in px. */
 const LEAD_IN = 300;
+/** How early, or late, the hold at the end may let go against the cell's arrival, in ms: a frame early, a busy frame or two late. */
+const HOLD_EARLY = 100;
+/** Generous, as the clocks are read across a wheel loop driven from the test runner, which a busy machine slows. */
+const HOLD_LATE = 600;
+/** How long the reader keeps on going down after the planned notches, to get past a hold at the end. */
+const KEEP_GOING_MS = CELL_ARRIVAL + 3000;
+/** A fast wheel at the end: a big notch every frame. */
+const FAST_NOTCH = 400;
+const FAST_EVERY = 16;
+/** A swipe up a phone's screen, in px: where the finger lands, where it lifts, and each move between. */
+const SWIPE_X = 195;
+const SWIPE_FROM = 640;
+const SWIPE_TO = 340;
+const SWIPE_STEP = 30;
+/** How far past the exit the swipes carry on, to show the page goes on after the hold, in px. */
+const SWIPE_PAST = 400;
 
 /** Long enough for the morph and every step's hold, one at a time, with room to spare. */
 const WALK_TIMEOUT = 30_000;
@@ -71,44 +88,115 @@ async function range(page: Page) {
   return { top, end: top + box.height };
 }
 
+type Notes = {
+  /** Times the page was carried back up. */
+  backs: number;
+  /** Where the page was once each move down the page held had been handled, and when it came. */
+  held: { y: number; at: number; touch: boolean }[];
+  /** When the caption turned to the last step, the cell's panel opened, and the page first went past the exit. */
+  cellsAt?: number;
+  openedAt?: number;
+  leftAt?: number;
+};
+
 /**
- * Wheels from above the section to past its end, `delta` px a notch, a notch
- * every `every` ms. Returns how far the wheels asked the page to move (to past
- * the section's end), how far it moved, and how many times it was carried
- * back up on the way.
+ * Notes, from now on, every time the page is carried back up, every wheel,
+ * scrolling key or touch move down that the page held (stopped before it
+ * moved), when the last step shows and its panel opens, and when the page
+ * first goes past `exit`, where the walkthrough lets go.
  */
-async function wheelThrough(page: Page, delta: number, every: number) {
-  const { top, end } = await range(page);
-  const from = top - LEAD_IN;
-  await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), from);
-  await page.evaluate((slack) => {
-    const w = window as unknown as { backs: number };
-    w.backs = 0;
-    let last = scrollY;
-    addEventListener(
-      "scroll",
-      () => {
-        if (scrollY < last - slack) w.backs++;
-        last = scrollY;
-      },
-      { passive: true },
-    );
-  }, ROUNDING_SLACK);
+async function note(page: Page, exit: number) {
+  await page.evaluate(
+    ([slack, exitY, lastTitle, open]) => {
+      const w = window as unknown as { notes: Notes };
+      const notes: Notes = { backs: 0, held: [] };
+      w.notes = notes;
+      let last = scrollY;
+      addEventListener(
+        "scroll",
+        () => {
+          if (scrollY < last - slack) notes.backs++;
+          last = scrollY;
+          if (notes.leftAt === undefined && scrollY > exitY + slack) notes.leftAt = performance.now();
+        },
+        { passive: true },
+      );
+      // Checked once the page's own listeners have had the event.
+      const heldDown = (event: Event, down: boolean) => {
+        const at = performance.now();
+        setTimeout(() => {
+          if (down && event.defaultPrevented) notes.held.push({ y: scrollY, at, touch: event.type === "touchmove" });
+        });
+      };
+      addEventListener("wheel", (e) => heldDown(e, e.deltaY > 0), { passive: true });
+      addEventListener("keydown", (e) => heldDown(e, ["PageDown", "ArrowDown", " "].includes(e.key) && !e.shiftKey));
+      addEventListener("touchmove", (e) => heldDown(e, true), { passive: true });
+      const live = document.querySelector("section [aria-live]")!;
+      const stage = document.querySelector("[data-board]")!.closest("[aria-hidden]")!;
+      const check = () => {
+        if (notes.cellsAt === undefined && live.querySelector("b")?.textContent === lastTitle) notes.cellsAt = performance.now();
+        if (notes.openedAt === undefined && [...stage.classList].some((c) => new RegExp(open!).test(c)))
+          notes.openedAt = performance.now();
+        requestAnimationFrame(check);
+      };
+      check();
+    },
+    [ROUNDING_SLACK, exit, titles.at(-1)!, OPEN_CLASS.source] as const,
+  );
+}
+
+const notes = (page: Page) => page.evaluate(() => (window as unknown as { notes: Notes }).notes);
+const pageY = (page: Page) => page.evaluate(() => window.scrollY);
+
+/**
+ * Wheels down `delta` px a notch, a notch every `every` ms, `count` notches,
+ * then keeps on until the page is past `past` (or `KEEP_GOING_MS` is up).
+ * Returns how far the wheels asked the page to move and how many notches.
+ */
+async function wheelDown(page: Page, delta: number, every: number, count: number, past: number) {
   const size = page.viewportSize()!;
   await page.mouse.move(size.width / 2, size.height / 2);
   let asked = 0;
-  for (let y = from; y < end; y += delta) {
+  for (let i = 0; i < count; i++) {
+    await page.mouse.wheel(0, delta);
+    asked += delta;
+    await page.waitForTimeout(every);
+  }
+  const until = Date.now() + KEEP_GOING_MS;
+  while ((await pageY(page)) <= past && Date.now() < until) {
     await page.mouse.wheel(0, delta);
     asked += delta;
     await page.waitForTimeout(every);
   }
   // Let the last notch land before measuring.
   await nextFrame(page);
-  const { moved, backs } = await page.evaluate(
-    (start) => ({ moved: scrollY - start, backs: (window as unknown as { backs: number }).backs }),
-    from,
-  );
-  return { asked, moved, backs };
+  return asked;
+}
+
+/** Scrolls to the Steps step, waits for it, then to the start of Cells, and notes from there on (see `note`). */
+async function arriveAtCells(page: Page) {
+  const steps = titles.indexOf("Steps");
+  await scrollToStep(section(page), steps, 0.9);
+  await settlesOn(page, "Steps");
+  const exit = await exitScroll(section(page));
+  await note(page, exit);
+  await scrollToStep(section(page), titles.indexOf("Cells"), 0.02);
+  await settlesOn(page, "Cells");
+  return exit;
+}
+
+/**
+ * Every held move left the page at the exit (a touch, short of it), while the
+ * cell was still arriving: a wheel or key that would cross it brings the page
+ * there and no further.
+ */
+function expectHeldOnlyAtTheExit(n: Notes, exit: number) {
+  for (const { y, at, touch } of n.held) {
+    expect(y).toBeLessThanOrEqual(exit + ROUNDING_SLACK);
+    if (!touch) expect(y).toBeGreaterThanOrEqual(exit - ROUNDING_SLACK);
+    expect(n.cellsAt).toBeDefined();
+    expect(at - n.cellsAt!).toBeLessThan(CELL_ARRIVAL + HOLD_LATE);
+  }
 }
 
 /** Whether the stage shows the cell lit, and whether its panel is open, as `[lit, open]`. */
@@ -139,16 +227,23 @@ test.describe("structure walkthrough", () => {
       ["at a normal pace", 120, 30],
       ["fast", 400, 16],
     ] as const) {
-      test(`at ${viewport.width} px wheeling down ${speed} shows every step in order and leaves the section with no hold`, async ({
+      test(`at ${viewport.width} px wheeling down ${speed} shows every step in order, held at most at the end while the cell opens`, async ({
         page,
       }) => {
         await page.setViewportSize(viewport);
         await page.goto("/");
         await watch(page);
-        const { asked, moved, backs } = await wheelThrough(page, delta, every);
-        // Nothing holds the page: every notch moves it, so it ends past the section, and it is never carried back.
-        expect(backs).toBe(0);
-        expect(moved).toBeGreaterThanOrEqual(asked - ROUNDING_SLACK);
+        const { top, end } = await range(page);
+        const exit = await exitScroll(section(page));
+        const from = top - LEAD_IN;
+        await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), from);
+        await note(page, exit);
+        await wheelDown(page, delta, every, Math.ceil((end - from) / delta), end);
+        // Nothing holds the page on the way: it ends past the section, is never carried back, and is held only at the exit.
+        const n = await notes(page);
+        expect(n.backs).toBe(0);
+        expect(await pageY(page)).toBeGreaterThan(end);
+        expectHeldOnlyAtTheExit(n, exit);
         await settlesOn(page, titles.at(-1)!);
         expect(await seen(page)).toEqual(titles);
         expect(await jumps(page)).toBe(0);
@@ -323,4 +418,129 @@ test.describe("structure walkthrough", () => {
       expect(Math.abs(gaps.above - gaps.below)).toBeLessThanOrEqual(2);
     });
   }
+
+  test.describe("the hold at the end", () => {
+    for (const viewport of [
+      { width: 1440, height: 900 },
+      { width: 390, height: 844 },
+    ]) {
+      test(`at ${viewport.width} px a fast wheel at the end is held until the cell has opened, then goes on`, async ({
+        page,
+      }) => {
+        await page.setViewportSize(viewport);
+        await page.goto("/");
+        const exit = await arriveAtCells(page);
+        await wheelDown(page, FAST_NOTCH, FAST_EVERY, 0, exit + viewport.height);
+        const n = await notes(page);
+        // Held at the exit, never carried back, and let go once the cell has lit and opened.
+        expect(n.held.length).toBeGreaterThan(0);
+        expectHeldOnlyAtTheExit(n, exit);
+        expect(n.backs).toBe(0);
+        expect(n.openedAt).toBeDefined();
+        expect(n.leftAt).toBeDefined();
+        expect(n.openedAt!).toBeLessThan(n.leftAt!);
+        expect(n.leftAt! - n.cellsAt!).toBeGreaterThan(CELL_ARRIVAL - HOLD_EARLY);
+        expect(n.leftAt! - n.cellsAt!).toBeLessThan(CELL_ARRIVAL + HOLD_LATE);
+        // The next wheels go on as usual.
+        expect(await pageY(page)).toBeGreaterThan(exit + viewport.height);
+      });
+    }
+
+    test("scrolling keys at the end are held the same way, then go on", async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto("/");
+      const exit = await arriveAtCells(page);
+      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+      const until = Date.now() + KEEP_GOING_MS;
+      for (const key of ["PageDown", " ", "ArrowDown"]) await page.keyboard.press(key);
+      while ((await pageY(page)) <= exit + 900 && Date.now() < until) {
+        await page.keyboard.press("PageDown");
+        await page.waitForTimeout(FAST_EVERY);
+      }
+      const n = await notes(page);
+      expect(n.held.length).toBeGreaterThan(0);
+      expectHeldOnlyAtTheExit(n, exit);
+      expect(n.backs).toBe(0);
+      expect(n.leftAt! - n.cellsAt!).toBeGreaterThan(CELL_ARRIVAL - HOLD_EARLY);
+    });
+
+    test("scrolling up during the hold goes at once", async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto("/");
+      const exit = await arriveAtCells(page);
+      const size = page.viewportSize()!;
+      await page.mouse.move(size.width / 2, size.height / 2);
+      // Down into the hold, then straight back up while it lasts.
+      for (let i = 0; i < 4; i++) {
+        await page.mouse.wheel(0, FAST_NOTCH);
+        await page.waitForTimeout(FAST_EVERY);
+      }
+      await nextFrame(page);
+      expect(Math.abs((await pageY(page)) - exit)).toBeLessThanOrEqual(ROUNDING_SLACK);
+      await page.mouse.wheel(0, -300);
+      await nextFrame(page);
+      const n = await notes(page);
+      expect(await page.evaluate((at) => performance.now() - at, n.cellsAt!)).toBeLessThan(CELL_ARRIVAL);
+      expect(await pageY(page)).toBeLessThan(exit - 300 + ROUNDING_SLACK + 1);
+      expect(n.held.every(({ y }) => Math.abs(y - exit) <= ROUNDING_SLACK)).toBe(true);
+    });
+
+    test("a link that glides past the section during the hold is not stopped", async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto("/");
+      const exit = await arriveAtCells(page);
+      const size = page.viewportSize()!;
+      await page.mouse.move(size.width / 2, size.height / 2);
+      await page.mouse.wheel(0, FAST_NOTCH);
+      await page.mouse.wheel(0, FAST_NOTCH);
+      await nextFrame(page);
+      expect(await pageY(page)).toBeLessThanOrEqual(exit + ROUNDING_SLACK);
+      await page.locator(`a[href="#${getStarted.id}"]`).first().evaluate((link: HTMLElement) => link.click());
+      const n = await notes(page);
+      expect(await page.evaluate((at) => performance.now() - at, n.cellsAt!)).toBeLessThan(CELL_ARRIVAL);
+      await expect
+        .poll(
+          () =>
+            page.evaluate((id) => {
+              const target = document.getElementById(id)!;
+              return Math.abs(target.getBoundingClientRect().top - parseFloat(getComputedStyle(target).scrollMarginTop));
+            }, getStarted.id),
+          { timeout: 2500 },
+        )
+        .toBeLessThan(2);
+    });
+
+    test.describe("on a phone, by touch", () => {
+      test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+      test("a swipe at the end is held while the cell opens, then goes on, and never sticks", async ({ page }) => {
+        await page.goto("/");
+        const exit = await arriveAtCells(page);
+        // The reader has come to rest at the end. A browser lets a touch move be stopped only before the page
+        // starts to move under it, so a swipe that sets off above the end runs on, as does its momentum.
+        await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), exit);
+        const cdp = await page.context().newCDPSession(page);
+        const touch = (type: "touchStart" | "touchMove" | "touchEnd", y: number) =>
+          cdp.send("Input.dispatchTouchEvent", {
+            type,
+            touchPoints: type === "touchEnd" ? [] : [{ x: SWIPE_X, y }],
+          });
+        // Short swipes up the screen, one after another, as a reader flicks on past the end.
+        const until = Date.now() + KEEP_GOING_MS;
+        while ((await pageY(page)) <= exit + SWIPE_PAST && Date.now() < until) {
+          await touch("touchStart", SWIPE_FROM);
+          for (let y = SWIPE_FROM - SWIPE_STEP; y >= SWIPE_TO; y -= SWIPE_STEP) await touch("touchMove", y);
+          await touch("touchEnd", SWIPE_TO);
+        }
+        const n = await notes(page);
+        expect(n.held.length).toBeGreaterThan(0);
+        expectHeldOnlyAtTheExit(n, exit);
+        expect(n.backs).toBe(0);
+        expect(n.leftAt).toBeDefined();
+        expect(n.leftAt! - n.cellsAt!).toBeGreaterThan(CELL_ARRIVAL - HOLD_EARLY);
+        expect(n.leftAt! - n.cellsAt!).toBeLessThan(CELL_ARRIVAL + HOLD_LATE);
+        expect(await pageY(page)).toBeGreaterThan(exit + SWIPE_PAST);
+      });
+    });
+  });
 });
