@@ -19,6 +19,7 @@ type RecordingProps = {
  * A muted, looping screen recording. Its poster loads once the stage is near
  * and the video once it first plays, so a stage never scrolled to costs
  * nothing. A new element per tab starts each recording from its first frame.
+ * On a phone it shows whole, however the stage is shaped.
  */
 export function Recording({ name, handset, near, playing, labelledBy }: RecordingProps) {
   const ref = useRef<HTMLVideoElement>(null);
@@ -34,10 +35,15 @@ export function Recording({ name, handset, near, playing, labelledBy }: Recordin
     // React sets `muted` as a property after hydration, if at all; a muted video may always play.
     element.muted = true;
     // A pause before the play settles rejects it with an AbortError, which is no error; anything else surfaces.
-    element.play().catch((error: unknown) => {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      throw error;
-    });
+    const play = () =>
+      element.play().catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        throw error;
+      });
+    play();
+    // iPhone Safari's own fullscreen player pauses the video as it closes; the page picks it up again.
+    element.addEventListener("webkitendfullscreen", play);
+    return () => element.removeEventListener("webkitendfullscreen", play);
   }, [playing]);
 
   const player = (
@@ -51,7 +57,7 @@ export function Recording({ name, handset, near, playing, labelledBy }: Recordin
       playsInline
       disablePictureInPicture
       aria-labelledby={labelledBy}
-      className="block size-full object-cover"
+      className="block size-full object-cover max-sm:object-contain [&:fullscreen]:object-contain"
     />
   );
 

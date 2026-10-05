@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { recordingFiles, shouldPlay, wantsPlay } from "./recording";
+import { openFullscreen, recordingFiles, shouldPlay, wantsPlay } from "./recording";
 
 describe("recordingFiles", () => {
   it("serves the video and its poster side by side under /videos", () => {
@@ -34,5 +34,33 @@ describe("shouldPlay", () => {
 
   it("never plays once paused", () => {
     expect(shouldPlay({ choice: false, reducedMotion: false, inView: true })).toBe(false);
+  });
+});
+
+describe("openFullscreen", () => {
+  it("takes the standard call where the browser has it", () => {
+    const calls: string[] = [];
+    const video = {
+      requestFullscreen: () => (calls.push("standard"), Promise.resolve()),
+      webkitEnterFullscreen: () => void calls.push("webkit"),
+    };
+    expect(openFullscreen(video)).toBe(true);
+    expect(calls).toEqual(["standard"]);
+  });
+
+  it("falls back to iPhone Safari's own player", () => {
+    const calls: string[] = [];
+    expect(openFullscreen({ webkitEnterFullscreen: () => void calls.push("webkit") })).toBe(true);
+    expect(calls).toEqual(["webkit"]);
+  });
+
+  it("swallows a refusal", async () => {
+    const refused = Promise.reject(new Error("no gesture"));
+    expect(openFullscreen({ requestFullscreen: () => refused })).toBe(true);
+    await expect(refused).rejects.toThrow();
+  });
+
+  it("says so when there is no way to go fullscreen", () => {
+    expect(openFullscreen({})).toBe(false);
   });
 });

@@ -22,3 +22,26 @@ export function wantsPlay({ choice, reducedMotion }: Playback): boolean {
 export function shouldPlay(playback: Playback & { inView: boolean }): boolean {
   return playback.inView && wantsPlay(playback);
 }
+
+/** A video element as far as going fullscreen goes; iPhone Safari has only its own `webkitEnterFullscreen`. */
+export type FullscreenVideo = {
+  requestFullscreen?: () => Promise<void>;
+  webkitEnterFullscreen?: () => void;
+};
+
+/**
+ * Opens a recording fullscreen: through the standard call where the browser
+ * has it, and otherwise through iPhone Safari's own player. Returns whether
+ * either was there to call; a refusal (no user gesture, say) is no error.
+ */
+export function openFullscreen(video: FullscreenVideo): boolean {
+  if (typeof video.requestFullscreen === "function") {
+    video.requestFullscreen().catch(() => {});
+    return true;
+  }
+  if (typeof video.webkitEnterFullscreen === "function") {
+    video.webkitEnterFullscreen();
+    return true;
+  }
+  return false;
+}

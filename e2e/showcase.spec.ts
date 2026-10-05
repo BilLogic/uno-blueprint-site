@@ -84,19 +84,25 @@ for (const row of rows) {
 }
 
 /**
- * Opens each tab in turn and expects its stage to be the same size as every
- * other's, so a tab's picture never shifts the page. Clicking may scroll the
- * tab into view, so only the stage's size is compared.
+ * Opens each tab of one showcase in turn and expects its stage to be the same
+ * size as every other tab's, so a tab's picture never shifts the page; the two
+ * showcases may differ. Clicking may scroll the tab into view, so only the
+ * stage's size is compared. Returns that size.
  */
 async function expectOneStageSize(page: Page, list: Locator, tabs: readonly { label: string }[]) {
   const sizes = [];
   for (const tab of tabs) {
     await list.getByRole("tab", { name: tab.label }).click();
     const box = await page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage").boundingBox();
-    sizes.push([box!.width, box!.height]);
+    sizes.push([box!.width, box!.height] as const);
   }
   expect(new Set(sizes.map(String)).size).toBe(1);
+  const [width, height] = sizes[0]!;
+  return { width, height };
 }
+
+/** A video's object-fit: on a phone each recording shows whole. */
+const fit = (video: Locator) => video.evaluate((node) => getComputedStyle(node).objectFit);
 
 const phone = touchPoints.tabs.find((tab) => tab.value === "phone")!;
 
@@ -109,7 +115,16 @@ for (const width of [1440, 390]) {
     const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
     await expect(list.getByRole("tab")).toHaveCount(touchPoints.tabs.length);
     await expect(list.getByRole("tab").last()).toHaveText(phone.label);
-    await expectOneStageSize(page, list, touchPoints.tabs);
+    const size = await expectOneStageSize(page, list, touchPoints.tabs);
+    if (width === 390) {
+      // A phone's stage stands taller than wide, so the handset's screen reads.
+      expect(size.height / size.width).toBeCloseTo(5 / 4, 1);
+      for (const tab of touchPoints.tabs.filter((candidate) => candidate !== phone)) {
+        await list.getByRole("tab", { name: tab.label }).click();
+        expect(await fit(page.getByRole("tabpanel", { name: tab.label }).locator("video"))).toBe("contain");
+      }
+      await list.getByRole("tab", { name: phone.label }).click();
+    }
 
     const panel = page.getByRole("tabpanel", { name: phone.label });
     await expect(panel.getByText(phone.caption)).toBeVisible();
@@ -129,7 +144,10 @@ for (const width of [1440, 390]) {
     await page.goto("/");
     const list = page.getByRole("tablist", { name: canvas.tabsLabel });
     await expect(list.getByRole("tab")).toHaveText(canvas.tabs.map((tab) => tab.label));
-    await expectOneStageSize(page, list, canvas.tabs);
+    const size = await expectOneStageSize(page, list, canvas.tabs);
+    // On a phone the stage takes the recordings' own 3:2 and shows each whole; wider, it is 16:9 and they cover it.
+    const [ratio, objectFit] = width === 390 ? [3 / 2, "contain"] : [16 / 9, "cover"];
+    expect(size.width / size.height).toBeCloseTo(ratio, 1);
 
     for (const tab of canvas.tabs) {
       await list.getByRole("tab", { name: tab.label }).click();
@@ -137,6 +155,7 @@ for (const width of [1440, 390]) {
       const video = stage.locator("video");
       await expect(video).toHaveAttribute("src", `/videos/${tab.recording}.mp4`);
       await expect(video).toHaveAttribute("poster", `/videos/${tab.recording}.webp`);
+      expect(await fit(video)).toBe(objectFit);
       const [outer, inner] = [(await stage.boundingBox())!, (await video.boundingBox())!];
       // The stage's border stays round the recording, which covers the rest.
       expect(inner.width).toBeGreaterThan(outer.width - 4);
@@ -234,6 +253,28 @@ test.describe("a showcase recording", () => {
     await expect(panel.getByRole("button", { name: showcase.pause })).toBeVisible();
   });
 });
+
+for (const width of [1440, 390]) {
+  test(`at ${width} px a showcase ${width === 390 ? "offers" : "has no"} a fullscreen button`, async ({ page }) => {
+    await page.addInitScript(() => {
+      HTMLElement.prototype.requestFullscreen = function () {
+        this.dataset.fullscreen = "requested";
+        return Promise.resolve();
+      };
+    });
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    const panel = page.getByRole("tabpanel", { name: understand.label });
+    const button = panel.getByRole("button", { name: showcase.fullscreen });
+    if (width !== 390) {
+      await expect(button).toBeHidden();
+      return;
+    }
+    await panel.getByTestId("showcase-stage").scrollIntoViewIfNeeded();
+    await button.click();
+    await expect(panel.locator("video")).toHaveAttribute("data-fullscreen", "requested");
+  });
+}
 
 test("the canvas's side link sits beside the headline, and on a phone under the sub-headline", async ({ page }) => {
   const section = page.locator("section", {
