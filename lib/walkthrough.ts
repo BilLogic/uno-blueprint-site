@@ -156,6 +156,46 @@ export function holdsExit({ step, opening, sinceHeld, cap, delta, y, exit }: Exi
   return step < STEP.cell || opening;
 }
 
+/** How far ahead a scroll is looked at, at its last pace, for whether it is about to cross the exit, in ms: three frames or so. */
+const LOOK_AHEAD = 50;
+/** A page that moved further than this between two scroll events, in px, jumped there (a link, a script, the page coming back to where it was). */
+const JUMP = 500;
+
+/** The page's scroll at the walkthrough's end, as it moves. */
+export type ExitScroll = {
+  /** The page's scroll position, and the one where the walkthrough lets go of its frame, in px. */
+  y: number;
+  exit: number;
+  /** How far the page moved since the last scroll event, in px (positive going down), and how long ago that came, in ms. */
+  lastDelta: number;
+  lastGap: number;
+  /** Whether a hold is still to come: the walkthrough has not reached its last step, or that step's cell is still opening. */
+  pending: boolean;
+  /** How long ago this hold first stopped the page, in ms; `null` while it has not. */
+  sinceHeld: number | null;
+  /** The longest a hold lasts from when it first stops the page, in ms (see `cellArrival`). */
+  cap: number;
+};
+
+/**
+ * Whether the page's scroll is locked at the exit as it moves: whatever the
+ * input, a trackpad's momentum and a wheel the browser will not let be
+ * stopped among them. A page going down that has reached the exit, or would
+ * cross it within `LOOK_AHEAD` at its last pace, is locked there (and brought
+ * to the exit when short of it), while a hold is still to come and for no
+ * longer than `cap` from when the hold first stopped the page. A page already
+ * past the exit is left where it is, and a page going up is never locked. A
+ * page that jumped (a link, a script) is not a scroll under way, so it is not
+ * locked; a short jump after a pause has no pace to speak of, so it is locked
+ * only once it is at the exit.
+ */
+export function shouldLock({ y, exit, lastDelta, lastGap, pending, sinceHeld, cap }: ExitScroll): boolean {
+  if (!pending || lastDelta <= 0 || lastDelta > JUMP || y > exit + EXIT_SLACK) return false;
+  if (sinceHeld !== null && sinceHeld >= cap) return false;
+  const pace = lastDelta / Math.max(lastGap, 1);
+  return y + pace * LOOK_AHEAD >= exit - EXIT_SLACK;
+}
+
 /** How far a wheel reported in lines scrolls, per line, in px. */
 const WHEEL_LINE = 40;
 
@@ -175,13 +215,15 @@ const KEY_LINE = 60;
 
 /**
  * How far a key (a `KeyboardEvent.key`) scrolls the page down, in px, at
- * most: negative going up, 0 for a key that does not scroll down a page
+ * most: negative going up, 0 for a key that does not scroll a page
  * `pageHeight` tall.
  */
 export function keyScroll(key: string, shift: boolean, pageHeight: number): number {
   if (key === " ") return shift ? -pageHeight : pageHeight;
   if (key === "PageDown") return pageHeight;
   if (key === "ArrowDown") return KEY_LINE;
+  if (key === "PageUp" || key === "Home") return -pageHeight;
+  if (key === "ArrowUp") return -KEY_LINE;
   return 0;
 }
 
