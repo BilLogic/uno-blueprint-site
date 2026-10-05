@@ -81,6 +81,10 @@ export function HarnessShowcase() {
         id={tabPanelId(ID_BASE, skill)}
         aria-labelledby={tabId(ID_BASE, skill)}
         aria-describedby={CAPTION_ID}
+        // The loop's state, for the end-to-end tests to wait on rather than on the clock.
+        data-run={loop.run}
+        data-shown={loop.shown || undefined}
+        data-holding={loop.holding || undefined}
         className="relative aspect-video max-w-full overflow-hidden rounded-16 border border-line bg-card bg-dots max-lg:aspect-auto"
       >
         {/* A new key starts the picture from its first frame. */}

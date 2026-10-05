@@ -1,7 +1,7 @@
 import { expect, test, type CDPSession, type Page } from "@playwright/test";
 import { structure } from "../content/structure";
 import { getStarted } from "../content/get-started";
-import { cssMs } from "../lib/hero-picture";
+import { cssMs } from "../lib/css-time";
 import { TIMING, cellArrival, holdCap } from "../lib/walkthrough";
 import { exitScroll, scrollToStep } from "./walkthrough-scroll";
 

@@ -1,6 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { map } from "@/content/harness";
+import { HARNESS_HOLD } from "@/lib/harness-loop";
+
+/** How early a timer may fire against its delay as the page reads it, in ms: a frame or so. */
+const FRAME_SLACK = 50;
 
 const section = (page: Page) =>
   page.locator("section", { has: page.getByRole("heading", { name: "Harness for your agents." }) });
@@ -28,16 +32,34 @@ test.describe("harness showcase", () => {
     test.setTimeout(40_000);
     await page.goto("/");
     const harness = section(page);
+    const stage = harness.getByRole("tabpanel");
     await harness.scrollIntoViewIfNeeded();
     const first = harness.getByText("Drops off the device", { exact: true });
     const last = harness.getByText(map.placements.at(-1)!.text, { exact: true });
+    // Note, in the page, when the picture starts holding and when it next plays again.
+    await stage.evaluate((el) => {
+      const w = window as unknown as { heldAt?: number; replayedAt?: number };
+      new MutationObserver(() => {
+        if (w.heldAt === undefined && el.hasAttribute("data-holding")) w.heldAt = performance.now();
+        if (w.heldAt !== undefined && w.replayedAt === undefined && !el.hasAttribute("data-holding")) {
+          w.replayedAt = performance.now();
+        }
+      }).observe(el, { attributes: true, attributeFilter: ["data-holding"] });
+    });
     // The first phrase lands about a second and a half in, the last about seven.
     await expect(first).toHaveCount(1, { timeout: 5000 });
     await expect(last).toHaveCount(1, { timeout: 10_000 });
-    // The finished board holds for a while...
-    await page.waitForTimeout(1500);
+    // The finished board holds, its phrases still placed...
+    await expect(stage).toHaveAttribute("data-holding", "true", { timeout: 5000 });
+    const run = Number(await stage.getAttribute("data-run"));
     await expect(first).toHaveCount(1);
-    // ...then empties and plays again.
+    // ...then plays again from the start, a new run, once the hold is over.
+    await expect(stage).toHaveAttribute("data-run", String(run + 1), { timeout: HARNESS_HOLD + 2000 });
+    const { heldAt, replayedAt } = await page.evaluate(() => {
+      const w = window as unknown as { heldAt: number; replayedAt: number };
+      return { heldAt: w.heldAt, replayedAt: w.replayedAt };
+    });
+    expect(replayedAt - heldAt).toBeGreaterThanOrEqual(HARNESS_HOLD - FRAME_SLACK);
     await expect(first).toHaveCount(0, { timeout: 5000 });
     await expect(first).toHaveCount(1, { timeout: 5000 });
   });
@@ -46,17 +68,24 @@ test.describe("harness showcase", () => {
     test.setTimeout(40_000);
     await page.goto("/");
     const harness = section(page);
+    const stage = harness.getByRole("tabpanel");
     await harness.scrollIntoViewIfNeeded();
     const first = harness.getByText("Drops off the device", { exact: true });
     const last = harness.getByText(map.placements.at(-1)!.text, { exact: true });
     await expect(last).toHaveCount(1, { timeout: 12_000 });
 
     await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(stage).not.toHaveAttribute("data-shown");
+    await expect(stage).not.toHaveAttribute("data-holding");
+    const run = await stage.getAttribute("data-run");
     // Longer than the hold: on screen it would have started again by now.
-    await page.waitForTimeout(4000);
+    await page.waitForTimeout(HARNESS_HOLD + 1000);
+    await expect(stage).toHaveAttribute("data-run", run!);
     await expect(first).toHaveCount(1);
 
     await harness.scrollIntoViewIfNeeded();
+    await expect(stage).toHaveAttribute("data-shown", "true");
+    await expect(stage).toHaveAttribute("data-run", String(Number(run) + 1));
     await expect(first).toHaveCount(0, { timeout: 2000 });
     await expect(first).toHaveCount(1, { timeout: 5000 });
   });

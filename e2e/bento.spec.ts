@@ -1,5 +1,9 @@
 import { devices, expect, test, type Page } from "@playwright/test";
 import { bento } from "@/content/bento";
+import { PLAY_MS, REST_MS } from "@/lib/bento";
+
+/** Room past a play or a rest for the timer to fire and the page to show it, in ms. */
+const CYCLE_SLACK = 1500;
 
 const titles = [
   bento.duo.title,
@@ -151,12 +155,12 @@ test.describe("bento on a touch screen", () => {
     const context = panel(page, bento.context.title);
     await context.evaluate((p) => p.scrollIntoView({ block: "center" }));
 
-    await expect(live(page)).toHaveCSS("opacity", "1");
-    await expect(live(page)).toHaveCSS("opacity", "0", { timeout: 6000 });
-    await expect(live(page)).toHaveCSS("opacity", "1", { timeout: 3000 });
+    await expect(context).toHaveAttribute("data-playing", "true");
+    await expect(context).not.toHaveAttribute("data-playing", { timeout: PLAY_MS + CYCLE_SLACK });
+    await expect(context).toHaveAttribute("data-playing", "true", { timeout: REST_MS + CYCLE_SLACK });
 
     // Scrolled away, it stops.
     await page.evaluate(() => window.scrollTo(0, 0));
-    await expect(live(page)).toHaveCSS("opacity", "0");
+    await expect(context).not.toHaveAttribute("data-playing");
   });
 });
