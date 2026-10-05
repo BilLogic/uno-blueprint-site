@@ -1,1 +1,1 @@
-Uno Blueprint: documents from Notion, Slack, Figma and GitHub feed a service blueprint; one cell opens to show its owner, status and sources.
+Uno Blueprint: documents from Notion, Slack, Figma, and GitHub feed a service blueprint; one cell opens to show its owner, status, and sources.

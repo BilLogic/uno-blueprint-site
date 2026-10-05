@@ -44,7 +44,7 @@ for (const colorScheme of ["light", "dark"] as const) {
   });
 
   // The walkthrough's stage is hidden from assistive technology, so axe does not check it.
-  test(`the walkthrough's faint line labels read at 4.5:1 in ${colorScheme}`, async ({ page }) => {
+  test(`the walkthrough's line and stack labels read at 4.5:1 in ${colorScheme}`, async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     // Motion on: with reduced motion the walkthrough shows only its last step.
     await page.emulateMedia({ colorScheme });
@@ -52,11 +52,26 @@ for (const colorScheme of ["light", "dark"] as const) {
     const section = page
       .locator("section")
       .filter({ has: page.getByRole("heading", { level: 2, name: structure.heading.main }) });
-    // At the blueprint step every line is drawn and none is the one being read.
-    await scrollToStep(section, structure.steps.findIndex((step) => step.title === "Blueprint"));
-    await expect(section.locator("[aria-live] b")).toHaveText("Blueprint", { timeout: 15_000 });
-    for (const line of structure.board.lines) {
-      expect(await contrast(section.locator("[aria-hidden]").getByText(line, { exact: true }))).toBeGreaterThanOrEqual(4.5);
-    }
+    const stage = section.locator("[aria-hidden]");
+    /** Scrolls to the step titled `title` and waits for the walkthrough to show it. */
+    const reach = async (title: string) => {
+      await scrollToStep(section, structure.steps.findIndex((step) => step.title === title));
+      await expect(section.locator("[aria-live] b")).toHaveText(title, { timeout: 15_000 });
+    };
+    /** The label's colours ease in, so its contrast is read once they settle. */
+    const readable = (label: string) =>
+      expect.poll(() => contrast(stage.getByText(label, { exact: true }))).toBeGreaterThanOrEqual(4.5);
+
+    // The stack's tag for the sheet being read, in the brand's ink.
+    await reach(structure.stackTags[0]);
+    await readable(structure.stackTags[0]);
+
+    // At the blueprint step every line is drawn, faint, and none is the one being read.
+    await reach("Blueprint");
+    for (const line of structure.board.lines) await readable(line);
+
+    // The line being read, in the brand's ink.
+    await reach(structure.board.lines[0]);
+    await readable(structure.board.lines[0]);
   });
 }

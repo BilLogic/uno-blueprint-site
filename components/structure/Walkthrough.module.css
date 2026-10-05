@@ -730,7 +730,7 @@
 }
 
 .line.current span {
-  color: var(--color-brand);
+  color: var(--color-brand-badge-ink);
   transform: none;
 }
 
@@ -786,7 +786,7 @@
 
 .tag.current b {
   background: color-mix(in oklab, var(--color-brand) 14%, var(--color-panel));
-  color: var(--color-brand);
+  color: var(--color-brand-badge-ink);
 }
 
 .stage.flat .tag {
