@@ -65,7 +65,7 @@ function setLine(line: Element | undefined, [x1, y1]: readonly number[], [x2, y2
  * phone). The opening cards are drawn here, wherever their morph into the
  * stack has got to, and re-measured on a resize. Arriving at the cell from
  * above, it lights on the flat board and opens `TIMING.cellBeat` later; `open`
- * says whether it has, and until it has opened the page is held at the
+ * says whether it has, and until it has opened the page may be held at the
  * section's end (see `useExitHold`). With reduced motion nothing is pinned and
  * the last step shows, open.
  *

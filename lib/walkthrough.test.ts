@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { structure } from "@/content/structure";
 import {
-  CELL_ARRIVAL,
   STEP,
   TIMING,
   availableStageHeight,
   beamClip,
+  cellArrival,
   cellOpensLate,
+  exitScroll,
   fitStage,
   flatLift,
   goalStep,
@@ -352,28 +353,48 @@ describe("stepHold", () => {
   });
 });
 
-describe("holdsExit", () => {
-  const exit = 5000;
-  const end = { step: STEP.cell, since: 200, delta: 120, y: exit - 60, exit };
+describe("cellArrival", () => {
+  it("adds the cell's beat, the panel's wait for the beam and its opening", () => {
+    expect(cellArrival({ cellBeat: TIMING.cellBeat, panelDelay: 840, panelOpen: 620 })).toBe(2160);
+  });
+});
 
-  it("lasts as long as the cell takes to light and open", () => {
-    expect(CELL_ARRIVAL).toBe(TIMING.cellBeat + TIMING.openCell);
-    expect(CELL_ARRIVAL).toBeLessThan(2000);
+describe("exitScroll", () => {
+  it("is where the section's foot meets the pinned frame's foot", () => {
+    // The section's top is 300 px above the screen, so the page is pinned and 376 px into its travel.
+    const geometry = { stickyTop: 76, sectionTop: -300, sectionHeight: 5000, stickyHeight: 700 };
+    expect(exitScroll(geometry, 2000)).toBe(2000 - 300 - 76 + 4300);
+    // The same section seen from further down the page gives the same exit.
+    expect(exitScroll({ ...geometry, sectionTop: -1300 }, 3000)).toBe(exitScroll(geometry, 2000));
   });
 
-  it("holds a move down across the exit while the cell is still arriving", () => {
+  it("is null when nothing is pinned", () => {
+    expect(exitScroll({ stickyTop: 76, sectionTop: 0, sectionHeight: 700, stickyHeight: 700 }, 0)).toBeNull();
+  });
+});
+
+describe("holdsExit", () => {
+  const exit = 5000;
+  const cap = 2160;
+  const end = { step: STEP.cell, opening: true, sinceHeld: null, cap, delta: 120, y: exit - 60, exit };
+
+  it("holds a move down across the exit while the cell is still opening", () => {
     expect(holdsExit(end)).toBe(true);
-    expect(holdsExit({ ...end, since: 0 })).toBe(true);
-    expect(holdsExit({ ...end, since: CELL_ARRIVAL - 1 })).toBe(true);
+    expect(holdsExit({ ...end, sinceHeld: cap - 1 })).toBe(true);
     // Resting at the exit, held there, a notch of a pixel is held too.
     expect(holdsExit({ ...end, y: exit, delta: 1 })).toBe(true);
     expect(holdsExit({ ...end, y: exit + 0.5 })).toBe(true);
   });
 
-  it("lets the move through once the cell has opened", () => {
-    expect(holdsExit({ ...end, since: CELL_ARRIVAL })).toBe(false);
-    expect(holdsExit({ ...end, since: 60_000 })).toBe(false);
-    expect(holdsExit({ ...end, since: -1 })).toBe(false);
+  it("holds while the walkthrough is still on its way to the last step", () => {
+    expect(holdsExit({ ...end, step: STEP.steps, opening: false })).toBe(true);
+    expect(holdsExit({ ...end, step: STEP.blueprint, opening: false })).toBe(true);
+  });
+
+  it("lets the move through once the cell has opened, or the hold has lasted its cap", () => {
+    expect(holdsExit({ ...end, opening: false })).toBe(false);
+    expect(holdsExit({ ...end, sinceHeld: cap })).toBe(false);
+    expect(holdsExit({ ...end, step: STEP.steps, sinceHeld: cap })).toBe(false);
   });
 
   it("never holds a move up, or a move that stays inside the walkthrough", () => {
@@ -385,13 +406,11 @@ describe("holdsExit", () => {
 
   it("never holds a page already past the exit", () => {
     expect(holdsExit({ ...end, y: exit + 2 })).toBe(false);
-    expect(holdsExit({ ...end, y: exit + 3000 })).toBe(false);
+    expect(holdsExit({ ...end, step: STEP.steps, y: exit + 3000 })).toBe(false);
   });
 
-  it("only holds on the last step", () => {
+  it("knows the last step as the cell", () => {
     expect(STEP.cell).toBe(structure.steps.length - 1);
-    expect(holdsExit({ ...end, step: STEP.steps })).toBe(false);
-    expect(holdsExit({ ...end, step: STEP.blueprint })).toBe(false);
   });
 });
 

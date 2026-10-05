@@ -101,18 +101,39 @@ export const poseOf = (step: number, opened = true): Pose =>
  */
 export const cellOpensLate = (step: number, previous: number) => step >= STEP.open && previous < STEP.open;
 
-/** How long the cell takes to arrive from above, in ms: lit for its beat, then opened (see `stepHold`). */
-export const CELL_ARRIVAL = TIMING.cellBeat + TIMING.openCell;
+/**
+ * How long the cell takes to arrive from above, in ms: lit for `cellBeat`,
+ * then its panel waits `panelDelay` for the beam and opens over `panelOpen`.
+ * The panel's two times are CSS tokens (`--duration-panel-delay` and
+ * `--duration-leave` in styles/tokens.css), read at runtime.
+ */
+export const cellArrival = ({ cellBeat, panelDelay, panelOpen }: { cellBeat: number; panelDelay: number; panelOpen: number }) =>
+  cellBeat + panelDelay + panelOpen;
 
 /** Short of where the walkthrough lets go, or past it by less than this, in px, is there: scroll positions come in fractions. */
 const EXIT_SLACK = 1;
+
+/**
+ * The scroll position where the walkthrough lets go of its frame, from the
+ * section's geometry on screen and the page's scroll `y`; `null` when the
+ * section is no taller than its frame, so nothing is pinned.
+ */
+export function exitScroll({ stickyTop, sectionTop, sectionHeight, stickyHeight }: ScrollGeometry, y: number): number | null {
+  const travel = sectionHeight - stickyHeight;
+  if (travel <= 0) return null;
+  return y + sectionTop - stickyTop + travel;
+}
 
 /** A scroll the reader asks for at the walkthrough's end. */
 export type ExitMove = {
   /** The step on show. */
   step: number;
-  /** How long ago that step's animation began, in ms. */
-  since: number;
+  /** On the last step: whether its cell is still lighting and opening (it was reached from above, and its panel is not yet open). */
+  opening: boolean;
+  /** How long ago this hold first stopped a move, in ms; `null` while it has stopped none. */
+  sinceHeld: number | null;
+  /** The longest a hold lasts from the first move it stops, in ms (see `cellArrival`). */
+  cap: number;
   /** How far the move would scroll the page, in px: positive going down. */
   delta: number;
   /** The page's scroll position, and the one where the walkthrough lets go of its frame, in px. */
@@ -121,16 +142,18 @@ export type ExitMove = {
 };
 
 /**
- * Whether a move is held: stopped before the page moves, so a fast scroll does
- * not carry the reader out of the walkthrough before the cell has opened. Only
- * on the last step, only while the cell is still arriving (`CELL_ARRIVAL`), and
- * only a move down that would cross where the walkthrough lets go; a page
- * already past it, or any move up, is never held.
+ * Whether a move is held: stopped before the page moves, so a scroll does not
+ * carry the reader out of the walkthrough before its last step has shown and
+ * its cell has opened. Only a move down that would cross where the
+ * walkthrough lets go is held, while the walkthrough is still on its way to
+ * the last step or that step's cell is still opening, and never for longer
+ * than `cap` from the first move held. A page already past the exit, or any
+ * move up, is never held.
  */
-export function holdsExit({ step, since, delta, y, exit }: ExitMove): boolean {
-  if (step !== STEP.cell || delta <= 0) return false;
-  if (since < 0 || since >= CELL_ARRIVAL) return false;
-  return y <= exit + EXIT_SLACK && y + delta > exit;
+export function holdsExit({ step, opening, sinceHeld, cap, delta, y, exit }: ExitMove): boolean {
+  if (delta <= 0 || y > exit + EXIT_SLACK || y + delta <= exit) return false;
+  if (sinceHeld !== null && sinceHeld >= cap) return false;
+  return step < STEP.cell || opening;
 }
 
 /** How far a wheel reported in lines scrolls, per line, in px. */
