@@ -280,7 +280,7 @@
   --container-caption: 70ch;
   --spacing-dots: 18px; /* the stage's dot grid */
   /* On a phone the stage leaves 16:9 and every recording shows whole, uncropped. */
-  --aspect-recording: 3 / 2; /* the canvas stage on a phone */
+  --aspect-stage-canvas-phone: 3 / 2; /* the canvas stage on a phone */
   --aspect-stage-tall: 4 / 5; /* the touch-points stage on a phone, tall enough for the phone's screen to read */
   --spacing-recording-inset: clamp(16px, 3.5vw, 44px); /* the dots round a recording, at least */
   --aspect-window: 1620 / 1004; /* a desktop recording's own shape: the app window, edge to edge */

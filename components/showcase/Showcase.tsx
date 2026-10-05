@@ -6,22 +6,13 @@ import { showcase } from "@/content/showcase";
 import { TabList, tabId, tabPanelId } from "@/components/ui/Tabs";
 import { useInView } from "@/hooks/use-in-view";
 import { useReducedMotion } from "@/hooks/use-media-query";
-import { shouldPlay, wantsPlay } from "@/lib/recording";
-import type { ZoomKeyframe } from "@/lib/recording-zoom";
+import { shouldPlay, wantsPlay, type ShowcaseTab } from "@/lib/recording";
 import { Recording, type RecordingHandle } from "./Recording";
 
-export type ShowcaseItem<T extends string> = {
-  value: T;
-  label: string;
+export type ShowcaseItem<T extends string> = ShowcaseTab<T> & {
   icon: ReactNode;
-  /** What the picture is about; it follows the tab's label under the stage, and names the recording. */
-  caption: string;
-  /** The screen recording played on the stage while this tab is selected. */
-  recording: string;
   /** The recording is a phone's, the handset alone on the stage. */
   phone: boolean;
-  /** How the phone's recording zooms with its action. */
-  zoom?: readonly ZoomKeyframe[];
 };
 
 type ShowcaseProps<T extends string> = {
@@ -39,10 +30,10 @@ type ShowcaseProps<T extends string> = {
  * reader pauses it; a reader who asked for less motion starts it themselves,
  * and the phone's recording never zooms for them.
  *
- * On a phone the stage leaves 16:9: the canvas's is 3:2, and a showcase with a
- * phone stands taller so the phone's screen reads. Every tab of a showcase shares its
- * stage's shape, so switching tabs never moves the page. A second button there
- * opens the recording fullscreen.
+ * On a phone the stage leaves 16:9: the canvas's is 3:2, and a showcase with
+ * a phone stands taller so the phone's screen reads. Every tab of a showcase
+ * shares its stage's shape, so switching tabs never moves the page. A second
+ * button there opens the recording fullscreen.
  */
 export function Showcase<T extends string>({ idBase, label, items }: ShowcaseProps<T>) {
   const [value, setValue] = useState(items[0]?.value);
@@ -94,13 +85,14 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
         <div
           ref={stageRef}
           data-testid="showcase-stage"
-          className={`relative aspect-video max-w-full overflow-hidden rounded-16 border border-line bg-card bg-dots ${tall ? "max-sm:aspect-stage-tall" : "max-sm:aspect-recording"}`}
+          className={`relative aspect-video max-w-full overflow-hidden rounded-16 border border-line bg-card bg-dots ${tall ? "max-sm:aspect-stage-tall" : "max-sm:aspect-stage-canvas-phone"}`}
         >
           <Recording
             key={item.value}
             ref={recording}
             name={item.recording}
             phone={item.phone}
+            masked={item.masked ?? false}
             zoom={reducedMotion ? undefined : item.zoom}
             near={near}
             playing={shouldPlay({ choice, reducedMotion, inView })}

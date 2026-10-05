@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import type { ComponentProps } from "react";
-import type { ZoomKeyframe } from "@/lib/recording-zoom";
+import type { ShowcaseTab } from "@/lib/recording";
 import { Container } from "@/components/ui/Container";
 import { SectionHead } from "@/components/ui/SectionHead";
 import { Showcase } from "./Showcase";
@@ -10,7 +10,7 @@ type ShowcaseSectionProps<T extends string> = {
   idBase: string;
   /** Names the tab row for assistive technology. */
   tabsLabel: string;
-  tabs: readonly { value: T; label: string; caption: string; recording: string; zoom?: readonly ZoomKeyframe[] }[];
+  tabs: readonly ShowcaseTab<T>[];
   /** Each tab's icon component. */
   icons: Record<T, LucideIcon>;
   /** The tab whose recording is a phone's, the handset alone on the stage. */

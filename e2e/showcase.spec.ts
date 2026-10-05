@@ -107,11 +107,30 @@ async function margins(outer: Locator, inner: Locator) {
   return { left: i.x - o.x, top: i.y - o.y, right: o.x + o.width - i.x - i.width, bottom: o.y + o.height - i.y - i.height };
 }
 
+/**
+ * A recording's own shape, read from its poster: the poster is its first
+ * frame, and the test browser cannot decode the video itself.
+ */
+const posterShape = async (video: Locator) => {
+  // The poster loads only once its stage is near.
+  await video.scrollIntoViewIfNeeded();
+  await expect(video).toHaveAttribute("poster", /\.webp$/);
+  return video.evaluate(
+    (node: HTMLVideoElement) =>
+      new Promise<number>((resolve, reject) => {
+        const poster = new Image();
+        poster.onload = () => resolve(poster.naturalWidth / poster.naturalHeight);
+        poster.onerror = () => reject(new Error(`no poster at ${node.poster}`));
+        poster.src = node.poster;
+      }),
+  );
+};
+
 /** A desktop recording is a window inset on the stage's dots: whole, at its own shape, centred, with dots all round. */
 async function expectInsetWindow(stage: Locator) {
   const window = stage.getByTestId("recording-window");
   const box = (await window.boundingBox())!;
-  expect(box.width / box.height).toBeCloseTo(1620 / 1004, 2);
+  expect(box.width / box.height).toBeCloseTo(await posterShape(window.locator("video")), 2);
   const margin = await margins(stage, window);
   for (const side of Object.values(margin)) expect(side).toBeGreaterThanOrEqual(15);
   expect(Math.abs(margin.left - margin.right)).toBeLessThan(1);
@@ -184,16 +203,7 @@ test("the phone's recording keeps its own shape, cut to the handset's silhouette
   await list.getByRole("tab", { name: phone.label }).click();
   const video = page.getByRole("tabpanel", { name: phone.label }).locator("video");
   await video.scrollIntoViewIfNeeded();
-  // The poster is the recording's first frame, so it has the recording's shape; the test browser cannot decode the video itself.
-  const shape = await video.evaluate(
-    (node: HTMLVideoElement) =>
-      new Promise<number>((resolve, reject) => {
-        const poster = new Image();
-        poster.onload = () => resolve(poster.naturalWidth / poster.naturalHeight);
-        poster.onerror = () => reject(new Error(`no poster at ${node.poster}`));
-        poster.src = node.poster;
-      }),
-  );
+  const shape = await posterShape(video);
   const box = (await video.boundingBox())!;
   expect(box.width / box.height).toBeCloseTo(shape, 2);
   expect(await video.evaluate((node) => getComputedStyle(node).maskImage)).toContain(`/videos/${phone.recording}-mask.png`);

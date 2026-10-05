@@ -1,4 +1,4 @@
-import type { ZoomKeyframe } from "@/lib/recording-zoom";
+import type { ShowcaseTab } from "@/lib/recording";
 
 export type TouchPointTab = "app" | "agent" | "chat" | "phone";
 
@@ -8,17 +8,10 @@ type TouchPoints = {
   subheadline: string;
   tabsLabel: string;
   /**
-   * Each tab plays a screen recording, named by its file under public/videos.
-   * The phone's zooms in on what is happening and back out, keyed to the
-   * recording's own seconds.
+   * Each tab plays a screen recording. The phone's is masked to the handset,
+   * and zooms in on what is happening and back out.
    */
-  tabs: readonly {
-    value: TouchPointTab;
-    label: string;
-    caption: string;
-    recording: string;
-    zoom?: readonly ZoomKeyframe[];
-  }[];
+  tabs: readonly ShowcaseTab<TouchPointTab>[];
 };
 
 export const touchPoints = {
@@ -51,14 +44,16 @@ export const touchPoints = {
       label: "On your phone",
       caption: "Take the blueprint with you. Read any journey and jump to any step.",
       recording: "touch-phone",
-      // Each pair of equal keyframes is a hold; the moves between them ease in and out. The recording runs 23.1 s.
+      masked: true,
+      // Each pair of equal keyframes is a hold; the moves between them ease in
+      // and out. The recording runs 23.1 s.
       zoom: [
         // The landing page, whole.
         { at: 0, scale: 1, x: 0.5, y: 0.5 },
         { at: 1.2, scale: 1, x: 0.5, y: 0.5 },
         // The board loads.
-        { at: 1.8, scale: 1.7, x: 0.5, y: 0.45 },
-        { at: 3.6, scale: 1.7, x: 0.5, y: 0.45 },
+        { at: 1.8, scale: 1.7, x: 0.5, y: 0.6 },
+        { at: 3.6, scale: 1.7, x: 0.5, y: 0.6 },
         // The navigation sidebar is open.
         { at: 4, scale: 1.7, x: 0.42, y: 0.3 },
         { at: 4.9, scale: 1.7, x: 0.42, y: 0.3 },

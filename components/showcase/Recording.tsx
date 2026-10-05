@@ -15,6 +15,8 @@ type RecordingProps = {
   name: string;
   /** A phone's recording, masked to the handset's silhouette, rather than a desktop window. */
   phone: boolean;
+  /** Cut to the mask that comes with the recording. */
+  masked: boolean;
   /** How the phone's recording zooms with its action; without it, it stays whole. */
   zoom?: readonly ZoomKeyframe[] | undefined;
   /** The stage is on screen or close to it; until then not even the poster loads. */
@@ -32,10 +34,10 @@ type RecordingProps = {
  * It shows whole, centred on the stage's dots, however the stage is shaped: a
  * desktop recording as a window, a phone's as the handset alone.
  */
-export function Recording({ name, phone, zoom, near, playing, labelledBy, ref: handle }: RecordingProps) {
+export function Recording({ name, phone, masked, zoom, near, playing, labelledBy, ref: handle }: RecordingProps) {
   const ref = useRef<HTMLVideoElement>(null);
   const zoomRef = useRef<HTMLDivElement>(null);
-  const { video, poster, mask } = recordingFiles(name);
+  const { video, poster, mask } = recordingFiles(name, masked);
 
   useImperativeHandle(handle, () => ({
     expand: () => {
@@ -64,7 +66,8 @@ export function Recording({ name, phone, zoom, near, playing, labelledBy, ref: h
     return () => element.removeEventListener("webkitendfullscreen", play);
   }, [playing]);
 
-  // The zoom follows the video's own clock, so a pause, a loop or a seek keeps it in step; it is redrawn only while the video plays.
+  // The zoom follows the video's own clock, so a pause, a loop or a seek
+  // keeps it in step; it is redrawn every frame only while the video plays.
   useEffect(() => {
     const element = ref.current;
     const box = zoomRef.current;
@@ -113,16 +116,18 @@ export function Recording({ name, phone, zoom, near, playing, labelledBy, ref: h
       playsInline
       disablePictureInPicture
       aria-labelledby={labelledBy}
-      className={`block size-full object-cover [&:fullscreen]:object-contain ${phone ? "recording-mask" : ""}`}
-      style={phone ? ({ "--recording-mask": `url(${mask})` } as CSSProperties) : undefined}
+      className={`block size-full object-cover [&:fullscreen]:object-contain ${mask ? "recording-mask" : ""}`}
+      style={mask ? ({ "--recording-mask": `url(${mask})` } as CSSProperties) : undefined}
     />
   );
 
   return (
-    // The stage's centre, less a margin of dots; each recording is as large as fits whole inside it.
+    // The stage, less a margin of dots; each recording is as large as fits
+    // whole inside it, centred.
     <div className="absolute inset-(--spacing-recording-inset) grid place-items-center [container-type:size]">
       {phone ? (
-        // Scaled from its centre and moved so the point in focus stays at the stage's; the shadow follows the mask.
+        // Scaled from its centre and moved so the point in focus stays at the
+        // stage's centre; the shadow follows the mask.
         <div ref={zoomRef} data-testid="phone" className="fit-phone drop-shadow-phone">
           {player}
         </div>
