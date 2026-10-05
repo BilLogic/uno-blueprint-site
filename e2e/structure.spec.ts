@@ -14,8 +14,10 @@ const OPEN_TIMEOUT = 5000;
 /** The stage's classes for a lit cell and an open panel (CSS module names end in the local name). */
 const LIT_CLASS = /cellPicked$/;
 const OPEN_CLASS = /(^|__)open$/;
-/** A move of the page smaller than this, in px, is rounding, not the page being held back. */
-const HELD_SLACK = 1;
+/** A move of the page smaller than this, in px, is rounding, not the page being held or carried back. */
+const ROUNDING_SLACK = 1;
+/** How far above the section the wheeling starts, in px. */
+const LEAD_IN = 300;
 
 /** Long enough for the morph and every step's hold, one at a time, with room to spare. */
 const WALK_TIMEOUT = 30_000;
@@ -71,12 +73,13 @@ async function range(page: Page) {
 
 /**
  * Wheels from above the section to past its end, `delta` px a notch, a notch
- * every `every` ms. Returns how far the wheels asked the page to move, how far
- * it moved, and how many times it was carried back up on the way.
+ * every `every` ms. Returns how far the wheels asked the page to move (to past
+ * the section's end), how far it moved, and how many times it was carried
+ * back up on the way.
  */
 async function wheelThrough(page: Page, delta: number, every: number) {
   const { top, end } = await range(page);
-  const from = top - 300;
+  const from = top - LEAD_IN;
   await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), from);
   await page.evaluate((slack) => {
     const w = window as unknown as { backs: number };
@@ -90,8 +93,9 @@ async function wheelThrough(page: Page, delta: number, every: number) {
       },
       { passive: true },
     );
-  }, HELD_SLACK);
-  await page.mouse.move(400, 400);
+  }, ROUNDING_SLACK);
+  const size = page.viewportSize()!;
+  await page.mouse.move(size.width / 2, size.height / 2);
   let asked = 0;
   for (let y = from; y < end; y += delta) {
     await page.mouse.wheel(0, delta);
@@ -142,9 +146,9 @@ test.describe("structure walkthrough", () => {
         await page.goto("/");
         await watch(page);
         const { asked, moved, backs } = await wheelThrough(page, delta, every);
-        // Nothing holds the page: every notch moves it, and it is never carried back.
+        // Nothing holds the page: every notch moves it, so it ends past the section, and it is never carried back.
         expect(backs).toBe(0);
-        expect(moved).toBeGreaterThanOrEqual(asked - HELD_SLACK);
+        expect(moved).toBeGreaterThanOrEqual(asked - ROUNDING_SLACK);
         await settlesOn(page, titles.at(-1)!);
         expect(await seen(page)).toEqual(titles);
         expect(await jumps(page)).toBe(0);
