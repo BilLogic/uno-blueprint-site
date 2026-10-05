@@ -168,7 +168,12 @@ test.describe("harness showcase", () => {
       await harness.getByRole("tab", { name: tab }).click();
       const panel = harness.getByRole("tabpanel");
       const tops = [];
-      for (const label of labels) tops.push((await panel.getByText(label, { exact: true }).boundingBox())!.y);
+      for (const label of labels) {
+        // The tab's picture mounts after the click; wait for it rather than reading a box that is not there yet.
+        const text = panel.getByText(label, { exact: true });
+        await expect(text).toBeVisible();
+        tops.push((await text.boundingBox())!.y);
+      }
       expect(tops).toEqual([...tops].sort((a, b) => a - b));
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
