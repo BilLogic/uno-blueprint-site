@@ -24,6 +24,12 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
+# The recordings are large and change only with a new file; a day's cache spares a repeat visit refetching them.
+[[headers]]
+  for = "/videos/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
 # The agent guide is read as markdown, by agents and by browsers alike.
 # scripts/serve.mjs sends the same type by extension, so the end-to-end tests see it too.
 [[headers]]

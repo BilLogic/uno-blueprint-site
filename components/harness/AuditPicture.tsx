@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, type CSSProperties } from "react";
+import { useRef } from "react";
+import { vars } from "@/components/ui/vars";
 import { audit, skill } from "@/content/harness";
 import { useSteps } from "@/hooks/use-steps";
 import { AUDIT_FLIGHT, auditFrame, auditSteps, flightStart } from "@/lib/harness-audit";
@@ -49,7 +50,7 @@ export function AuditPicture({ running, onDone }: PictureProps) {
               if (!flag) return { className: restingLook(lane, step) };
               return {
                 className: `${restingLook(lane, step)} ${flagAnimation[flag.kind]} [animation-delay:var(--d)] motion-reduce:[animation-duration:.01s] motion-reduce:[animation-delay:0s]`,
-                style: { "--d": `${flag.at}s` } as CSSProperties,
+                style: vars({ "--d": `${flag.at}s` }),
               };
             }}
           />
@@ -88,7 +89,7 @@ export function AuditPicture({ running, onDone }: PictureProps) {
                 i < frame.plotted ? "[transform:none]" : "[transform:scale(0)]"
               } ${
                 frame.done && finding.first
-                  ? "border-brand bg-brand shadow-[0_0_0_4px_var(--color-brand-soft)]"
+                  ? "border-brand bg-brand shadow-lit"
                   : "border-muted bg-panel"
               }`}
             />

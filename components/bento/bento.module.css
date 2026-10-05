@@ -3,7 +3,7 @@
 /*
  * The bento's panels and pictures. Every picture is complete and grey at rest;
  * while its panel is hovered, focused from the keyboard or playing on a touch
- * screen ([data-hot]) it plays in the brand colour, each part after its own
+ * screen ([data-playing]) it plays in the brand colour, each part after its own
  * delay, and it resets at once when that ends. Geometry and timing are the
  * prototype's.
  */
@@ -36,12 +36,8 @@
       transform: translateY(44px);
     }
   }
-  &:focus-visible {
-    outline: 2px solid var(--color-brand);
-    outline-offset: 2px;
-  }
   /* Leaving resets every part at once; only playing is choreographed. */
-  &:not(:hover, :focus-visible, [data-hot]) * {
+  &:not(:hover, :focus-visible, [data-playing]) * {
     transition-delay: 0s !important;
   }
 }
@@ -119,8 +115,10 @@
   }
 }
 
+/* Pretty, so a last line is never one short word on its own. */
 .body {
   max-width: 44ch;
+  text-wrap: pretty;
   color: var(--color-muted);
   font-size: var(--text-14);
   line-height: var(--leading-20);
@@ -352,7 +350,7 @@
   }
 }
 
-.panel:is(:hover, :focus-visible, [data-hot]) {
+.panel:is(:hover, :focus-visible, [data-playing]) {
   & .token {
     transform: translate(var(--tx, 0px), var(--ty, 0px));
   }
@@ -446,7 +444,7 @@
 }
 /* At rest, where it may move, the box is empty and waits for the question. */
 @media (prefers-reduced-motion: no-preference) {
-  .panel:not(:hover, :focus-visible, [data-hot]) .typed i {
+  .panel:not(:hover, :focus-visible, [data-playing]) .typed i {
     max-width: 0;
     opacity: 0;
     transform: translateY(3px);
@@ -470,7 +468,7 @@
   width: 22px;
   height: 22px;
   margin-left: 4px;
-  border-radius: 7px;
+  border-radius: var(--radius-7);
   background: var(--color-card-2);
   color: var(--color-faint);
   transition:
@@ -597,7 +595,7 @@
   }
 }
 
-.panel:is(:hover, :focus-visible, [data-hot]) {
+.panel:is(:hover, :focus-visible, [data-playing]) {
   /* The question types itself out at a typist's rhythm, each letter settling as it lands. */
   & .typed i {
     transition:
@@ -724,7 +722,7 @@
   }
 }
 
-.panel:is(:hover, :focus-visible, [data-hot]) {
+.panel:is(:hover, :focus-visible, [data-playing]) {
   & .stack i {
     border-style: solid;
     border-color: var(--color-line-hot);
@@ -924,7 +922,7 @@
   }
 }
 
-.panel:is(:hover, :focus-visible, [data-hot]) {
+.panel:is(:hover, :focus-visible, [data-playing]) {
   & .card {
     border-color: var(--color-brand);
     box-shadow: 0 0 0 3px var(--color-brand-soft);
@@ -1056,7 +1054,7 @@
   }
 }
 
-.panel:is(:hover, :focus-visible, [data-hot]) {
+.panel:is(:hover, :focus-visible, [data-playing]) {
   & .source {
     border-color: var(--color-brand);
     box-shadow: 0 0 0 3px var(--color-brand-soft);

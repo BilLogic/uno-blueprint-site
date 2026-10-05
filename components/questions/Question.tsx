@@ -22,7 +22,7 @@ export function Question({ question, answer }: QuestionProps) {
           aria-expanded={open}
           aria-controls={answerId}
           onClick={() => setOpen((wasOpen) => !wasOpen)}
-          className="flex w-full cursor-pointer items-center justify-between gap-4 py-4.5 text-left group-first:pt-0 md:group-first:pt-question-lead font-medium transition-[color] duration-t-1 ease-plain hover:text-brand focus-visible:rounded-6 focus-visible:outline-brand"
+          className="flex w-full cursor-pointer items-center justify-between gap-4 py-4.5 text-left group-first:pt-0 md:group-first:pt-question-lead font-medium transition-[color] duration-t-1 ease-plain hover:text-brand focus-visible:rounded-6"
         >
           {question}
           <PlusMinus />
@@ -33,7 +33,7 @@ export function Question({ question, answer }: QuestionProps) {
         className="grid grid-rows-[0fr] transition-[grid-template-rows] duration-t-3 ease-io group-data-open:grid-rows-[1fr] motion-reduce:transition-none"
       >
         <div className="invisible min-h-0 overflow-hidden transition-[visibility] delay-(--duration-t-3) duration-0 group-data-open:visible group-data-open:delay-0 motion-reduce:transition-none">
-          <p className="max-w-answer -translate-y-1 pb-4.5 text-muted opacity-0 transition-[opacity,translate] duration-[var(--duration-t-2),var(--duration-t-3)] ease-out group-data-open:translate-y-0 group-data-open:opacity-100 group-data-open:delay-(--duration-answer-lag) motion-reduce:transition-none">
+          <p className="max-w-answer -translate-y-1 pb-4.5 text-pretty text-muted opacity-0 transition-[opacity,translate] duration-[var(--duration-t-2),var(--duration-t-3)] ease-out group-data-open:translate-y-0 group-data-open:opacity-100 group-data-open:delay-(--duration-answer-lag) motion-reduce:transition-none">
             {answer}
           </p>
         </div>

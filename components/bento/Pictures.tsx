@@ -5,7 +5,7 @@ import { typingDelays } from "@/lib/bento";
 import { ToolLogo } from "@/components/icons/ToolLogo";
 import { BOARD, HITS, RESULTS, SOURCE_WIRES, STACKS } from "./geometry";
 import styles from "./bento.module.css";
-import { vars } from "./vars";
+import { vars } from "@/components/ui/vars";
 
 /**
  * A word drawn one letter to an element, so each letter can move on its own

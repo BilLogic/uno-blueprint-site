@@ -26,7 +26,7 @@ function Buttons() {
  */
 export function PlusCard() {
   return (
-    <div className="group/case relative grid h-case grid-cols-[minmax(0,5fr)_minmax(0,8fr)] gap-6 overflow-hidden rounded-16 border border-line-2 bg-card transition-[background-color] duration-t-rail ease-plain hover:bg-case-hover max-ml:h-auto max-ml:grid-cols-1">
+    <div className="group/case relative grid h-case grid-cols-[minmax(0,5fr)_minmax(0,8fr)] gap-6 overflow-hidden rounded-16 border border-line-2 bg-card transition-[background-color] duration-t-rail ease-plain hover:bg-cell max-ml:h-auto max-ml:grid-cols-1">
       <div className="grid content-start gap-2.5 py-8 pl-8 max-ml:px-6 max-ml:pt-6 max-ml:pb-0">
         <span className="mb-2 inline-flex items-center gap-2 text-17 font-medium tracking-mark">
           <img
@@ -39,7 +39,7 @@ export function PlusCard() {
           {plus.mark.name}
         </span>
         <h3 className="text-15 font-medium">{plus.title}</h3>
-        <p className="max-w-case-text text-14 text-muted">{plus.body}</p>
+        <p className="max-w-case-text text-14 text-pretty text-muted">{plus.body}</p>
         <div className="mt-2 hidden flex-wrap gap-2 case-stacked:flex">
           <Buttons />
         </div>
