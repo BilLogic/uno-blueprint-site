@@ -1,6 +1,34 @@
-/** Where a showcase recording and its poster (the recording's first frame) are served from. */
-export function recordingFiles(name: string): { video: string; poster: string } {
-  return { video: `/videos/${name}.mp4`, poster: `/videos/${name}.webp` };
+import type { ZoomKeyframe } from "./recording-zoom";
+
+/** One tab of a showcase, as its content declares it. */
+export type ShowcaseTab<T extends string> = {
+  value: T;
+  label: string;
+  /**
+   * What the picture is about; it follows the tab's label under the stage,
+   * and names the recording.
+   */
+  caption: string;
+  /**
+   * The screen recording played on the stage while this tab is selected,
+   * named by its file under public/videos.
+   */
+  recording: string;
+  /** The recording comes with a mask of what to show of it (`<recording>-mask.png`). */
+  masked?: boolean;
+  /** How the recording zooms with its action. */
+  zoom?: readonly ZoomKeyframe[];
+};
+
+type RecordingFiles = { video: string; poster: string; mask?: string };
+
+/**
+ * Where a showcase recording, its poster (the recording's first frame) and,
+ * if it has one, its mask are served from.
+ */
+export function recordingFiles(name: string, masked = false): RecordingFiles {
+  const files = { video: `/videos/${name}.mp4`, poster: `/videos/${name}.webp` };
+  return masked ? { ...files, mask: `/videos/${name}-mask.png` } : files;
 }
 
 type Playback = {
