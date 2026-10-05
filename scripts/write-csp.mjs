@@ -1,4 +1,4 @@
-// Writes out/_headers with a content security policy for the static export.
+// Writes out/_headers with a content security policy for the static export's pages.
 //
 // Next.js inlines its page data as <script> tags, and the theme script in
 // <head> is inline too. Rather than allow every inline script, the policy lists
@@ -7,7 +7,7 @@
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { themeBootScript } from "../lib/theme-boot.mjs";
-import { buildPolicy, hashProblem, inlineScriptHashes } from "./csp.mjs";
+import { buildPolicy, hashProblem, inlineScriptHashes, metaPolicy } from "./csp.mjs";
 
 const out = "out";
 
@@ -19,9 +19,19 @@ function htmlFiles(dir) {
   });
 }
 
-const hashes = new Set(
-  htmlFiles(out).flatMap((file) => [...inlineScriptHashes(readFileSync(file, "utf8"))]),
-);
+/** The request paths that serve one exported page, with and without its trailing slash or extension. */
+function routesOf(file) {
+  const path = `/${file.slice(out.length + 1)}`;
+  if (path === "/index.html") return ["/", path];
+  if (path.endsWith("/index.html")) {
+    const dir = path.slice(0, -"index.html".length);
+    return [dir, dir.slice(0, -1), path];
+  }
+  return [path, path.slice(0, -".html".length)];
+}
+
+const pages = htmlFiles(out);
+const hashes = new Set(pages.flatMap((file) => [...inlineScriptHashes(readFileSync(file, "utf8"))]));
 
 const problem = hashProblem(hashes, themeBootScript);
 if (problem) {
@@ -29,5 +39,17 @@ if (problem) {
   process.exit(1);
 }
 
-writeFileSync(join(out, "_headers"), `/*\n  Content-Security-Policy: ${buildPolicy(hashes)}\n`);
-console.log(`Wrote ${out}/_headers with ${hashes.size} inline script hashes`);
+// The policy goes on this site's own pages, path by path, never on `/*`: a `/*`
+// rule would also stamp it on the demo that netlify.toml forwards at /demo/,
+// whose scripts and connections it does not list.
+const routes = new Set(pages.flatMap(routesOf));
+const headerLine = `  Content-Security-Policy: ${buildPolicy(hashes)}\n`;
+writeFileSync(join(out, "_headers"), [...routes].map((route) => `${route}\n${headerLine}`).join(""));
+
+// An unknown path matches none of those routes, yet Netlify answers it with
+// 404.html, so that page carries the policy in a meta tag as well, ahead of its scripts.
+const notFound = join(out, "404.html");
+const meta = `<meta http-equiv="Content-Security-Policy" content="${metaPolicy(hashes)}">`;
+writeFileSync(notFound, readFileSync(notFound, "utf8").replace(/<head>/, `<head>${meta}`));
+
+console.log(`Wrote ${out}/_headers with ${hashes.size} inline script hashes for ${routes.size} routes`);

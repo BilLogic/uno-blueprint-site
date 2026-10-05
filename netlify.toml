@@ -30,3 +30,11 @@
   for = "/uno-blueprint.md"
   [headers.values]
     Content-Type = "text/markdown; charset=utf-8"
+
+# The demo is the template app, deployed as its own site and built for /demo/.
+# A 200 rewrite keeps visitors on this address while the demo site serves it.
+[[redirects]]
+  from = "/demo/*"
+  to = "https://uno-blueprint-demo.netlify.app/demo/:splat"
+  status = 200
+  force = true
