@@ -1,3 +1,4 @@
+import type { ShowcaseTab } from "@/lib/recording";
 import { links, type SiteLink } from "./links";
 
 export type CanvasTab = "understand" | "check" | "compare" | "present";
@@ -7,8 +8,7 @@ type Canvas = {
   subheadline: string;
   more: { label: string; link: SiteLink };
   tabsLabel: string;
-  /** Each tab plays a screen recording, named by its file under public/videos. */
-  tabs: readonly { value: CanvasTab; label: string; caption: string; recording: string }[];
+  tabs: readonly ShowcaseTab<CanvasTab>[];
 };
 
 export const canvas = {

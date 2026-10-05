@@ -66,9 +66,6 @@
   --color-note: light-dark(#fff7e3, #2a2414);
   --color-note-ink: light-dark(#6f5410, #f0d48c);
   --color-note-line: light-dark(#ecd9a6, #4a3d1c);
-  /* The terminal: below the page in light; in dark, one step above it, so a code box does not sink into the page. */
-  --color-term: light-dark(#101417, oklch(0.235 0.006 175));
-  --color-term-ink: #d7e3df;
   /* Bento: the text bars drawn in its pictures, at the prototype's 24%, 26% and, once played, 30% of ink. */
   --color-bento-bar-dim: color-mix(in oklab, var(--color-ink) 24%, transparent);
   --color-bento-bar: color-mix(in oklab, var(--color-ink) 26%, transparent);
@@ -217,7 +214,7 @@
     inset 0 1px 0 light-dark(transparent, rgba(255, 255, 255, 0.04));
   --shadow-menu: 0 10px 30px rgba(0, 0, 0, 0.14);
   --shadow-ring: 0 0 0 1px var(--color-line); /* a pressed segment's hairline */
-  --shadow-term: inset 0 0 0 1px light-dark(transparent, var(--color-line-2)); /* a code box's hairline, in dark */
+  --shadow-term: inset 0 0 0 1px var(--color-line); /* a code box's hairline, the prompt box's border */
 
   /* Page rhythm; narrower screens tighten it below. */
   --spacing-gutter: 96px;
@@ -234,15 +231,22 @@
   --container-agent: 860px;
 
   /*
-   * Get started, questions and the closing band. The terminal boxes keep their
-   * dark face in both themes, so their inks are single values.
+   * Get started, questions and the closing band. A code box follows the theme:
+   * in light its inks are the prompt box's; in dark they keep the terminal's.
+   * Its surface is the prompt box's panel in both themes, so a command and a
+   * prompt read as one kind of thing.
    */
-  --color-term-raised: #181d21; /* a copy button on the terminal */
-  --color-term-edge: #2a3137; /* that button's rim */
-  --color-term-muted: #9aa4af; /* that button's icon */
-  --color-term-key: #7fe3cc; /* a skill's name */
-  --color-term-faint: #8b99a3; /* what a skill does, and a note above commands */
-  --color-term-hover: rgba(255, 255, 255, 0.055);
+  --color-term: var(--color-panel);
+  --color-term-ink-dark: #d7e3df; /* a command, in dark */
+  --color-term-ink: light-dark(var(--color-ink), var(--color-term-ink-dark));
+  --color-term-raised: light-dark(var(--color-card), #181d21); /* a copy button on a code box */
+  --color-term-edge: light-dark(var(--color-line), #2a3137); /* that button's rim */
+  --color-term-muted: light-dark(var(--color-muted), #9aa4af); /* that button's icon */
+  --color-term-key: light-dark(var(--color-link), #7fe3cc); /* a skill's name */
+  --color-term-faint: light-dark(var(--color-muted), #8b99a3); /* what a skill does, and a note above commands */
+  /* Bento: the JSON's resting text. The prototype dims it to 50%; 54% is the least that reads at 4.5:1 in dark. */
+  --color-term-dim: light-dark(var(--color-muted), color-mix(in oklab, var(--color-term-ink-dark) 54%, transparent));
+  --color-term-hover: light-dark(rgba(16, 24, 22, 0.04), rgba(255, 255, 255, 0.055));
   --leading-command: 1.6; /* commands in a box; the agent view's page reads looser */
   --leading-prompt-title: 1.4; /* a prompt's title */
   --tracking-label: -0.01em; /* a step's label */
@@ -272,23 +276,30 @@
 
   /*
    * Showcases (canvas, touch points): a tab row over a framed stage that plays
-   * a screen recording. A phone's recording plays inside a handset, sized in em.
+   * a screen recording. A desktop recording is a window inset on the stage's
+   * dots; the phone's is a handset masked to its silhouette, centred, that
+   * zooms with the action.
    */
   --container-title: 620px; /* a section headline */
   --container-caption: 70ch;
   --spacing-dots: 18px; /* the stage's dot grid */
   /* On a phone the stage leaves 16:9 and every recording shows whole, uncropped. */
-  --aspect-recording: 3 / 2; /* a desktop recording's own shape, and the canvas stage's */
-  --aspect-stage-tall: 4 / 5; /* the touch-points stage, tall enough for the handset's screen to read */
-  /* The handset, standing on the stage's foot; its screen has the phone recording's own shape. */
-  --text-handset: clamp(12px, 1.05vw, 13px); /* the em its rim and corners are sized in */
-  --text-handset--line-height: 1.5;
-  --shadow-handset: 0 20px 50px rgba(0, 0, 0, 0.1);
-  --aspect-phone: 600 / 1222;
-  --radius-phone: 1.8em; /* the handset's corners */
-  --spacing-phone-top: 6%; /* the stage above the handset */
-  --spacing-phone-bezel: 0.45em; /* the rim round the screen */
-  --radius-phone-screen: calc(var(--radius-phone) - var(--spacing-phone-bezel)); /* inside that rim */
+  --aspect-stage-canvas-phone: 3 / 2; /* the canvas stage on a phone */
+  --aspect-stage-tall: 4 / 5; /* the touch-points stage on a phone, tall enough for the phone's screen to read */
+  --spacing-recording-inset: clamp(16px, 3.5vw, 44px); /* the dots round a recording, at least */
+  --aspect-window: 1620 / 1004; /* a desktop recording's own shape: the app window, edge to edge */
+  --radius-window: var(--radius-10);
+  --shadow-window: var(--shadow-ring), 0 16px 40px -16px rgba(0, 0, 0, 0.3);
+  /*
+   * A thin frame drawn inside the window, over the recording. The app
+   * recordings are cropped only by their bezel, and their own zoom brings a
+   * dark band of up to ~10px in 1620 in at the edges; the frame covers it.
+   * Sized in the window's own width, so it scales with the recording.
+   */
+  --spacing-window-outline: 0.6cqi;
+  --color-window-outline: var(--color-card-2);
+  --aspect-phone: 720 / 1510; /* the phone recording's own shape, handset included */
+  --drop-shadow-phone: 0 16px 24px rgba(0, 0, 0, 0.2); /* follows the handset's silhouette */
   /* Lane accents, the same in both themes. */
   --color-lane-user: #3f8fd6;
   --color-lane-front: #d9902f;
@@ -505,6 +516,40 @@
 @utility bg-dots {
   background-image: radial-gradient(var(--color-line-2) 1px, transparent 1px);
   background-size: var(--spacing-dots) var(--spacing-dots);
+}
+
+/* A box of its recording's shape, as large as fits whole in its size container. */
+@utility fit-* {
+  aspect-ratio: --value(--aspect-*);
+  width: min(100cqw, 100cqh * (--value(--aspect-*)));
+}
+
+/* The window's inner frame: an inset border over the recording, inside the window's corners. */
+@utility window-outline {
+  container-type: inline-size;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 var(--spacing-window-outline) var(--color-window-outline);
+    pointer-events: none;
+  }
+}
+
+/*
+ * Cuts a recording to the silhouette in --recording-mask, an image the
+ * recording's size. Fullscreen shows the video unmasked, letterboxed as it is.
+ */
+@utility recording-mask {
+  -webkit-mask-image: var(--recording-mask);
+  mask-image: var(--recording-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  &:fullscreen {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
 }
 
 :root {

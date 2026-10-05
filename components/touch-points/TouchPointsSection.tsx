@@ -15,7 +15,7 @@ export function TouchPointsSection() {
       tabsLabel={touchPoints.tabsLabel}
       tabs={touchPoints.tabs}
       icons={{ app: LayoutGrid, agent: Terminal, chat: MessageCircle, phone: Smartphone }}
-      handset="phone"
+      phone="phone"
     />
   );
 }

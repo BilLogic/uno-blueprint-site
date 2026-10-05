@@ -4,6 +4,9 @@ export type SiteLink = {
   notReady?: true;
 };
 
+/** What a button or nav item whose target is not ready yet says, beside its label. */
+export const comingSoon = "Coming soon";
+
 export const links = {
   demo: { href: "https://uno-blueprint.netlify.app/demo/" },
   github: { href: "https://github.com/BilLogic/uno-blueprint" },

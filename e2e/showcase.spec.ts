@@ -101,77 +101,21 @@ async function expectOneStageSize(page: Page, list: Locator, tabs: readonly { la
   return { width, height };
 }
 
-/** A video's object-fit: on a phone each recording shows whole. */
-const fit = (video: Locator) => video.evaluate((node) => getComputedStyle(node).objectFit);
-
-const phone = touchPoints.tabs.find((tab) => tab.value === "phone")!;
-
-for (const width of [1440, 390]) {
-  test(`at ${width} px the touch points end on the phone, every tab's stage is one size, and the handset fills it`, async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width, height: 900 });
-    await page.goto("/");
-    const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
-    await expect(list.getByRole("tab")).toHaveCount(touchPoints.tabs.length);
-    await expect(list.getByRole("tab").last()).toHaveText(phone.label);
-    const size = await expectOneStageSize(page, list, touchPoints.tabs);
-    if (width === 390) {
-      // A phone's stage stands taller than wide, so the handset's screen reads.
-      expect(size.height / size.width).toBeCloseTo(5 / 4, 1);
-      for (const tab of touchPoints.tabs.filter((candidate) => candidate !== phone)) {
-        await list.getByRole("tab", { name: tab.label }).click();
-        expect(await fit(page.getByRole("tabpanel", { name: tab.label }).locator("video"))).toBe("contain");
-      }
-      await list.getByRole("tab", { name: phone.label }).click();
-    }
-
-    const panel = page.getByRole("tabpanel", { name: phone.label });
-    await expect(panel.getByText(phone.caption)).toBeVisible();
-    const stage = (await panel.getByTestId("showcase-stage").boundingBox())!;
-    const frame = (await panel.getByTestId("phone-frame").boundingBox())!;
-    expect(frame.y).toBeGreaterThanOrEqual(stage.y);
-    expect(frame.y + frame.height).toBeLessThanOrEqual(stage.y + stage.height + 0.5);
-    expect(frame.x).toBeGreaterThanOrEqual(stage.x);
-    expect(frame.x + frame.width).toBeLessThanOrEqual(stage.x + stage.width);
-    expect(frame.height).toBeGreaterThan(stage.height * 0.75);
-  });
+/** Where `inner` sits inside `outer`: the margin on each side, in px. */
+async function margins(outer: Locator, inner: Locator) {
+  const [o, i] = [(await outer.boundingBox())!, (await inner.boundingBox())!];
+  return { left: i.x - o.x, top: i.y - o.y, right: o.x + o.width - i.x - i.width, bottom: o.y + o.height - i.y - i.height };
 }
 
-for (const width of [1440, 390]) {
-  test(`at ${width} px every canvas tab's stage is one size, and its recording fills the stage`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 });
-    await page.goto("/");
-    const list = page.getByRole("tablist", { name: canvas.tabsLabel });
-    await expect(list.getByRole("tab")).toHaveText(canvas.tabs.map((tab) => tab.label));
-    const size = await expectOneStageSize(page, list, canvas.tabs);
-    // On a phone the stage takes the recordings' own 3:2 and shows each whole; wider, it is 16:9 and they cover it.
-    const [ratio, objectFit] = width === 390 ? [3 / 2, "contain"] : [16 / 9, "cover"];
-    expect(size.width / size.height).toBeCloseTo(ratio, 1);
-
-    for (const tab of canvas.tabs) {
-      await list.getByRole("tab", { name: tab.label }).click();
-      const stage = page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage");
-      const video = stage.locator("video");
-      await expect(video).toHaveAttribute("src", `/videos/${tab.recording}.mp4`);
-      await expect(video).toHaveAttribute("poster", `/videos/${tab.recording}.webp`);
-      expect(await fit(video)).toBe(objectFit);
-      const [outer, inner] = [(await stage.boundingBox())!, (await video.boundingBox())!];
-      // The stage's border stays round the recording, which covers the rest.
-      expect(inner.width).toBeGreaterThan(outer.width - 4);
-      expect(inner.height).toBeGreaterThan(outer.height - 4);
-    }
-  });
-}
-
-test("the phone's recording keeps its own shape inside the handset", async ({ page }) => {
-  await page.goto("/");
-  const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
-  await list.getByRole("tab", { name: phone.label }).click();
-  const video = page.getByRole("tabpanel", { name: phone.label }).locator("video");
+/**
+ * A recording's own shape, read from its poster: the poster is its first
+ * frame, and the test browser cannot decode the video itself.
+ */
+const posterShape = async (video: Locator) => {
+  // The poster loads only once its stage is near.
   await video.scrollIntoViewIfNeeded();
-  // The poster is the recording's first frame, so it has the recording's shape; the test browser cannot decode the video itself.
-  const shape = await video.evaluate(
+  await expect(video).toHaveAttribute("poster", /\.webp$/);
+  return video.evaluate(
     (node: HTMLVideoElement) =>
       new Promise<number>((resolve, reject) => {
         const poster = new Image();
@@ -180,8 +124,100 @@ test("the phone's recording keeps its own shape inside the handset", async ({ pa
         poster.src = node.poster;
       }),
   );
+};
+
+/** A desktop recording is a window inset on the stage's dots: whole, at its own shape, centred, with dots all round. */
+async function expectInsetWindow(stage: Locator) {
+  const window = stage.getByTestId("recording-window");
+  const box = (await window.boundingBox())!;
+  expect(box.width / box.height).toBeCloseTo(await posterShape(window.locator("video")), 2);
+  const margin = await margins(stage, window);
+  for (const side of Object.values(margin)) expect(side).toBeGreaterThanOrEqual(15);
+  expect(Math.abs(margin.left - margin.right)).toBeLessThan(1);
+  expect(Math.abs(margin.top - margin.bottom)).toBeLessThan(1);
+  // The recording fills its window, which rounds its corners.
+  const video = (await window.locator("video").boundingBox())!;
+  expect(video.width).toBeCloseTo(box.width, 0);
+  expect(video.height).toBeCloseTo(box.height, 0);
+  expect(await window.evaluate((node) => parseFloat(getComputedStyle(node).borderTopLeftRadius))).toBeGreaterThan(0);
+}
+
+const phone = touchPoints.tabs.find((tab) => tab.value === "phone")!;
+
+for (const width of [1440, 390]) {
+  test(`at ${width} px the touch points end on the phone, every tab's stage is one size, and the phone stands centred in it`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
+    await expect(list.getByRole("tab")).toHaveCount(touchPoints.tabs.length);
+    await expect(list.getByRole("tab").last()).toHaveText(phone.label);
+    const size = await expectOneStageSize(page, list, touchPoints.tabs);
+    // On a phone the stage stands taller than wide, so the phone's screen reads.
+    if (width === 390) expect(size.height / size.width).toBeCloseTo(5 / 4, 1);
+    for (const tab of touchPoints.tabs.filter((candidate) => candidate !== phone)) {
+      await list.getByRole("tab", { name: tab.label }).click();
+      await expectInsetWindow(page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage"));
+    }
+    await list.getByRole("tab", { name: phone.label }).click();
+
+    const panel = page.getByRole("tabpanel", { name: phone.label });
+    await expect(panel.getByText(phone.caption)).toBeVisible();
+    const stage = panel.getByTestId("showcase-stage");
+    const margin = await margins(stage, panel.getByTestId("phone"));
+    // Whole, with dots above and below it, and centred both ways.
+    expect(margin.top).toBeGreaterThanOrEqual(15);
+    expect(margin.bottom).toBeGreaterThanOrEqual(15);
+    expect(Math.abs(margin.top - margin.bottom)).toBeLessThan(1);
+    expect(Math.abs(margin.left - margin.right)).toBeLessThan(1);
+    const [stageBox, phoneBox] = [(await stage.boundingBox())!, (await panel.getByTestId("phone").boundingBox())!];
+    expect(phoneBox.height).toBeGreaterThan(stageBox.height * 0.75);
+  });
+}
+
+for (const width of [1440, 390]) {
+  test(`at ${width} px every canvas tab's stage is one size, and its recording is a window inset on it`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    const list = page.getByRole("tablist", { name: canvas.tabsLabel });
+    await expect(list.getByRole("tab")).toHaveText(canvas.tabs.map((tab) => tab.label));
+    const size = await expectOneStageSize(page, list, canvas.tabs);
+    // On a phone the stage is 3:2; wider, it is 16:9.
+    expect(size.width / size.height).toBeCloseTo(width === 390 ? 3 / 2 : 16 / 9, 1);
+
+    for (const tab of canvas.tabs) {
+      await list.getByRole("tab", { name: tab.label }).click();
+      const stage = page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage");
+      const video = stage.locator("video");
+      await expect(video).toHaveAttribute("src", `/videos/${tab.recording}.mp4`);
+      await expect(video).toHaveAttribute("poster", `/videos/${tab.recording}.webp`);
+      await expectInsetWindow(stage);
+    }
+  });
+}
+
+test("the phone's recording keeps its own shape, cut to the handset's silhouette", async ({ page }) => {
+  await page.goto("/");
+  const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
+  await list.getByRole("tab", { name: phone.label }).click();
+  const video = page.getByRole("tabpanel", { name: phone.label }).locator("video");
+  await video.scrollIntoViewIfNeeded();
+  const shape = await posterShape(video);
   const box = (await video.boundingBox())!;
   expect(box.width / box.height).toBeCloseTo(shape, 2);
+  expect(await video.evaluate((node) => getComputedStyle(node).maskImage)).toContain(`/videos/${phone.recording}-mask.png`);
+});
+
+test("the phone never zooms for a reader who asked for less motion", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
+  await list.getByRole("tab", { name: phone.label }).click();
+  const panel = page.getByRole("tabpanel", { name: phone.label });
+  await panel.getByTestId("showcase-stage").hover();
+  await panel.getByRole("button", { name: showcase.play }).click();
+  await expect(panel.getByTestId("phone")).toHaveCSS("transform", "none");
 });
 
 /**
@@ -215,7 +251,7 @@ test.describe("a showcase recording", () => {
     await expect(video).toHaveAccessibleName(`${understand.label}. ${understand.caption}`);
     await expect(video).not.toHaveAttribute("data-state", "playing");
 
-    await panel.getByTestId("showcase-stage").scrollIntoViewIfNeeded();
+    await panel.getByTestId("showcase-stage").hover();
     await expect(video).toHaveAttribute("data-state", "playing");
 
     const button = panel.getByRole("button", { name: showcase.pause });
@@ -243,7 +279,7 @@ test.describe("a showcase recording", () => {
     await page.goto("/");
     const panel = page.getByRole("tabpanel", { name: understand.label });
     const video = panel.locator("video");
-    await panel.getByTestId("showcase-stage").scrollIntoViewIfNeeded();
+    await panel.getByTestId("showcase-stage").hover();
     const play = panel.getByRole("button", { name: showcase.play });
     await expect(play).toBeVisible();
     await expect(video).not.toHaveAttribute("data-state", "playing");
@@ -252,6 +288,34 @@ test.describe("a showcase recording", () => {
     await expect(video).toHaveAttribute("data-state", "playing");
     await expect(panel.getByRole("button", { name: showcase.pause })).toBeVisible();
   });
+});
+
+test("Pause/Play shows while the stage is pointed at or focused", async ({ page }) => {
+  await page.goto("/");
+  const panel = page.getByRole("tabpanel", { name: understand.label });
+  const stage = panel.getByTestId("showcase-stage");
+  const button = panel.getByRole("button", { name: showcase.pause });
+  // The button's wrapper is what fades.
+  const reveal = button.locator("..");
+  await stage.scrollIntoViewIfNeeded();
+  await page.mouse.move(0, 0);
+  await expect(reveal).toHaveCSS("opacity", "0");
+  await stage.hover();
+  await expect(reveal).toHaveCSS("opacity", "1");
+  await page.mouse.move(0, 0);
+  await expect(reveal).toHaveCSS("opacity", "0");
+  await button.focus();
+  await expect(reveal).toHaveCSS("opacity", "1");
+});
+
+test("on a touch screen Pause/Play always shows", async ({ browser }) => {
+  const context = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  await page.goto("/");
+  const panel = page.getByRole("tabpanel", { name: understand.label });
+  await panel.getByTestId("showcase-stage").scrollIntoViewIfNeeded();
+  await expect(panel.getByRole("button", { name: showcase.pause }).locator("..")).toHaveCSS("opacity", "1");
+  await context.close();
 });
 
 for (const width of [1440, 390]) {
