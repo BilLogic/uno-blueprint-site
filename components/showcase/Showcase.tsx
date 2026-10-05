@@ -83,10 +83,11 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
         id={tabPanelId(idBase, item.value)}
         aria-labelledby={tabId(idBase, item.value)}
       >
+        {/* Clipped, not hidden: a window sunk past the foot must not make the stage scroll. */}
         <div
           ref={stageRef}
           data-testid="showcase-stage"
-          className={`group relative aspect-video max-w-full overflow-hidden rounded-16 border border-line bg-card bg-dots ${tall ? "max-sm:aspect-stage-tall" : "max-sm:aspect-stage-canvas-phone"}`}
+          className={`group relative aspect-video max-w-full overflow-clip rounded-16 border border-line bg-card bg-dots ${tall ? "max-sm:aspect-stage-tall" : "max-sm:aspect-stage-canvas-phone"}`}
         >
           <Recording
             key={item.value}
