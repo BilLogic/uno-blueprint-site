@@ -85,7 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # The Netlify site that builds this repository; its previews live under its name.
-      SITE: uno-blueprint-staging
+      SITE: uno-blueprint
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
