@@ -325,8 +325,8 @@
   overflow: hidden;
   border-radius: var(--radius-10);
   background: var(--color-term);
-  /* The prototype dims the resting text to 50%; 54% is the least that reads at 4.5:1. */
-  color: color-mix(in oklab, var(--color-term-ink) 54%, transparent);
+  box-shadow: var(--shadow-term);
+  color: var(--color-term-dim);
   font-family: var(--font-mono);
   font-size: var(--text-11);
   line-height: var(--leading-term);

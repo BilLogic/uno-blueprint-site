@@ -1,11 +1,12 @@
 "use client";
 
 import { getStarted } from "@/content/get-started";
+import { revealOnHover } from "@/components/reveal";
 import { TabList } from "@/components/ui/Tabs";
 import { useTabs } from "@/hooks/use-tabs";
 import { CodeBlock } from "./CodeBlock";
 import { CopyButton } from "./CopyButton";
-import { StepLabel, StepSub, revealCopy, tabClassName, tabListClassName } from "./step-parts";
+import { StepLabel, StepSub, tabClassName, tabListClassName } from "./step-parts";
 
 const { skills } = getStarted;
 
@@ -25,7 +26,7 @@ export function SkillsStep() {
       <div {...panelProps} className="grid min-w-0 gap-3.5">
         <CodeBlock code={tab.code} />
         <p className="mt-2.5 mb-3.5 text-14 text-muted">{tab.note}</p>
-        <ul className="grid gap-0.5 rounded-12 bg-term p-1.5 text-term-ink">
+        <ul className="grid gap-0.5 rounded-12 bg-term p-1.5 text-term-ink shadow-term">
           {skills.list.map(({ name, does }) => {
             const call = `${tab.prefix}${name}`;
             return (
@@ -35,7 +36,7 @@ export function SkillsStep() {
               >
                 <code className="font-mono text-13 text-term-key wrap-anywhere">{call}</code>
                 <span className="text-13 text-term-faint">{does}</span>
-                <CopyButton text={call} tone="term" className={`top-1.75 right-1.75 ${revealCopy}`} />
+                <CopyButton text={call} tone="term" className={`top-1.75 right-1.75 ${revealOnHover}`} />
               </li>
             );
           })}
