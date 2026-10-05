@@ -136,10 +136,11 @@ export function Recording({ name, phone, masked, zoom, near, playing, labelledBy
 
   return (
     // The stage, less a margin of dots at the top and sides; the window is as
-    // large as fits whole inside it, standing on the stage's foot, which clips
-    // its square lower corners.
+    // large as fits whole inside it, standing on the stage's foot. It sinks
+    // past the foot by its frame's width, so the stage clips the frame's lower
+    // edge and its square lower corners.
     <div className="absolute inset-x-(--spacing-window-x) top-(--spacing-window-top) bottom-0 grid items-end justify-items-center [container-type:size]">
-      <div data-testid="recording-window" className="window-outline relative fit-window overflow-hidden rounded-t-window shadow-window">
+      <div data-testid="recording-window" className="window-outline relative fit-window translate-y-(--spacing-window-sink) overflow-hidden rounded-t-window shadow-window">
         {player}
       </div>
     </div>

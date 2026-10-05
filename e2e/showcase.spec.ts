@@ -128,15 +128,19 @@ const posterShape = async (video: Locator) => {
 
 /**
  * A desktop recording is a window standing on the stage's foot: whole, at its
- * own shape, centred across, with dots above and beside it and none below.
+ * own shape, centred across, with dots above and beside it and its frame's
+ * lower edge sunk out of sight.
  */
 async function expectFlushWindow(stage: Locator) {
   const window = stage.getByTestId("recording-window");
   const box = (await window.boundingBox())!;
   expect(box.width / box.height).toBeCloseTo(await posterShape(window.locator("video")), 2);
   const margin = await margins(stage, window);
-  // The stage's one-pixel rim is all that is below it.
-  expect(margin.bottom).toBeLessThanOrEqual(1);
+  // It sinks past the stage's foot by its frame's width, 0.6% of its own width,
+  // so the stage clips the frame's lower edge; the stage's one-pixel rim is in that.
+  const sink = (box.width * 0.6) / 100;
+  expect(margin.bottom).toBeLessThan(0);
+  expect(margin.bottom).toBeCloseTo(1 - sink, 0);
   for (const side of [margin.top, margin.left, margin.right]) expect(side).toBeGreaterThanOrEqual(11);
   expect(Math.abs(margin.left - margin.right)).toBeLessThan(1);
   // The recording fills its window, which rounds its upper corners only.

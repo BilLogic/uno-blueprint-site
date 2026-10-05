@@ -299,7 +299,14 @@
    * dark band of up to ~10px in 1620 in at the edges; the frame covers it.
    * Sized in the window's own width, so it scales with the recording.
    */
-  --spacing-window-outline: 0.6cqi;
+  --window-outline-share: 0.6; /* the frame, in hundredths of the window's width */
+  --spacing-window-outline: calc(var(--window-outline-share) * 1cqi);
+  /*
+   * How far the window sinks past the stage's foot, so the stage's clip cuts
+   * off the frame's lower edge: the frame's width, in hundredths of the
+   * window's height, since a translate's percentage is of the element's own.
+   */
+  --spacing-window-sink: calc(var(--window-outline-share) * 1% * var(--aspect-window));
   --color-window-outline: var(--color-card-2);
   --aspect-phone: 720 / 1510; /* the phone recording's own shape, handset included */
   --drop-shadow-phone: 0 16px 24px rgba(0, 0, 0, 0.2); /* follows the handset's silhouette */
