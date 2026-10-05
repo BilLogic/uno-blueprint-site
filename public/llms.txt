@@ -28,5 +28,6 @@ How to start: run `npm create uno-blueprint@latest` for a workspace with the can
 
 ## Optional
 
+- [Full text](https://uno-blueprint.netlify.app/llms-full.txt): the agent guide in full, in this one file
 - [Demo blueprint](https://uno-blueprint.netlify.app/demo/): a sample blueprint on the canvas
 - [Website](https://uno-blueprint.netlify.app/): the page this file describes

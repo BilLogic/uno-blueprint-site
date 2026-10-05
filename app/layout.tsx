@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Ubuntu_Sans, Ubuntu_Sans_Mono } from "next/font/google";
 import type { ReactNode } from "react";
+import { questions } from "@/content/questions";
 import { site } from "@/content/site";
 import { view } from "@/content/view";
 import { jsonLdText, structuredData } from "@/lib/structured-data";
@@ -36,7 +37,7 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: site.share.title, description: site.share.description },
 };
 
-const jsonLd = jsonLdText(structuredData(site));
+const jsonLd = jsonLdText(structuredData(site, questions.list));
 
 // THEME_COLORS explains why these are literals; a manual pick repoints them (boot script, useTheme).
 export const viewport: Viewport = {
