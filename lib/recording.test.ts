@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { openFullscreen, recordingFiles, shouldPlay, wantsPlay } from "./recording";
 
 describe("recordingFiles", () => {
@@ -40,27 +40,35 @@ describe("shouldPlay", () => {
 describe("openFullscreen", () => {
   it("takes the standard call where the browser has it", () => {
     const calls: string[] = [];
-    const video = {
+    openFullscreen({
       requestFullscreen: () => (calls.push("standard"), Promise.resolve()),
       webkitEnterFullscreen: () => void calls.push("webkit"),
-    };
-    expect(openFullscreen(video)).toBe(true);
+    });
     expect(calls).toEqual(["standard"]);
   });
 
   it("falls back to iPhone Safari's own player", () => {
     const calls: string[] = [];
-    expect(openFullscreen({ webkitEnterFullscreen: () => void calls.push("webkit") })).toBe(true);
+    openFullscreen({ webkitEnterFullscreen: () => void calls.push("webkit") });
     expect(calls).toEqual(["webkit"]);
   });
 
-  it("swallows a refusal", async () => {
+  it("handles the standard call's refusal itself", () => {
     const refused = Promise.reject(new Error("no gesture"));
-    expect(openFullscreen({ requestFullscreen: () => refused })).toBe(true);
-    await expect(refused).rejects.toThrow();
+    const handled = vi.spyOn(refused, "catch");
+    openFullscreen({ requestFullscreen: () => refused });
+    expect(handled).toHaveBeenCalledOnce();
   });
 
-  it("says so when there is no way to go fullscreen", () => {
-    expect(openFullscreen({})).toBe(false);
+  it("takes Safari's refusal before the video has metadata", () => {
+    const enter = vi.fn(() => {
+      throw new DOMException("no metadata yet", "InvalidStateError");
+    });
+    expect(() => openFullscreen({ webkitEnterFullscreen: enter })).not.toThrow();
+    expect(enter).toHaveBeenCalledOnce();
+  });
+
+  it("does nothing where there is no way to go fullscreen", () => {
+    expect(() => openFullscreen({})).not.toThrow();
   });
 });

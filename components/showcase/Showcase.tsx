@@ -6,8 +6,8 @@ import { showcase } from "@/content/showcase";
 import { TabList, tabId, tabPanelId } from "@/components/ui/Tabs";
 import { useInView } from "@/hooks/use-in-view";
 import { useReducedMotion } from "@/hooks/use-media-query";
-import { openFullscreen, shouldPlay, wantsPlay } from "@/lib/recording";
-import { Recording } from "./Recording";
+import { shouldPlay, wantsPlay } from "@/lib/recording";
+import { Recording, type RecordingHandle } from "./Recording";
 
 export type ShowcaseItem<T extends string> = {
   value: T;
@@ -48,12 +48,11 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
   const [stage, inView] = useInView<HTMLDivElement>();
   // The poster waits until the stage is near, so it never competes with the page's first paint.
   const [nearStage, near] = useInView<HTMLDivElement>({ rootMargin: "50% 0px", once: true });
-  const stageNode = useRef<HTMLDivElement | null>(null);
+  const recording = useRef<RecordingHandle>(null);
   const stageRef = useCallback(
     (node: HTMLDivElement | null) => {
       stage(node);
       nearStage(node);
-      stageNode.current = node;
     },
     [stage, nearStage],
   );
@@ -64,15 +63,13 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
   const captionId = `${tabPanelId(idBase, item.value)}-caption`;
   const Icon = wanted ? Pause : Play;
   const tall = items.some((candidate) => candidate.handset);
-  const button =
+  const buttonClass =
     "grid size-8 cursor-pointer place-items-center rounded-8 border border-line-2 bg-panel text-muted transition-[color,border-color] duration-t-1 motion-reduce:transition-none hover:border-line-hot hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
 
   const expand = () => {
-    const video = stageNode.current?.querySelector("video");
-    if (!video) return;
     // A reader who opens the recording wants it moving, as the pause button's Play would.
     setChoice(true);
-    openFullscreen(video);
+    recording.current?.expand();
   };
 
   return (
@@ -98,6 +95,7 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
         >
           <Recording
             key={item.value}
+            ref={recording}
             name={item.recording}
             handset={item.handset}
             near={near}
@@ -111,7 +109,7 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
               aria-label={wanted ? showcase.pause : showcase.play}
               title={wanted ? showcase.pause : showcase.play}
               onClick={() => setChoice(!wanted)}
-              className={button}
+              className={buttonClass}
             >
               <Icon className="size-icon-sm" strokeWidth={1.75} aria-hidden />
             </button>
@@ -120,7 +118,7 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
               aria-label={showcase.fullscreen}
               title={showcase.fullscreen}
               onClick={expand}
-              className={`${button} sm:hidden`}
+              className={`${buttonClass} sm:hidden`}
             >
               <Maximize2 className="size-icon-sm" strokeWidth={1.75} aria-hidden />
             </button>

@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { recordingFiles } from "@/lib/recording";
+import { useEffect, useImperativeHandle, useRef, type Ref } from "react";
+import { openFullscreen, recordingFiles } from "@/lib/recording";
+
+/** What a showcase may ask of its recording. */
+export type RecordingHandle = {
+  /** Opens the recording fullscreen, if the browser lets it. */
+  expand: () => void;
+};
 
 type RecordingProps = {
   /** The recording's file name under public/videos, without its extension. */
@@ -13,6 +19,7 @@ type RecordingProps = {
   playing: boolean;
   /** The id of the text that names the recording for assistive technology. */
   labelledBy: string;
+  ref?: Ref<RecordingHandle>;
 };
 
 /**
@@ -21,9 +28,15 @@ type RecordingProps = {
  * nothing. A new element per tab starts each recording from its first frame.
  * On a phone it shows whole, however the stage is shaped.
  */
-export function Recording({ name, handset, near, playing, labelledBy }: RecordingProps) {
+export function Recording({ name, handset, near, playing, labelledBy, ref: handle }: RecordingProps) {
   const ref = useRef<HTMLVideoElement>(null);
   const { video, poster } = recordingFiles(name);
+
+  useImperativeHandle(handle, () => ({
+    expand: () => {
+      if (ref.current) openFullscreen(ref.current);
+    },
+  }));
 
   useEffect(() => {
     const element = ref.current;

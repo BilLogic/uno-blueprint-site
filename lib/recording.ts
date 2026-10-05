@@ -31,17 +31,18 @@ export type FullscreenVideo = {
 
 /**
  * Opens a recording fullscreen: through the standard call where the browser
- * has it, and otherwise through iPhone Safari's own player. Returns whether
- * either was there to call; a refusal (no user gesture, say) is no error.
+ * has it, and otherwise through iPhone Safari's own player. A refusal is no
+ * error: the standard call may reject (no user gesture, say), and Safari's
+ * throws while the video has no metadata yet, as with `preload="none"`.
  */
-export function openFullscreen(video: FullscreenVideo): boolean {
+export function openFullscreen(video: FullscreenVideo): void {
   if (typeof video.requestFullscreen === "function") {
     video.requestFullscreen().catch(() => {});
-    return true;
+    return;
   }
-  if (typeof video.webkitEnterFullscreen === "function") {
-    video.webkitEnterFullscreen();
-    return true;
+  try {
+    video.webkitEnterFullscreen?.();
+  } catch {
+    // Refused; the recording stays on the page.
   }
-  return false;
 }
