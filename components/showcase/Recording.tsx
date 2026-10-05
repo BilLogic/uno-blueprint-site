@@ -132,7 +132,7 @@ export function Recording({ name, phone, masked, zoom, near, playing, labelledBy
           {player}
         </div>
       ) : (
-        <div data-testid="recording-window" className="fit-window overflow-hidden rounded-window shadow-window">
+        <div data-testid="recording-window" className="window-outline relative fit-window overflow-hidden rounded-window shadow-window">
           {player}
         </div>
       )}

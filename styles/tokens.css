@@ -286,6 +286,14 @@
   --aspect-window: 1620 / 1004; /* a desktop recording's own shape: the app window, edge to edge */
   --radius-window: var(--radius-10);
   --shadow-window: var(--shadow-ring), 0 16px 40px -16px rgba(0, 0, 0, 0.3);
+  /*
+   * A thin frame drawn inside the window, over the recording. The app
+   * recordings are cropped only by their bezel, and their own zoom brings a
+   * dark band of up to ~10px in 1620 in at the edges; the frame covers it.
+   * Sized in the window's own width, so it scales with the recording.
+   */
+  --spacing-window-outline: 0.6cqi;
+  --color-window-outline: var(--color-card-2);
   --aspect-phone: 720 / 1510; /* the phone recording's own shape, handset included */
   --drop-shadow-phone: 0 16px 24px rgba(0, 0, 0, 0.2); /* follows the handset's silhouette */
   /* Lane accents, the same in both themes. */
@@ -510,6 +518,19 @@
 @utility fit-* {
   aspect-ratio: --value(--aspect-*);
   width: min(100cqw, 100cqh * (--value(--aspect-*)));
+}
+
+/* The window's inner frame: an inset border over the recording, inside the window's corners. */
+@utility window-outline {
+  container-type: inline-size;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 var(--spacing-window-outline) var(--color-window-outline);
+    pointer-events: none;
+  }
 }
 
 /*
