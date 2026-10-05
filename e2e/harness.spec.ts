@@ -105,8 +105,9 @@ test.describe("harness showcase", () => {
     await page.goto("/");
     const harness = section(page);
     await harness.getByRole("tab", { name: "Slice" }).click();
-    // A picture plays only while its stage is in view.
+    // A picture plays only while its stage is in view, and a kind under the pointer holds the loop.
     await harness.getByRole("tabpanel").scrollIntoViewIfNeeded();
+    await page.mouse.move(0, 0);
     await expect(harness.getByRole("button", { name: "Lane" })).toHaveAttribute("aria-pressed", "true", {
       timeout: 4000,
     });
