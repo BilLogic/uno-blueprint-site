@@ -277,6 +277,9 @@
   --container-title: 620px; /* a section headline */
   --container-caption: 70ch;
   --spacing-dots: 18px; /* the stage's dot grid */
+  /* On a phone the stage leaves 16:9 and every recording shows whole, uncropped. */
+  --aspect-recording: 3 / 2; /* a desktop recording's own shape, and the canvas stage's */
+  --aspect-stage-tall: 4 / 5; /* the touch-points stage, tall enough for the handset's screen to read */
   /* The handset, standing on the stage's foot; its screen has the phone recording's own shape. */
   --text-handset: clamp(12px, 1.05vw, 13px); /* the em its rim and corners are sized in */
   --text-handset--line-height: 1.5;

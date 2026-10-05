@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { recordingFiles, shouldPlay, wantsPlay } from "./recording";
+import { describe, expect, it, vi } from "vitest";
+import { openFullscreen, recordingFiles, shouldPlay, wantsPlay } from "./recording";
 
 describe("recordingFiles", () => {
   it("serves the video and its poster side by side under /videos", () => {
@@ -34,5 +34,41 @@ describe("shouldPlay", () => {
 
   it("never plays once paused", () => {
     expect(shouldPlay({ choice: false, reducedMotion: false, inView: true })).toBe(false);
+  });
+});
+
+describe("openFullscreen", () => {
+  it("takes the standard call where the browser has it", () => {
+    const calls: string[] = [];
+    openFullscreen({
+      requestFullscreen: () => (calls.push("standard"), Promise.resolve()),
+      webkitEnterFullscreen: () => void calls.push("webkit"),
+    });
+    expect(calls).toEqual(["standard"]);
+  });
+
+  it("falls back to iPhone Safari's own player", () => {
+    const calls: string[] = [];
+    openFullscreen({ webkitEnterFullscreen: () => void calls.push("webkit") });
+    expect(calls).toEqual(["webkit"]);
+  });
+
+  it("handles the standard call's refusal itself", () => {
+    const refused = Promise.reject(new Error("no gesture"));
+    const handled = vi.spyOn(refused, "catch");
+    openFullscreen({ requestFullscreen: () => refused });
+    expect(handled).toHaveBeenCalledOnce();
+  });
+
+  it("takes Safari's refusal before the video has metadata", () => {
+    const enter = vi.fn(() => {
+      throw new DOMException("no metadata yet", "InvalidStateError");
+    });
+    expect(() => openFullscreen({ webkitEnterFullscreen: enter })).not.toThrow();
+    expect(enter).toHaveBeenCalledOnce();
+  });
+
+  it("does nothing where there is no way to go fullscreen", () => {
+    expect(() => openFullscreen({})).not.toThrow();
   });
 });
