@@ -34,6 +34,10 @@ const SWIPE_X = 195;
 const SWIPE_FROM = 640;
 const SWIPE_TO = 340;
 const SWIPE_STEP = 30;
+/** How far from the screen's top or bottom edge a finger lands for a long swipe, in px. */
+const SWIPE_MARGIN = 40;
+/** A touch screen reports a finger's move once a frame. */
+const FRAMES_A_SECOND = 60;
 /** How far past the exit the swipes carry on, to show the page goes on after the hold, in px. */
 const SWIPE_PAST = 400;
 /** A continuous gesture, as a trackpad or a finger sends it: how fast it scrolls, in px a second, how far past the exit the first runs on, and how far each after it goes, in px. */
@@ -250,13 +254,19 @@ function expectInOrderToCells(shown: string[]) {
 }
 
 /**
- * Scrolls `distance` px down the page in one continuous gesture from the
- * middle of the screen, as a trackpad (`mouse`) or a finger (`touch`) sends
- * it, momentum and all; resolves once it has run. A browser lets only a
- * gesture's first wheel or move be stopped, unlike a run of separate wheels.
+ * Scrolls `distance` px down the page in one continuous gesture, as a
+ * trackpad (`mouse`) or a finger (`touch`) sends it; resolves once it has
+ * run. A browser lets only a gesture's first wheel or move be stopped, unlike
+ * a run of separate wheels. A trackpad's runs from the middle of the screen,
+ * momentum and all. A finger's is one swipe (see `swipe`), as far as the
+ * distance or the screen allows.
  */
 async function gestureDown(page: Page, cdp: CDPSession, distance: number, source: "mouse" | "touch") {
   const size = page.viewportSize()!;
+  if (source === "touch") {
+    await swipe(page, cdp, Math.sign(distance) * Math.min(Math.abs(distance), size.height - 2 * SWIPE_MARGIN));
+    return;
+  }
   await cdp.send("Input.synthesizeScrollGesture", {
     x: size.width / 2,
     y: size.height / 2,
@@ -265,6 +275,28 @@ async function gestureDown(page: Page, cdp: CDPSession, distance: number, source
     gestureSourceType: source,
     preventFling: false,
   });
+}
+
+/**
+ * One finger dragged `distance` px up the screen (down it when negative),
+ * from near one edge, a frame's worth of a gesture's pace a move, and lifted
+ * without a pause: it scrolls the page about `distance` px down. The browser may
+ * stop it at its first move only; once the page is under way it cannot.
+ * Driven as the touch screen sends it, since Chromium's synthesized touch
+ * scroll (`Input.synthesizeScrollGesture`) moves the page on macOS but never
+ * reaches it on Linux.
+ */
+async function swipe(page: Page, cdp: CDPSession, distance: number) {
+  const { height } = page.viewportSize()!;
+  const from = distance > 0 ? height - SWIPE_MARGIN : SWIPE_MARGIN;
+  const send = (type: "touchStart" | "touchMove" | "touchEnd", y: number) =>
+    cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x: SWIPE_X, y }] });
+  await send("touchStart", from);
+  for (let moved = 0; moved < Math.abs(distance); ) {
+    moved = Math.min(moved + GESTURE_SPEED / FRAMES_A_SECOND, Math.abs(distance));
+    await send("touchMove", from - Math.sign(distance) * moved);
+  }
+  await send("touchEnd", from - distance);
 }
 
 /** Scrolls `distance` px up the page in one continuous gesture, as `gestureDown` does down it. */
