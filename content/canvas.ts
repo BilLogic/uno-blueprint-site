@@ -1,7 +1,7 @@
 import { links, type SiteLink } from "./links";
-import type { Marks } from "./repair-board";
+import type { Marks, StepName } from "./repair-board";
 
-export type CanvasTab = "understand" | "check" | "present";
+export type CanvasTab = "understand" | "check" | "compare" | "present";
 
 type Canvas = {
   headline: string;
@@ -11,6 +11,12 @@ type Canvas = {
   tabs: readonly { value: CanvasTab; label: string; caption: string }[];
   understand: { phasesTitle: string; phases: readonly string[]; pathsTitle: string; paths: readonly string[] };
   check: { step: string; marks: Marks; draft: string };
+  compare: {
+    views: readonly [string, string];
+    title: string;
+    kinds: readonly [string, string];
+    walkIn: Readonly<Partial<Record<StepName<"user"> | StepName<"back">, string>>>;
+  };
   present: {
     title: string;
     steps: readonly [string, string, string, string];
@@ -23,7 +29,8 @@ type Canvas = {
 
 export const canvas = {
   headline: "Canvas for your team.",
-  subheadline: "See how your whole service works, keep it accurate together, and tailor it for every stakeholder.",
+  subheadline:
+    "See how your whole service works, keep it accurate together, compare the ways it can go, and tailor it for every stakeholder.",
   more: { label: "Try the demo", link: links.demo },
   tabsLabel: "What your team does on the canvas",
   tabs: [
@@ -36,6 +43,12 @@ export const canvas = {
       value: "check",
       label: "Keep it current",
       caption: "Something out of date? Check it against its source and fix it in place.",
+    },
+    {
+      value: "compare",
+      label: "Compare paths",
+      caption:
+        "Not everything goes to plan? Set the main route beside its variants and exceptions, and see exactly where they split.",
     },
     {
       value: "present",
@@ -56,6 +69,15 @@ export const canvas = {
     marks: { "Repair done": "gap" },
     /** What the reader is typing into the empty owner field, caret and all. */
     draft: "Lead technician ▍",
+  },
+  compare: {
+    /** One board per path, or one board the paths share; the second is the one open. */
+    views: ["Stacked", "Merged"],
+    title: "Repair intake, two paths merged",
+    /** What kind of path each one is, in the paths' order: walk-in is the main route, online booking a variant. */
+    kinds: ["Main route", "Variant"],
+    /** Where a walk-in parts from an online booking: its own step in place of the board's. Online booking follows the board. */
+    walkIn: { "Books a slot": "Walks in", "Confirms the slot": "Checks the queue" },
   },
   present: {
     title: "Repair intake, for the exec",

@@ -47,13 +47,35 @@ const cellMarks: Record<CellMark | "none", string> = {
  * One cell. Up to 1000 px wide its words would not fit, so they are drawn as
  * two bars instead; above that a word longer than the cell breaks inside it.
  */
-function Cell({ mark, children }: { mark: CellMark | undefined; children: string }) {
+export function Cell({ mark, className = "", children }: { mark: CellMark | undefined; className?: string; children: string }) {
   return (
     <span
-      className={`min-h-(--spacing-cell) rounded-6 border p-1.5 text-11 leading-tight hyphens-auto wrap-anywhere max-xl:grid max-xl:min-h-(--spacing-cell-bars) max-xl:content-start max-xl:gap-1 max-xl:px-1.5 max-xl:py-2 max-xl:text-0 max-xl:before:block max-xl:before:h-1 max-xl:before:w-(--spacing-bar-long) max-xl:before:rounded-2 max-xl:before:content-[''] max-xl:after:block max-xl:after:h-1 max-xl:after:w-(--spacing-bar-short) max-xl:after:rounded-2 max-xl:after:content-[''] ${cellMarks[mark ?? "none"]}`}
+      className={`${className} min-h-(--spacing-cell) rounded-6 border p-1.5 text-11 leading-tight hyphens-auto wrap-anywhere max-xl:grid max-xl:min-h-(--spacing-cell-bars) max-xl:content-start max-xl:gap-1 max-xl:px-1.5 max-xl:py-2 max-xl:text-0 max-xl:before:block max-xl:before:h-1 max-xl:before:w-(--spacing-bar-long) max-xl:before:rounded-2 max-xl:before:content-[''] max-xl:after:block max-xl:after:h-1 max-xl:after:w-(--spacing-bar-short) max-xl:after:rounded-2 max-xl:after:content-[''] ${cellMarks[mark ?? "none"]}`}
     >
       {mark === "gap" ? repairBoard.gapLabel : children}
     </span>
+  );
+}
+
+type LaneRowProps = {
+  lane: LaneKey;
+  name: string;
+  /** How many slots the lane has across. */
+  count: Steps["length"];
+  children: ReactNode;
+};
+
+/** A swimlane's frame: its name with a dot in the lane's colour, then its slots in `count` columns. */
+export function LaneRow({ lane, name, count, children }: LaneRowProps) {
+  return (
+    <div className="grid grid-cols-[var(--spacing-lane-label)_minmax(0,1fr)] items-center gap-(--spacing-lane-gap) py-(--spacing-lane-y) [&+&]:border-t [&+&]:border-dashed [&+&]:border-line-2">
+      <span
+        className={`flex items-center gap-(--spacing-lane-gap) justify-self-start text-lane font-medium whitespace-nowrap text-muted before:size-(--spacing-lane-dot) before:flex-none before:rounded-(--radius-lane-dot) before:content-[''] ${laneDot[lane]}`}
+      >
+        {name}
+      </span>
+      <div className={`grid gap-1.5 ${columns[count]}`}>{children}</div>
+    </div>
   );
 }
 
@@ -67,20 +89,13 @@ type LaneProps = {
 /** A swimlane: its name with a dot in the lane's colour, then one cell per step. */
 export function Lane({ lane, name, steps, marks = {} }: LaneProps) {
   return (
-    <div className="grid grid-cols-[var(--spacing-lane-label)_minmax(0,1fr)] items-center gap-(--spacing-lane-gap) py-(--spacing-lane-y) [&+&]:border-t [&+&]:border-dashed [&+&]:border-line-2">
-      <span
-        className={`flex items-center gap-(--spacing-lane-gap) justify-self-start text-lane font-medium whitespace-nowrap text-muted before:size-(--spacing-lane-dot) before:flex-none before:rounded-(--radius-lane-dot) before:content-[''] ${laneDot[lane]}`}
-      >
-        {name}
-      </span>
-      <div className={`grid gap-1.5 ${columns[steps.length]}`}>
-        {steps.map((step, index) => (
-          <Cell key={index} mark={marks[step]}>
-            {step}
-          </Cell>
-        ))}
-      </div>
-    </div>
+    <LaneRow lane={lane} name={name} count={steps.length}>
+      {steps.map((step, index) => (
+        <Cell key={index} mark={marks[step]}>
+          {step}
+        </Cell>
+      ))}
+    </LaneRow>
   );
 }
 
@@ -97,10 +112,10 @@ export function Board({ marks = {} }: { marks?: Marks }) {
 }
 
 /** A small pill; amber when it flags something missing. */
-export function Tag({ amber = false, children }: { amber?: boolean; children: string }) {
+export function Tag({ amber = false, className = "", children }: { amber?: boolean; className?: string; children: string }) {
   return (
     <span
-      className={`justify-self-start rounded-pill px-(--spacing-tag-x) py-0.5 text-11 leading-normal font-medium ${amber ? "bg-amber-bg text-amber" : "bg-hi text-link"}`}
+      className={`justify-self-start rounded-pill px-(--spacing-tag-x) py-0.5 text-11 leading-normal font-medium ${amber ? "bg-amber-bg text-amber" : "bg-hi text-link"} ${className}`}
     >
       {children}
     </span>

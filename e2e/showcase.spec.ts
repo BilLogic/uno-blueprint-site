@@ -115,6 +115,44 @@ for (const width of [1440, 390]) {
   });
 }
 
+const compare = canvas.tabs.find((tab) => tab.value === "compare")!;
+
+for (const width of [1440, 390]) {
+  test(`at ${width} px compare paths is the canvas's third tab, every tab's stage is one size, and the paths part on the board`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    const list = page.getByRole("tablist", { name: canvas.tabsLabel });
+    await expect(list.getByRole("tab")).toHaveCount(4);
+    await expect(list.getByRole("tab").nth(2)).toHaveText(compare.label);
+
+    // Clicking may scroll the tab into view, so only the stage's size is compared.
+    const sizes = [];
+    for (const tab of canvas.tabs) {
+      await list.getByRole("tab", { name: tab.label }).click();
+      const box = await page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage").boundingBox();
+      sizes.push([box!.width, box!.height]);
+    }
+    expect(new Set(sizes.map(String)).size).toBe(1);
+
+    await list.getByRole("tab", { name: compare.label }).click();
+    const panel = page.getByRole("tabpanel", { name: compare.label });
+    await expect(panel.getByText(compare.caption)).toBeVisible();
+    await expect(panel.getByText(canvas.compare.views[1], { exact: true })).toBeVisible();
+
+    // One parted slot in each lane where a walk-in takes its own step, each holding both paths in order.
+    const parted = panel.getByTestId("parted-slot");
+    await expect(parted).toHaveCount(Object.keys(canvas.compare.walkIn).length);
+    await expect(parted.first().locator(":scope > span > span:first-child")).toHaveText([...canvas.understand.paths]);
+    const stage = (await panel.getByTestId("showcase-stage").boundingBox())!;
+    const slot = (await parted.first().boundingBox())!;
+    expect(slot.x).toBeGreaterThanOrEqual(stage.x);
+    expect(slot.x + slot.width).toBeLessThanOrEqual(stage.x + stage.width);
+    expect(slot.y + slot.height).toBeLessThanOrEqual(stage.y + stage.height);
+  });
+}
+
 test("the canvas's side link sits beside the headline, and on a phone under the sub-headline", async ({ page }) => {
   const section = page.locator("section", {
     has: page.getByRole("heading", { name: canvas.headline }),
