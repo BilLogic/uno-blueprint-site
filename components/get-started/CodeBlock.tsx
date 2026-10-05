@@ -9,8 +9,9 @@ type CodeBlockProps = { code: CodeContent } & Omit<ComponentPropsWithoutRef<"div
 /**
  * A code box with a copy button that shows on hover or focus. Each command is
  * its own line, and one too long for the box wraps at a space with a hanging
- * indent, so a wrapped command never reads as two. A note sits above the commands as a shell
- * comment, and the copy leaves it out, so what is pasted still runs as typed.
+ * indent, so a wrapped command never reads as two. A note sits above the
+ * commands as a shell comment, and the copy leaves it out, so what is pasted
+ * still runs as typed.
  */
 export function CodeBlock({ code, className = "", ...props }: CodeBlockProps) {
   const text = code.kind === "commands" ? commandText(code.lines) : code.text;

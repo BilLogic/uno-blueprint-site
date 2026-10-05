@@ -66,9 +66,6 @@
   --color-note: light-dark(#fff7e3, #2a2414);
   --color-note-ink: light-dark(#6f5410, #f0d48c);
   --color-note-line: light-dark(#ecd9a6, #4a3d1c);
-  /* A code box: the prompt box's panel in both themes, so a command and a prompt read as one kind of thing. */
-  --color-term: var(--color-panel);
-  --color-term-ink: light-dark(var(--color-ink), #d7e3df);
   /* Bento: the text bars drawn in its pictures, at the prototype's 24%, 26% and, once played, 30% of ink. */
   --color-bento-bar-dim: color-mix(in oklab, var(--color-ink) 24%, transparent);
   --color-bento-bar: color-mix(in oklab, var(--color-ink) 26%, transparent);
@@ -236,14 +233,19 @@
   /*
    * Get started, questions and the closing band. A code box follows the theme:
    * in light its inks are the prompt box's; in dark they keep the terminal's.
+   * Its surface is the prompt box's panel in both themes, so a command and a
+   * prompt read as one kind of thing.
    */
+  --color-term: var(--color-panel);
+  --color-term-ink-dark: #d7e3df; /* a command, in dark */
+  --color-term-ink: light-dark(var(--color-ink), var(--color-term-ink-dark));
   --color-term-raised: light-dark(var(--color-card), #181d21); /* a copy button on a code box */
   --color-term-edge: light-dark(var(--color-line), #2a3137); /* that button's rim */
   --color-term-muted: light-dark(var(--color-muted), #9aa4af); /* that button's icon */
   --color-term-key: light-dark(var(--color-link), #7fe3cc); /* a skill's name */
   --color-term-faint: light-dark(var(--color-muted), #8b99a3); /* what a skill does, and a note above commands */
   /* Bento: the JSON's resting text. The prototype dims it to 50%; 54% is the least that reads at 4.5:1 in dark. */
-  --color-term-dim: light-dark(var(--color-muted), color-mix(in oklab, #d7e3df 54%, transparent));
+  --color-term-dim: light-dark(var(--color-muted), color-mix(in oklab, var(--color-term-ink-dark) 54%, transparent));
   --color-term-hover: light-dark(rgba(16, 24, 22, 0.04), rgba(255, 255, 255, 0.055));
   --leading-command: 1.6; /* commands in a box; the agent view's page reads looser */
   --leading-prompt-title: 1.4; /* a prompt's title */

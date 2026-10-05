@@ -16,24 +16,18 @@ const variants = {
   ghost: "border-line-2 bg-panel text-ink hover:border-line-hot",
 } as const;
 
+const soon = "cursor-not-allowed border-line-2 bg-panel pr-2 text-muted";
+
 /**
- * A link styled as a button. One whose target is not ready yet is a disabled
- * button in every build: no href, announced as disabled, its label muted and a
- * "Coming soon" tag beside it. Setting the real href and dropping `notReady`
- * makes it live.
+ * A link styled as a button. One whose target is not ready yet is disabled, as
+ * every such link is, with its label muted and a "Coming soon" tag beside it.
+ * Setting the real href and dropping `notReady` makes it live.
  */
 export function ButtonLink({ link, variant, children }: ButtonLinkProps) {
-  if (link.notReady) {
-    return (
-      <a role="link" aria-disabled="true" className={`${base} cursor-not-allowed border-line-2 bg-panel pr-2 text-muted`}>
-        {children}
-        <SoonTag />
-      </a>
-    );
-  }
   return (
-    <a {...anchorProps(link)} className={`${base} ${variants[variant]}`}>
+    <a {...anchorProps(link)} className={`${base} ${link.notReady ? soon : variants[variant]}`}>
       {children}
+      {link.notReady && <SoonTag />}
     </a>
   );
 }

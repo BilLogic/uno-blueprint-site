@@ -24,18 +24,12 @@ export function Nav() {
         <div className="flex items-center gap-1 text-14">
           <nav aria-label={nav.linksLabel} className="flex h-16 items-stretch">
             {/* A link whose target is not ready yet is a disabled item, muted, with a "Coming soon" tag. */}
-            {nav.links.map(({ label, link }) =>
-              "notReady" in link && link.notReady ? (
-                <a key={label} role="link" aria-disabled="true" className={soonClass}>
-                  {label}
-                  <SoonTag />
-                </a>
-              ) : (
-                <a key={label} {...anchorProps(link)} className={linkClass}>
-                  {label}
-                </a>
-              ),
-            )}
+            {nav.links.map(({ label, link }) => (
+              <a key={label} {...anchorProps(link)} className={link.notReady ? soonClass : linkClass}>
+                {label}
+                {link.notReady && <SoonTag />}
+              </a>
+            ))}
           </nav>
           <a
             href={nav.github.link.href}
