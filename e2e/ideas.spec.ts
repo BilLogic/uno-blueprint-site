@@ -60,7 +60,7 @@ test.describe("on a wide screen", () => {
 
   test("the case study is not linked until it exists", async ({ page }) => {
     await page.goto("/");
-    const caseStudy = section(page).getByRole("link", { name: "Read the case study Coming soon" });
+    const caseStudy = section(page).getByRole("link", { name: "Read the case study" });
     await expect(caseStudy).toHaveAttribute("aria-disabled", "true");
     await expect(caseStudy).not.toHaveAttribute("href", /.*/);
     await expect(caseStudy).toHaveCSS("cursor", "not-allowed");

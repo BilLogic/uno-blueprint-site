@@ -1,6 +1,6 @@
 import type { SiteLink } from "@/content/links";
 import { anchorProps } from "./anchor-props";
-import { SoonTag } from "./SoonTag";
+import { SoonLink } from "./SoonLink";
 
 type ButtonLinkProps = {
   link: SiteLink;
@@ -16,18 +16,24 @@ const variants = {
   ghost: "border-line-2 bg-panel text-ink hover:border-line-hot",
 } as const;
 
-const soon = "cursor-not-allowed border-line-2 bg-panel pr-2 text-muted";
+const soon = "cursor-not-allowed border-line-2 bg-panel text-muted";
 
 /**
  * A link styled as a button. One whose target is not ready yet is disabled, as
- * every such link is, with its label muted and a "Coming soon" tag beside it.
+ * every such link is, with its label muted and "Coming soon" as a tooltip.
  * Setting the real href and dropping `notReady` makes it live.
  */
 export function ButtonLink({ link, variant, children }: ButtonLinkProps) {
+  if (link.notReady) {
+    return (
+      <SoonLink link={link} side="above" wrapClassName="inline-flex" className={`${base} ${soon}`}>
+        {children}
+      </SoonLink>
+    );
+  }
   return (
-    <a {...anchorProps(link)} className={`${base} ${link.notReady ? soon : variants[variant]}`}>
+    <a {...anchorProps(link)} className={`${base} ${variants[variant]}`}>
       {children}
-      {link.notReady && <SoonTag />}
     </a>
   );
 }
