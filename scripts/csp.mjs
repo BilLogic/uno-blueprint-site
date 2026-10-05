@@ -2,11 +2,20 @@ import { createHash } from "node:crypto";
 
 export const sha256 = (text) => `'sha256-${createHash("sha256").update(text).digest("base64")}'`;
 
-/** Hashes of every inline (no src) script in an HTML document. */
+/**
+ * A script element the browser runs: no type, a JavaScript type, or a module.
+ * A data block such as application/ld+json is never run, so it needs no hash.
+ */
+const runs = (attrs) => {
+  const type = /\btype=["']?([^"'\s>]+)/i.exec(attrs)?.[1]?.toLowerCase();
+  return type === undefined || type === "module" || /^(text|application)\/(x-)?(java|ecma)script$/.test(type);
+};
+
+/** Hashes of every inline (no src) script the browser runs in an HTML document. */
 export function inlineScriptHashes(html) {
   const hashes = new Set();
   for (const [, attrs, body] of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)) {
-    if (/\bsrc=/.test(attrs) || body.length === 0) continue;
+    if (/\bsrc=/.test(attrs) || body.length === 0 || !runs(attrs)) continue;
     hashes.add(sha256(body));
   }
   return hashes;

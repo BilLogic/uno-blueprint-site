@@ -10,6 +10,7 @@
     "dev": "next dev",
     "build": "next build && node scripts/write-csp.mjs",
     "serve": "node scripts/serve.mjs out",
+    "og-image": "node scripts/og-image.mjs",
     "typecheck": "next typegen && tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",

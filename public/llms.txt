@@ -1,14 +1,32 @@
 # Uno Blueprint
 
-> An open-source toolkit for context engineering. One service blueprint that people read as a canvas and agents read as structured data.
+> Uno Blueprint is an open-source toolkit for context engineering: a canvas for your team, a harness for your agents. It maps how a service works as one service blueprint, which people edit on a canvas and agents read as structured data.
+
+Who it is for: product teams whose context is spread across docs, designs, code, dashboards and threads, and the AI agents that work beside them.
+
+What it does:
+
+- A blueprint lays one service out step by step, in four lanes (User, Frontstage, Backstage, Support). Each cell is one action by one actor, with its owner, status, value proposition, dependencies and the sources behind it.
+- The canvas is a web app where the team reads the whole service, opens any cell, checks it against its sources and fixes it in place.
+- MCP connects agents to the tools. The blueprint shows them how it all fits together, so they find the right context the first time. It works on top of MCP, not instead of it.
+- Four skills run in Claude Code, Cursor, Codex or any agent that reads markdown: map (draft or update a blueprint from documents), slice (cut out a journey, lane, step or cell for one audience), audit (find what is missing, conflicting, unowned or stale) and what-if (trace a change before anyone makes it).
+- Documents stay in their own tools; cells link back to them. Agents draft and suggest, a person signs off, and every edit can be undone.
+
+How to start: run `npm create uno-blueprint@latest` for a workspace with the canvas and the skills, on sample data with no database. Or add the skills to Claude Code with `claude plugin marketplace add BilLogic/uno-blueprint` and `claude plugin install ub@ub-marketplace`. Built by Bill Guo and Meryem Marasli. MIT license.
 
 ## Docs
 
-- [Agent guide](https://uno-blueprint.netlify.app/uno-blueprint.md): what Uno Blueprint is for, how a blueprint is laid out, the four skills, the workflow for coding agents, and how to set it up
+- [Agent guide](https://uno-blueprint.netlify.app/uno-blueprint.md): this site as markdown: what Uno Blueprint is for, how a blueprint is laid out, the four skills, the workflow for coding agents, and how to set it up
 - [README and quick start](https://github.com/BilLogic/uno-blueprint#readme): the template's own documentation
 - [Agent router](https://github.com/BilLogic/uno-blueprint/blob/main/AGENTS.md): routes each request to a skill
+- [Skills](https://github.com/BilLogic/uno-blueprint/tree/main/skills): each skill's SKILL.md, its contract
+
+## Source
+
+- [GitHub repository](https://github.com/BilLogic/uno-blueprint): the template, the canvas app and the skills, MIT license
+- [npm package](https://www.npmjs.com/package/create-uno-blueprint): `create-uno-blueprint`, the initialiser
 
 ## Optional
 
 - [Demo blueprint](https://uno-blueprint.netlify.app/demo/): a sample blueprint on the canvas
-- [Source](https://github.com/BilLogic/uno-blueprint): the repository, MIT license
+- [Website](https://uno-blueprint.netlify.app/): the page this file describes
