@@ -276,9 +276,9 @@
 
   /*
    * Showcases (canvas, touch points): a tab row over a framed stage that plays
-   * a screen recording. A desktop recording is a window inset on the stage's
-   * dots; the phone's is a handset masked to its silhouette, centred, that
-   * zooms with the action.
+   * a screen recording. A desktop recording is a window standing on the
+   * stage's foot, with dots above and beside it; the phone's is a handset
+   * masked to its silhouette, centred, that zooms with the action.
    */
   --container-title: 620px; /* a section headline */
   --container-caption: 70ch;
@@ -286,9 +286,12 @@
   /* On a phone the stage leaves 16:9 and every recording shows whole, uncropped. */
   --aspect-stage-canvas-phone: 3 / 2; /* the canvas stage on a phone */
   --aspect-stage-tall: 4 / 5; /* the touch-points stage on a phone, tall enough for the phone's screen to read */
-  --spacing-recording-inset: clamp(16px, 3.5vw, 44px); /* the dots round a recording, at least */
+  --spacing-phone-inset: clamp(16px, 3.5vw, 44px); /* the dots round the phone, at least */
+  /* The dots above a window and beside it, at least; it meets the stage's foot, so it reads large. */
+  --spacing-window-top: clamp(12px, 2vw, 28px);
+  --spacing-window-x: clamp(12px, 2vw, 28px);
   --aspect-window: 1620 / 1004; /* a desktop recording's own shape: the app window, edge to edge */
-  --radius-window: var(--radius-10);
+  --radius-window: var(--radius-10); /* its upper corners; the lower ones meet the stage's foot square */
   --shadow-window: var(--shadow-ring), 0 16px 40px -16px rgba(0, 0, 0, 0.3);
   /*
    * A thin frame drawn inside the window, over the recording. The app
