@@ -1,14 +1,19 @@
 import { describe, expect, it } from "vitest";
+import { structure } from "@/content/structure";
 import {
   STEP,
   TIMING,
   availableStageHeight,
   beamClip,
+  cellArrival,
   cellOpensLate,
+  exitScroll,
   fitStage,
   flatLift,
   goalStep,
+  holdsExit,
   introTriggered,
+  keyScroll,
   morphHeading,
   nextStep,
   poseOf,
@@ -21,6 +26,7 @@ import {
   stepEdges,
   stepHold,
   stickyTopFor,
+  wheelPixels,
 } from "./walkthrough";
 
 describe("stepEdges", () => {
@@ -344,6 +350,90 @@ describe("stepHold", () => {
   it("adds the cell's beat on the way down, so the cell lights, opens, then holds", () => {
     expect(stepHold(STEP.steps, STEP.cell)).toBe(TIMING.openCell + TIMING.cellBeat);
     expect(TIMING.openCell + TIMING.cellBeat).toBe(1650);
+  });
+});
+
+describe("cellArrival", () => {
+  it("adds the cell's beat, the panel's wait for the beam and its opening", () => {
+    expect(cellArrival({ cellBeat: TIMING.cellBeat, panelDelay: 840, panelOpen: 620 })).toBe(2160);
+  });
+});
+
+describe("exitScroll", () => {
+  it("is where the section's foot meets the pinned frame's foot", () => {
+    // The section's top is 300 px above the screen, so the page is pinned and 376 px into its travel.
+    const geometry = { stickyTop: 76, sectionTop: -300, sectionHeight: 5000, stickyHeight: 700 };
+    expect(exitScroll(geometry, 2000)).toBe(2000 - 300 - 76 + 4300);
+    // The same section seen from further down the page gives the same exit.
+    expect(exitScroll({ ...geometry, sectionTop: -1300 }, 3000)).toBe(exitScroll(geometry, 2000));
+  });
+
+  it("is null when nothing is pinned", () => {
+    expect(exitScroll({ stickyTop: 76, sectionTop: 0, sectionHeight: 700, stickyHeight: 700 }, 0)).toBeNull();
+  });
+});
+
+describe("holdsExit", () => {
+  const exit = 5000;
+  const cap = 2160;
+  const end = { step: STEP.cell, opening: true, sinceHeld: null, cap, delta: 120, y: exit - 60, exit };
+
+  it("holds a move down across the exit while the cell is still opening", () => {
+    expect(holdsExit(end)).toBe(true);
+    expect(holdsExit({ ...end, sinceHeld: cap - 1 })).toBe(true);
+    // Resting at the exit, held there, a notch of a pixel is held too.
+    expect(holdsExit({ ...end, y: exit, delta: 1 })).toBe(true);
+    expect(holdsExit({ ...end, y: exit + 0.5 })).toBe(true);
+  });
+
+  it("holds while the walkthrough is still on its way to the last step", () => {
+    expect(holdsExit({ ...end, step: STEP.steps, opening: false })).toBe(true);
+    expect(holdsExit({ ...end, step: STEP.blueprint, opening: false })).toBe(true);
+  });
+
+  it("lets the move through once the cell has opened, or the hold has lasted its cap", () => {
+    expect(holdsExit({ ...end, opening: false })).toBe(false);
+    expect(holdsExit({ ...end, sinceHeld: cap })).toBe(false);
+    expect(holdsExit({ ...end, step: STEP.steps, sinceHeld: cap })).toBe(false);
+  });
+
+  it("never holds a move up, or a move that stays inside the walkthrough", () => {
+    expect(holdsExit({ ...end, delta: -120 })).toBe(false);
+    expect(holdsExit({ ...end, y: exit, delta: -1 })).toBe(false);
+    expect(holdsExit({ ...end, delta: 0 })).toBe(false);
+    expect(holdsExit({ ...end, delta: 60 })).toBe(false);
+  });
+
+  it("never holds a page already past the exit", () => {
+    expect(holdsExit({ ...end, y: exit + 2 })).toBe(false);
+    expect(holdsExit({ ...end, step: STEP.steps, y: exit + 3000 })).toBe(false);
+  });
+
+  it("knows the last step as the cell", () => {
+    expect(STEP.cell).toBe(structure.steps.length - 1);
+  });
+});
+
+describe("wheelPixels", () => {
+  it("converts a wheel in lines or pages to px", () => {
+    expect(wheelPixels(120, 0, 900)).toBe(120);
+    expect(wheelPixels(3, 1, 900)).toBe(120);
+    expect(wheelPixels(1, 2, 900)).toBe(900);
+    expect(wheelPixels(-3, 1, 900)).toBe(-120);
+  });
+});
+
+describe("keyScroll", () => {
+  it("measures the keys that scroll down, at most a page", () => {
+    expect(keyScroll(" ", false, 900)).toBe(900);
+    expect(keyScroll("PageDown", false, 900)).toBe(900);
+    expect(keyScroll("ArrowDown", false, 900)).toBeGreaterThan(0);
+    expect(keyScroll("ArrowDown", false, 900)).toBeLessThan(900);
+  });
+
+  it("goes up with shift and space, and nowhere for other keys", () => {
+    expect(keyScroll(" ", true, 900)).toBe(-900);
+    for (const key of ["ArrowUp", "PageUp", "Home", "End", "Tab", "a"]) expect(keyScroll(key, false, 900)).toBeLessThanOrEqual(0);
   });
 });
 
