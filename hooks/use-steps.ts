@@ -34,8 +34,8 @@ export function useSteps(
         } finally {
           // A step that fails to measure still passes, so the picture never stalls.
           setCount((passed) => Math.max(passed, step + 1));
+          if (step === times.length - 1) latestOnDone.current?.();
         }
-        if (step === times.length - 1) latestOnDone.current?.();
       }, at),
     );
     return () => timers.forEach(clearTimeout);
