@@ -65,6 +65,7 @@ export function useExitHold(
       };
       return exitScroll(geometry, scrollY);
     };
+    let capTimer = 0;
     const holds = (delta: number) => {
       const at = exit();
       if (at === null || isGliding()) return false;
@@ -74,7 +75,8 @@ export function useExitHold(
       if (held && heldAt.current === null) {
         heldAt.current = now;
         // The hold's hard end: the page is free once it has lasted its cap, whatever else happens.
-        window.setTimeout(update.current, cap.current);
+        clearTimeout(capTimer);
+        capTimer = window.setTimeout(() => update.current(), cap.current);
       }
       return held;
     };
@@ -144,6 +146,7 @@ export function useExitHold(
     addEventListener("scroll", onScroll, { passive: true });
     update.current();
     return () => {
+      clearTimeout(capTimer);
       attach(false);
       update.current = () => {};
       section?.removeEventListener("transitionend", onTransitionEnd);
