@@ -31,8 +31,8 @@ type RecordingProps = {
  * A muted, looping screen recording. Its poster loads once the stage is near
  * and the video once it first plays, so a stage never scrolled to costs
  * nothing. A new element per tab starts each recording from its first frame.
- * It shows whole, centred on the stage's dots, however the stage is shaped: a
- * desktop recording as a window, a phone's as the handset alone.
+ * It shows whole, however the stage is shaped: a desktop recording as a window
+ * standing on the stage's foot, a phone's as the handset alone, centred.
  */
 export function Recording({ name, phone, masked, zoom, near, playing, labelledBy, ref: handle }: RecordingProps) {
   const ref = useRef<HTMLVideoElement>(null);
@@ -121,21 +121,28 @@ export function Recording({ name, phone, masked, zoom, near, playing, labelledBy
     />
   );
 
-  return (
-    // The stage, less a margin of dots; each recording is as large as fits
-    // whole inside it, centred.
-    <div className="absolute inset-(--spacing-recording-inset) grid place-items-center [container-type:size]">
-      {phone ? (
-        // Scaled from its centre and moved so the point in focus stays at the
-        // stage's centre; the shadow follows the mask.
+  if (phone) {
+    return (
+      // The stage, less a margin of dots; the handset is as large as fits
+      // whole inside it, centred.
+      <div className="absolute inset-(--spacing-phone-inset) grid place-items-center [container-type:size]">
+        {/* Scaled from its centre and moved so the point in focus stays at the stage's centre; the shadow follows the mask. */}
         <div ref={zoomRef} data-testid="phone" className="fit-phone drop-shadow-phone">
           {player}
         </div>
-      ) : (
-        <div data-testid="recording-window" className="window-outline relative fit-window overflow-hidden rounded-window shadow-window">
-          {player}
-        </div>
-      )}
+      </div>
+    );
+  }
+
+  return (
+    // The stage, less a margin of dots at the top and sides; the window is as
+    // large as fits whole inside it, standing on the stage's foot. It sinks
+    // past the foot by its frame's width, so the stage clips the frame's lower
+    // edge and its square lower corners.
+    <div className="absolute inset-x-(--spacing-window-x) top-(--spacing-window-top) bottom-0 grid items-end justify-items-center [container-type:size]">
+      <div data-testid="recording-window" className="window-outline relative fit-window translate-y-(--spacing-window-sink) overflow-hidden rounded-t-window shadow-window">
+        {player}
+      </div>
     </div>
   );
 }

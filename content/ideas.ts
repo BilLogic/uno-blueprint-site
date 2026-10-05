@@ -155,7 +155,8 @@ export const ideas = {
     mark: { src: plusMark, name: "PLUS" },
     title: "PLUS Uno Blueprint",
     body: "A tutoring program on one blueprint, from a tutor's application to the session and after.",
-    primary: { label: "Read the case study", link: links.caseStudy },
+    // While the case study is not ready, the button says so in its label.
+    primary: { label: "Read the case study", soonLabel: "Case study coming soon", link: links.caseStudy },
     secondary: { label: "See the PLUS blueprint", link: links.plusBlueprint },
     screenshot: {
       src: plusBlueprint,
