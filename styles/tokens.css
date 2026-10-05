@@ -39,6 +39,8 @@
   --color-ink: light-dark(oklch(0.21 0.008 175), oklch(0.95 0.003 175));
   --color-muted: light-dark(oklch(0.47 0.008 175), oklch(0.72 0.008 175));
   --color-faint: light-dark(oklch(0.53 0.006 175), oklch(0.68 0.008 175));
+  /* Faint text on a brand-tinted pill (the walkthrough's line labels): a step darker, or lighter, to read at 4.5:1. */
+  --color-faint-on-tint: light-dark(oklch(0.515 0.006 175), oklch(0.69 0.008 175));
   --color-line: light-dark(
     color-mix(in oklab, var(--color-ink) 9%, transparent),
     color-mix(in oklab, var(--color-ink) 8%, transparent)
@@ -258,7 +260,9 @@
   --spacing-skill-name: 7.5em; /* the column of skill names, in step with their type */
   --spacing-hang: 2ch; /* a wrapped command's hanging indent */
   --container-heading: 620px;
-  --container-answer: 640px;
+  /* An answer, and a step's prose and prompts: about 80 characters to a line, never narrower than at 1024px. */
+  --container-answer: 68ch;
+  --container-step: 68ch;
   --duration-answer-lag: 80ms; /* an answer's text follows its row opening by this much */
 
   /*

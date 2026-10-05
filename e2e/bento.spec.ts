@@ -138,6 +138,25 @@ test.describe("bento", () => {
     await expect(live(page)).toHaveCSS("opacity", "0");
   });
 
+  test("the keyboard stops once on each panel and nowhere inside one", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("link", { name: "Try the demo" }).first().focus();
+    const stops: string[] = [];
+    // Tab on until focus leaves the bento, noting each panel it stops on.
+    for (;;) {
+      await page.keyboard.press("Tab");
+      const name = await page.evaluate(() => {
+        const focused = document.activeElement;
+        const group = focused?.closest('[role="group"][aria-labelledby]');
+        if (!group?.querySelector("h3")) return null;
+        return focused === group ? group.querySelector("h3")!.textContent : `inside ${group.querySelector("h3")!.textContent}`;
+      });
+      if (name === null) break;
+      stops.push(name);
+    }
+    expect(stops).toEqual([...titles]);
+  });
+
   test("with reduced motion every panel is already in place", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const pictureName = /^Documents from Notion, Slack, Figma, GitHub, Google Drive, Zoom, email and spreadsheets/;
+const pictureName = /^Documents from Notion, Slack, Figma, GitHub, Google Drive, Zoom, email, and spreadsheets/;
 const picture = (page: Page) => page.getByRole("img", { name: pictureName });
 
 test("the hero says what the toolkit is and offers two ways in", async ({ page }) => {

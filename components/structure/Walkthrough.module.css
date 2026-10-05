@@ -717,7 +717,7 @@
 }
 
 .line.on span {
-  color: var(--color-faint);
+  color: var(--color-faint-on-tint);
 }
 
 .line.current {
