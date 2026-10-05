@@ -41,7 +41,7 @@ jobs:
       # Netlify's production context does (the .next cache keeps it short) and check
       # the tag and its policy. It overwrites out/, after the upload, so no later job sees it.
       - run: CONTEXT=production npm run build
-      - run: node --experimental-strip-types scripts/check-clarity-build.mjs
+      - run: node scripts/check-clarity-build.mjs
 
   e2e:
     name: End-to-end, axe and visual snapshots
