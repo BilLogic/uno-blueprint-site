@@ -172,7 +172,7 @@ export const harness = {
       label: "Audit",
       command: "/ub:audit",
       caption:
-        "Check that the blueprint still holds. It finds what is missing, conflicting or unowned, and ranks each finding by impact and effort.",
+        "Check that the blueprint still holds. It finds what is missing, conflicting or unowned, and rates each finding by severity.",
     },
     {
       id: "whatif",
