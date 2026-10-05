@@ -1,11 +1,12 @@
 "use client";
 
 import { getStarted } from "@/content/get-started";
+import { revealOnHover } from "@/components/reveal";
 import { TabList } from "@/components/ui/Tabs";
 import { useTabs } from "@/hooks/use-tabs";
 import { CodeBlock } from "./CodeBlock";
 import { CopyButton } from "./CopyButton";
-import { StepLabel, StepSub, revealCopy, tabClassName, tabListClassName } from "./step-parts";
+import { StepLabel, StepSub, tabClassName, tabListClassName } from "./step-parts";
 
 const { skills } = getStarted;
 
@@ -35,7 +36,7 @@ export function SkillsStep() {
               >
                 <code className="font-mono text-13 text-term-key wrap-anywhere">{call}</code>
                 <span className="text-13 text-term-faint">{does}</span>
-                <CopyButton text={call} tone="term" className={`top-1.75 right-1.75 ${revealCopy}`} />
+                <CopyButton text={call} tone="term" className={`top-1.75 right-1.75 ${revealOnHover}`} />
               </li>
             );
           })}
