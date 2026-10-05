@@ -19,6 +19,7 @@ import {
   poseOf,
   poseTransform,
   sceneAt,
+  shouldLock,
   scrollLength,
   scrollProgress,
   stackLayers,
@@ -414,6 +415,52 @@ describe("holdsExit", () => {
   });
 });
 
+describe("shouldLock", () => {
+  const exit = 5000;
+  const cap = 2160;
+  // Going down 40 px a frame.
+  const moving = { y: exit - 30, exit, lastDelta: 40, lastGap: 16, pending: true, sinceHeld: null, cap };
+
+  it("locks a page going down that is about to cross the exit while a hold is to come", () => {
+    expect(shouldLock(moving)).toBe(true);
+    // Within three frames or so at its last pace.
+    expect(shouldLock({ ...moving, y: exit - 120 })).toBe(true);
+    expect(shouldLock({ ...moving, sinceHeld: cap - 1 })).toBe(true);
+  });
+
+  it("locks a page that has just reached the exit, or is a rounding past it", () => {
+    expect(shouldLock({ ...moving, y: exit })).toBe(true);
+    expect(shouldLock({ ...moving, y: exit + 1 })).toBe(true);
+    expect(shouldLock({ ...moving, y: exit - 1, lastGap: 5000 })).toBe(true);
+  });
+
+  it("leaves a page that is still well short of the exit", () => {
+    expect(shouldLock({ ...moving, y: exit - 140 })).toBe(false);
+    expect(shouldLock({ ...moving, y: exit - 2000, lastDelta: 10 })).toBe(false);
+  });
+
+  it("leaves a page that jumped close to the exit", () => {
+    expect(shouldLock({ ...moving, y: exit - 30, lastDelta: 400, lastGap: 2000 })).toBe(false);
+    // Put back where it was as the page loads, in one go.
+    expect(shouldLock({ ...moving, y: exit - 30, lastDelta: exit - 30, lastGap: 100 })).toBe(false);
+  });
+
+  it("never pulls back a page already past the exit", () => {
+    expect(shouldLock({ ...moving, y: exit + 2 })).toBe(false);
+    expect(shouldLock({ ...moving, y: exit + 400, lastDelta: 300 })).toBe(false);
+  });
+
+  it("never locks a page going up, or one at rest", () => {
+    expect(shouldLock({ ...moving, lastDelta: -40 })).toBe(false);
+    expect(shouldLock({ ...moving, y: exit, lastDelta: 0 })).toBe(false);
+  });
+
+  it("lets go once no hold is to come, or the hold has lasted its cap", () => {
+    expect(shouldLock({ ...moving, pending: false })).toBe(false);
+    expect(shouldLock({ ...moving, sinceHeld: cap })).toBe(false);
+  });
+});
+
 describe("wheelPixels", () => {
   it("converts a wheel in lines or pages to px", () => {
     expect(wheelPixels(120, 0, 900)).toBe(120);
@@ -431,9 +478,10 @@ describe("keyScroll", () => {
     expect(keyScroll("ArrowDown", false, 900)).toBeLessThan(900);
   });
 
-  it("goes up with shift and space, and nowhere for other keys", () => {
+  it("goes up with shift and space, the up arrow, page up and home, and nowhere for other keys", () => {
     expect(keyScroll(" ", true, 900)).toBe(-900);
-    for (const key of ["ArrowUp", "PageUp", "Home", "End", "Tab", "a"]) expect(keyScroll(key, false, 900)).toBeLessThanOrEqual(0);
+    for (const key of ["ArrowUp", "PageUp", "Home"]) expect(keyScroll(key, false, 900)).toBeLessThan(0);
+    for (const key of ["End", "Tab", "a"]) expect(keyScroll(key, false, 900)).toBe(0);
   });
 });
 

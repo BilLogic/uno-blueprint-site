@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type CDPSession, type Page } from "@playwright/test";
 import { structure } from "../content/structure";
 import { getStarted } from "../content/get-started";
 import { cssMs } from "../lib/hero-picture";
@@ -38,6 +38,10 @@ const SWIPE_TO = 340;
 const SWIPE_STEP = 30;
 /** How far past the exit the swipes carry on, to show the page goes on after the hold, in px. */
 const SWIPE_PAST = 400;
+/** A continuous gesture, as a trackpad or a finger sends it: how fast it scrolls, in px a second, how far past the exit the first runs on, and how far each after it goes, in px. */
+const GESTURE_SPEED = 3000;
+const GESTURE_PAST = 1200;
+const GESTURE_STEP = 400;
 
 /** Long enough for the morph and every step's hold, one at a time, with room to spare. */
 const WALK_TIMEOUT = 30_000;
@@ -96,6 +100,10 @@ type Notes = {
   backs: number;
   /** Where the page was once each move down the page held had been handled, and when it came. */
   held: { y: number; at: number; touch: boolean }[];
+  /** Wheels and touch moves down the page that the browser would not let be stopped. */
+  unstoppable: number;
+  /** When the page first came to the exit. */
+  reachedAt?: number;
   /** When the caption turned to the last step, the cell's panel opened, and the page first went past the exit. */
   cellsAt?: number;
   openEndAt?: number;
@@ -105,15 +113,16 @@ type Notes = {
 /**
  * Notes, from now on, every time the page is carried back up, every wheel,
  * scrolling key or touch move down that the page held (stopped before it
- * moved), when the last step shows and when its panel has finished opening
- * (the panel's clip has run), and when the page first goes past `exit`,
- * where the walkthrough lets go.
+ * moved) and every one it could not have, when the last step shows and when
+ * its panel has finished opening (the panel's clip has run), and when the
+ * page first comes to `exit`, where the walkthrough lets go, and first goes
+ * past it.
  */
 async function note(page: Page, exit: number) {
   await page.evaluate(
     ([slack, exitY, lastTitle]) => {
       const w = window as unknown as { notes: Notes };
-      const notes: Notes = { backs: 0, held: [] };
+      const notes: Notes = { backs: 0, held: [], unstoppable: 0 };
       w.notes = notes;
       let last = scrollY;
       addEventListener(
@@ -121,6 +130,7 @@ async function note(page: Page, exit: number) {
         () => {
           if (scrollY < last - slack) notes.backs++;
           last = scrollY;
+          if (notes.reachedAt === undefined && Math.abs(scrollY - exitY) <= slack) notes.reachedAt = performance.now();
           if (notes.leftAt === undefined && scrollY > exitY + slack) notes.leftAt = performance.now();
         },
         { passive: true },
@@ -128,6 +138,7 @@ async function note(page: Page, exit: number) {
       // Checked once the page's own listeners have had the event.
       const heldDown = (event: Event, down: boolean) => {
         const at = performance.now();
+        if (down && !event.cancelable) notes.unstoppable++;
         setTimeout(() => {
           if (down && event.defaultPrevented) notes.held.push({ y: scrollY, at, touch: event.type === "touchmove" });
         });
@@ -209,6 +220,68 @@ function expectHeldOnlyAtTheExit(n: Notes, exit: number, cap: number) {
     expect(at - first).toBeLessThan(cap + HOLD_LATE);
     if (n.openEndAt !== undefined) expect(at).toBeLessThan(n.openEndAt + EVENT_SLACK);
   }
+}
+
+/**
+ * Scrolls `distance` px down the page in one continuous gesture from the
+ * middle of the screen, as a trackpad (`mouse`) or a finger (`touch`) sends
+ * it, momentum and all; resolves once it has run. A browser lets only a
+ * gesture's first wheel or move be stopped, unlike a run of separate wheels.
+ */
+async function gestureDown(page: Page, cdp: CDPSession, distance: number, source: "mouse" | "touch") {
+  const size = page.viewportSize()!;
+  await cdp.send("Input.synthesizeScrollGesture", {
+    x: size.width / 2,
+    y: size.height / 2,
+    yDistance: -distance,
+    speed: GESTURE_SPEED,
+    gestureSourceType: source,
+    preventFling: false,
+  });
+}
+
+/** Scrolls `distance` px up the page in one continuous gesture, as `gestureDown` does down it. */
+async function gestureUp(page: Page, cdp: CDPSession, distance: number, source: "mouse" | "touch") {
+  await gestureDown(page, cdp, -distance, source);
+}
+
+/** From inside the last step, one gesture that runs on past the section, and the page locked at the exit while the cell opens. */
+async function lockAtExit(page: Page, source: "mouse" | "touch") {
+  const exit = await arriveAtCells(page);
+  const cdp = await page.context().newCDPSession(page);
+  await gestureDown(page, cdp, exit - (await pageY(page)) + GESTURE_PAST, source);
+  await nextFrame(page);
+  expect(Math.abs((await pageY(page)) - exit)).toBeLessThanOrEqual(ROUNDING_SLACK);
+  return { exit, cdp };
+}
+
+/**
+ * From inside the last step, one gesture that runs on well past the section:
+ * the page stops at the exit, a pixel past it at most, and stays there until
+ * the panel has opened or the hold has lasted its cap. Gestures after that go
+ * on, and the page is never carried back.
+ */
+async function expectGestureHeldThenGoesOn(page: Page, source: "mouse" | "touch") {
+  const exit = await arriveAtCells(page);
+  const cap = await holdCap(page);
+  const cdp = await page.context().newCDPSession(page);
+  await gestureDown(page, cdp, exit - (await pageY(page)) + GESTURE_PAST, source);
+  await nextFrame(page);
+  let n = await notes(page);
+  // The gesture ran on where it could not be stopped, yet the page waits at the exit while the cell opens.
+  expect(n.unstoppable).toBeGreaterThan(0);
+  expect(n.reachedAt).toBeDefined();
+  expect(n.openEndAt).toBeUndefined();
+  expect(Math.abs((await pageY(page)) - exit)).toBeLessThanOrEqual(ROUNDING_SLACK);
+  const until = Date.now() + KEEP_GOING_MS;
+  while ((await pageY(page)) <= exit + GESTURE_PAST && Date.now() < until) await gestureDown(page, cdp, GESTURE_STEP, source);
+  n = await notes(page);
+  expect(n.backs).toBe(0);
+  const free = Math.min(n.openEndAt ?? Infinity, n.reachedAt! + cap);
+  expect(n.leftAt).toBeDefined();
+  expect(n.leftAt!).toBeGreaterThan(free - HOLD_EARLY);
+  expect(n.leftAt! - free).toBeLessThan(HOLD_LATE);
+  expect(await pageY(page)).toBeGreaterThan(exit + GESTURE_PAST);
 }
 
 /** Whether the stage shows the cell lit, and whether its panel is open, as `[lit, open]`. */
@@ -484,6 +557,35 @@ test.describe("structure walkthrough", () => {
       });
     }
 
+    for (const viewport of [
+      { width: 1440, height: 900 },
+      { width: 390, height: 844 },
+    ]) {
+      test(`at ${viewport.width} px a trackpad swipe that runs on past the end stops at the exit until the cell has opened, then goes on`, async ({
+        page,
+      }) => {
+        await page.setViewportSize(viewport);
+        await page.goto("/");
+        await expectGestureHeldThenGoesOn(page, "mouse");
+      });
+    }
+
+    test("locked at the exit, a trackpad swipe up or a key going up goes at once", async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto("/");
+      const { exit, cdp } = await lockAtExit(page, "mouse");
+      await gestureUp(page, cdp, GESTURE_STEP, "mouse");
+      await nextFrame(page);
+      expect(await pageY(page)).toBeLessThan(exit - GESTURE_STEP / 2);
+      // Back down to the exit, locked again while the cell still opens, then a key up.
+      await gestureDown(page, cdp, GESTURE_PAST, "mouse");
+      await nextFrame(page);
+      expect(Math.abs((await pageY(page)) - exit)).toBeLessThanOrEqual(ROUNDING_SLACK);
+      await page.keyboard.press("PageUp");
+      await expect.poll(() => pageY(page)).toBeLessThan(exit - 300);
+      expect((await notes(page)).openEndAt).toBeUndefined();
+    });
+
     test("scrolling keys at the end are held the same way, then go on", async ({ page }) => {
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.goto("/");
@@ -578,6 +680,20 @@ test.describe("structure walkthrough", () => {
         expect(n.leftAt!).toBeGreaterThanOrEqual(n.openEndAt!);
         expect(n.leftAt! - n.openEndAt!).toBeLessThan(HOLD_LATE);
         expect(await pageY(page)).toBeGreaterThan(exit + SWIPE_PAST);
+      });
+
+      test("a fling that runs on past the end stops at the exit until the cell has opened, then goes on", async ({ page }) => {
+        await page.goto("/");
+        await expectGestureHeldThenGoesOn(page, "touch");
+      });
+
+      test("locked at the exit, a swipe back down the screen goes up at once", async ({ page }) => {
+        await page.goto("/");
+        const { exit, cdp } = await lockAtExit(page, "touch");
+        await gestureUp(page, cdp, GESTURE_STEP, "touch");
+        await nextFrame(page);
+        expect(await pageY(page)).toBeLessThan(exit - GESTURE_STEP / 2);
+        expect((await notes(page)).openEndAt).toBeUndefined();
       });
     });
   });

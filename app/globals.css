@@ -6,6 +6,11 @@
     scrollbar-gutter: stable;
   }
 
+  /* The walkthrough's hold at its end locks the page's scroll; the gutter above keeps everything where it was. */
+  html[data-scroll-held] {
+    overflow: hidden;
+  }
+
   body {
     background-color: var(--color-bg);
     color: var(--color-ink);
