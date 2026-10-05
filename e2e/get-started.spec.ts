@@ -134,6 +134,30 @@ test.describe("skills", () => {
   });
 });
 
+test("a code box's copy button shows on hover or focus, and stays hidden otherwise", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  const box = page.getByRole("tabpanel", { name: "npm", exact: true });
+  const copy = box.getByRole("button", { name: "Copy" });
+  await expect(copy).toHaveCSS("opacity", "0");
+  await box.hover();
+  await expect(copy).toHaveCSS("opacity", "1");
+  await page.mouse.move(0, 0);
+  await expect(copy).toHaveCSS("opacity", "0");
+  await copy.focus();
+  await expect(copy).toHaveCSS("opacity", "1");
+});
+
+test.describe("on a touch screen", () => {
+  test.use({ viewport: { width: 390, height: 900 }, hasTouch: true, isMobile: true });
+
+  test("a code box's copy button always shows", async ({ page }) => {
+    await page.goto("/");
+    const copy = page.getByRole("tabpanel", { name: "npm", exact: true }).getByRole("button", { name: "Copy" });
+    await expect(copy).toHaveCSS("opacity", "1");
+  });
+});
+
 test("a prompt copies exactly as written", async ({ page }) => {
   await page.goto("/");
   const prompt = page

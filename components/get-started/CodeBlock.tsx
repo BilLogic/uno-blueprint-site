@@ -1,22 +1,24 @@
 import type { ComponentPropsWithoutRef } from "react";
 import type { CodeContent } from "@/content/get-started";
 import { commandText, noteLine } from "@/lib/get-started";
+import { revealOnHover } from "@/components/reveal";
 import { CopyButton } from "./CopyButton";
 
 type CodeBlockProps = { code: CodeContent } & Omit<ComponentPropsWithoutRef<"div">, "children">;
 
 /**
- * A terminal box with a copy button. Each command is its own line, and one too
- * long for the box wraps at a space with a hanging indent, so a wrapped
- * command never reads as two. A note sits above the commands as a shell
- * comment, and the copy leaves it out, so what is pasted still runs as typed.
+ * A code box with a copy button that shows on hover or focus. Each command is
+ * its own line, and one too long for the box wraps at a space with a hanging
+ * indent, so a wrapped command never reads as two. A note sits above the
+ * commands as a shell comment, and the copy leaves it out, so what is pasted
+ * still runs as typed.
  */
 export function CodeBlock({ code, className = "", ...props }: CodeBlockProps) {
   const text = code.kind === "commands" ? commandText(code.lines) : code.text;
   return (
     <div
       {...props}
-      className={`relative rounded-12 bg-term py-4 shadow-term pr-14 pl-4.5 font-mono text-13 leading-command text-term-ink wrap-anywhere ${className}`}
+      className={`group relative rounded-12 bg-term py-4 shadow-term pr-14 pl-4.5 font-mono text-13 leading-command text-term-ink wrap-anywhere ${className}`}
     >
       {code.kind === "commands" ? (
         <code className="block">
@@ -34,7 +36,7 @@ export function CodeBlock({ code, className = "", ...props }: CodeBlockProps) {
       ) : (
         <p className="whitespace-pre-wrap">{code.text}</p>
       )}
-      <CopyButton text={text} tone="term" className="top-2.5 right-2.5" />
+      <CopyButton text={text} tone="term" className={`top-2.5 right-2.5 ${revealOnHover}`} />
     </div>
   );
 }

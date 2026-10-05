@@ -1,6 +1,6 @@
 import type { ComponentPropsWithoutRef } from "react";
-import { CopyButton } from "./CopyButton";
 import { revealOnHover } from "@/components/reveal";
+import { CopyButton } from "./CopyButton";
 
 type PromptBoxProps = { prompt: string } & Omit<ComponentPropsWithoutRef<"div">, "children">;
 

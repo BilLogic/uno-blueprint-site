@@ -26,7 +26,7 @@ export function SkillsStep() {
       <div {...panelProps} className="grid min-w-0 gap-3.5">
         <CodeBlock code={tab.code} />
         <p className="mt-2.5 mb-3.5 text-14 text-muted">{tab.note}</p>
-        <ul className="grid gap-0.5 rounded-12 bg-term p-1.5 text-term-ink">
+        <ul className="grid gap-0.5 rounded-12 bg-term p-1.5 text-term-ink shadow-term">
           {skills.list.map(({ name, does }) => {
             const call = `${tab.prefix}${name}`;
             return (

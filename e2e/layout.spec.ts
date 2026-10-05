@@ -41,8 +41,9 @@ test("the page is served with the generated content security policy", async ({ p
 test("a link that is not ready yet cannot be followed", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
-  const caseStudy = page.getByRole("link", { name: "Case study", exact: true });
+  const caseStudy = page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Case study Coming soon" });
   await expect(caseStudy).toHaveAttribute("aria-disabled", "true");
   await expect(caseStudy).not.toHaveAttribute("href", /.*/);
+  await expect(caseStudy).toHaveCSS("cursor", "not-allowed");
   await expect(page.getByRole("link", { name: "Demo", exact: true })).toHaveAttribute("href", /\/demo\/$/);
 });
