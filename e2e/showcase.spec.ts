@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { canvas } from "@/content/canvas";
-import { repairBoard } from "@/content/repair-board";
+import { showcase } from "@/content/showcase";
 import { touchPoints } from "@/content/touch-points";
 
 /** A showcase's tab labels, in order: the first, the second, then the rest. */
@@ -123,48 +123,117 @@ for (const width of [1440, 390]) {
   });
 }
 
-const compare = canvas.tabs.find((tab) => tab.value === "compare")!;
-/** The lanes where some path takes its own step, each of which holds one parted slot. */
-const partedLanes = repairBoard.lanes.filter((lane) =>
-  lane.steps.some((step) => Object.values(canvas.compare.swaps).some((swaps) => step in swaps)),
-);
-
 for (const width of [1440, 390]) {
-  test(`at ${width} px compare paths sits where the content puts it, every tab's stage is one size, and the paths part on the board`, async ({
-    page,
-  }) => {
+  test(`at ${width} px every canvas tab's stage is one size, and its recording fills the stage`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/");
     const list = page.getByRole("tablist", { name: canvas.tabsLabel });
     await expect(list.getByRole("tab")).toHaveText(canvas.tabs.map((tab) => tab.label));
-    await expect(list.getByRole("tab").nth(canvas.tabs.indexOf(compare))).toHaveText(compare.label);
     await expectOneStageSize(page, list, canvas.tabs);
 
-    await list.getByRole("tab", { name: compare.label }).click();
-    const panel = page.getByRole("tabpanel", { name: compare.label });
-    await expect(panel.getByText(compare.caption)).toBeVisible();
-    await expect(panel.getByText(canvas.compare.open, { exact: true })).toBeVisible();
-
-    // Each parted slot holds every path, in order. The board may run past the stage's foot, as the
-    // other boards do, but each path's name stays readable inside the slot and the stage at either width.
-    const parted = panel.getByTestId("parted-slot");
-    await expect(parted).toHaveCount(partedLanes.length);
-    const first = parted.first();
-    const tags = first.getByTestId("path-tag");
-    await expect(tags).toHaveText([...canvas.understand.paths]);
-    const stage = (await panel.getByTestId("showcase-stage").boundingBox())!;
-    const slot = (await first.boundingBox())!;
-    expect(slot.x).toBeGreaterThanOrEqual(stage.x);
-    expect(slot.x + slot.width).toBeLessThanOrEqual(stage.x + stage.width);
-    for (const tag of await tags.all()) {
-      const box = (await tag.boundingBox())!;
-      expect(box.x + box.width).toBeLessThanOrEqual(slot.x + slot.width + 0.5);
-      expect(box.y + box.height).toBeLessThanOrEqual(stage.y + stage.height);
-      expect(await tag.evaluate((node) => parseFloat(getComputedStyle(node).fontSize))).toBeGreaterThan(0);
-      expect(await tag.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+    for (const tab of canvas.tabs) {
+      await list.getByRole("tab", { name: tab.label }).click();
+      const stage = page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage");
+      const video = stage.locator("video");
+      await expect(video).toHaveAttribute("src", `/videos/${tab.recording}.mp4`);
+      await expect(video).toHaveAttribute("poster", `/videos/${tab.recording}.webp`);
+      const [outer, inner] = [(await stage.boundingBox())!, (await video.boundingBox())!];
+      // The stage's border stays round the recording, which covers the rest.
+      expect(inner.width).toBeGreaterThan(outer.width - 4);
+      expect(inner.height).toBeGreaterThan(outer.height - 4);
     }
   });
 }
+
+test("the phone's recording keeps its own shape inside the handset", async ({ page }) => {
+  await page.goto("/");
+  const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
+  await list.getByRole("tab", { name: phone.label }).click();
+  const video = page.getByRole("tabpanel", { name: phone.label }).locator("video");
+  await video.scrollIntoViewIfNeeded();
+  // The poster is the recording's first frame, so it has the recording's shape; the test browser cannot decode the video itself.
+  const shape = await video.evaluate(
+    (node: HTMLVideoElement) =>
+      new Promise<number>((resolve, reject) => {
+        const poster = new Image();
+        poster.onload = () => resolve(poster.naturalWidth / poster.naturalHeight);
+        poster.onerror = () => reject(new Error(`no poster at ${node.poster}`));
+        poster.src = node.poster;
+      }),
+  );
+  const box = (await video.boundingBox())!;
+  expect(box.width / box.height).toBeCloseTo(shape, 2);
+});
+
+/**
+ * Stands in for playback, which the test browser cannot decode: each video
+ * records whether it was last told to play or pause.
+ */
+async function stubPlayback(page: Page) {
+  await page.addInitScript(() => {
+    HTMLMediaElement.prototype.play = function () {
+      this.dataset.state = "playing";
+      return Promise.resolve();
+    };
+    HTMLMediaElement.prototype.pause = function () {
+      this.dataset.state = "paused";
+    };
+  });
+}
+
+const [understand, check] = canvas.tabs;
+
+test.describe("a showcase recording", () => {
+  test.beforeEach(async ({ page }) => {
+    await stubPlayback(page);
+  });
+
+  test("loads nothing until its stage is on screen, then plays, pauses and plays again", async ({ page }) => {
+    await page.goto("/");
+    const panel = page.getByRole("tabpanel", { name: understand.label });
+    const video = panel.locator("video");
+    await expect(video).toHaveAttribute("preload", "none");
+    await expect(video).toHaveAccessibleName(`${understand.label}. ${understand.caption}`);
+    await expect(video).not.toHaveAttribute("data-state", "playing");
+
+    await panel.getByTestId("showcase-stage").scrollIntoViewIfNeeded();
+    await expect(video).toHaveAttribute("data-state", "playing");
+
+    const button = panel.getByRole("button", { name: showcase.pause });
+    await button.click();
+    await expect(video).toHaveAttribute("data-state", "paused");
+    await panel.getByRole("button", { name: showcase.play }).click();
+    await expect(video).toHaveAttribute("data-state", "playing");
+
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(video).toHaveAttribute("data-state", "paused");
+  });
+
+  test("starts from its first frame when its tab is selected", async ({ page }) => {
+    await page.goto("/");
+    const list = page.getByRole("tablist", { name: canvas.tabsLabel });
+    await list.scrollIntoViewIfNeeded();
+    await list.getByRole("tab", { name: check.label }).click();
+    const video = page.getByRole("tabpanel", { name: check.label }).locator("video");
+    await expect(video).toHaveAttribute("data-state", "playing");
+    expect(await video.evaluate((node: HTMLVideoElement) => node.currentTime)).toBe(0);
+  });
+
+  test("waits for Play when the reader asked for less motion", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+    const panel = page.getByRole("tabpanel", { name: understand.label });
+    const video = panel.locator("video");
+    await panel.getByTestId("showcase-stage").scrollIntoViewIfNeeded();
+    const play = panel.getByRole("button", { name: showcase.play });
+    await expect(play).toBeVisible();
+    await expect(video).not.toHaveAttribute("data-state", "playing");
+
+    await play.click();
+    await expect(video).toHaveAttribute("data-state", "playing");
+    await expect(panel.getByRole("button", { name: showcase.pause })).toBeVisible();
+  });
+});
 
 test("the canvas's side link sits beside the headline, and on a phone under the sub-headline", async ({ page }) => {
   const section = page.locator("section", {

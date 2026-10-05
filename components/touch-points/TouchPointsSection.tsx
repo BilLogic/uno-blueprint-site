@@ -1,7 +1,6 @@
 import { LayoutGrid, MessageCircle, Smartphone, Terminal } from "lucide-react";
 import { touchPoints } from "@/content/touch-points";
 import { ShowcaseSection } from "@/components/showcase/ShowcaseSection";
-import { AgentMock, AppMock, ChatMock, PhoneMock } from "./mocks";
 
 /** The places people and agents reach the same blueprint, one tab each. */
 export function TouchPointsSection() {
@@ -15,12 +14,8 @@ export function TouchPointsSection() {
       idBase="tp"
       tabsLabel={touchPoints.tabsLabel}
       tabs={touchPoints.tabs}
-      pictures={{
-        app: { Icon: LayoutGrid, picture: <AppMock /> },
-        agent: { Icon: Terminal, picture: <AgentMock /> },
-        chat: { Icon: MessageCircle, picture: <ChatMock /> },
-        phone: { Icon: Smartphone, picture: <PhoneMock /> },
-      }}
+      icons={{ app: LayoutGrid, agent: Terminal, chat: MessageCircle, phone: Smartphone }}
+      handset="phone"
     />
   );
 }

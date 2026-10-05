@@ -14,10 +14,10 @@ const widths = [390, 1440] as const;
 const schemes = ["light", "dark"] as const;
 /** Each showcase, by its headline, with the tab its snapshot shows. */
 const showcases = [
-  // The first canvas tab shows the whole board, and on a phone its cells as bars.
+  // The first canvas tab fills the stage with a desktop recording.
   { name: "canvas", headline: canvas.headline, tab: canvas.tabs[0].label },
-  // The coding agent tab shows every kind of marked cell and the terminal.
-  { name: "touch-points", headline: "Every place you work.", tab: touchPoints.tabs[1].label },
+  // The phone tab stands a handset on the stage's foot.
+  { name: "touch-points", headline: touchPoints.headline, tab: touchPoints.tabs.at(-1)!.label },
 ] as const;
 
 for (const width of widths) {
@@ -38,6 +38,16 @@ for (const width of widths) {
           });
           await showOnly(section);
           await section.getByRole("tab", { name: showcase.tab }).click();
+          // Asking for less motion, the recording stays on its poster; wait for that to be drawn.
+          await section.locator("video").evaluate(
+            (video: HTMLVideoElement) =>
+              new Promise<void>((resolve, reject) => {
+                const poster = new Image();
+                poster.onload = () => resolve();
+                poster.onerror = () => reject(new Error(`no poster at ${video.poster}`));
+                poster.src = video.poster;
+              }),
+          );
           // A section taller than the screen would have the sticky nav drawn over its top.
           await page.locator("header").evaluate((nav) => (nav.style.visibility = "hidden"));
           await expect(section).toHaveScreenshot(`${showcase.name}-${width}-${colorScheme}.png`);
