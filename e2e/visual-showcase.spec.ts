@@ -14,9 +14,9 @@ const widths = [390, 1440] as const;
 const schemes = ["light", "dark"] as const;
 /** Each showcase, by its headline, with the tab its snapshot shows. */
 const showcases = [
-  // The first canvas tab fills the stage with a desktop recording.
+  // The first canvas tab insets a desktop recording on the stage as a window.
   { name: "canvas", headline: canvas.headline, tab: canvas.tabs[0].label },
-  // The phone tab stands a handset on the stage's foot.
+  // The phone tab centres the masked phone, unzoomed: the reader asked for less motion.
   { name: "touch-points", headline: touchPoints.headline, tab: touchPoints.tabs.at(-1)!.label },
 ] as const;
 

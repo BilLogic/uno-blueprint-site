@@ -1,6 +1,9 @@
-/** Where a showcase recording and its poster (the recording's first frame) are served from. */
-export function recordingFiles(name: string): { video: string; poster: string } {
-  return { video: `/videos/${name}.mp4`, poster: `/videos/${name}.webp` };
+/**
+ * Where a showcase recording, its poster (the recording's first frame) and,
+ * for the phone's, its mask (the handset's silhouette) are served from.
+ */
+export function recordingFiles(name: string): { video: string; poster: string; mask: string } {
+  return { video: `/videos/${name}.mp4`, poster: `/videos/${name}.webp`, mask: `/videos/${name}-mask.png` };
 }
 
 type Playback = {

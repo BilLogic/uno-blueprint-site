@@ -272,23 +272,22 @@
 
   /*
    * Showcases (canvas, touch points): a tab row over a framed stage that plays
-   * a screen recording. A phone's recording plays inside a handset, sized in em.
+   * a screen recording. A desktop recording is a window inset on the stage's
+   * dots; the phone's is a handset masked to its silhouette, centred, that
+   * zooms with the action.
    */
   --container-title: 620px; /* a section headline */
   --container-caption: 70ch;
   --spacing-dots: 18px; /* the stage's dot grid */
   /* On a phone the stage leaves 16:9 and every recording shows whole, uncropped. */
-  --aspect-recording: 3 / 2; /* a desktop recording's own shape, and the canvas stage's */
-  --aspect-stage-tall: 4 / 5; /* the touch-points stage, tall enough for the handset's screen to read */
-  /* The handset, standing on the stage's foot; its screen has the phone recording's own shape. */
-  --text-handset: clamp(12px, 1.05vw, 13px); /* the em its rim and corners are sized in */
-  --text-handset--line-height: 1.5;
-  --shadow-handset: 0 20px 50px rgba(0, 0, 0, 0.1);
-  --aspect-phone: 600 / 1222;
-  --radius-phone: 1.8em; /* the handset's corners */
-  --spacing-phone-top: 6%; /* the stage above the handset */
-  --spacing-phone-bezel: 0.45em; /* the rim round the screen */
-  --radius-phone-screen: calc(var(--radius-phone) - var(--spacing-phone-bezel)); /* inside that rim */
+  --aspect-recording: 3 / 2; /* the canvas stage on a phone */
+  --aspect-stage-tall: 4 / 5; /* the touch-points stage on a phone, tall enough for the phone's screen to read */
+  --spacing-recording-inset: clamp(16px, 3.5vw, 44px); /* the dots round a recording, at least */
+  --aspect-window: 1620 / 1004; /* a desktop recording's own shape: the app window, edge to edge */
+  --radius-window: var(--radius-10);
+  --shadow-window: var(--shadow-ring), 0 16px 40px -16px rgba(0, 0, 0, 0.3);
+  --aspect-phone: 720 / 1510; /* the phone recording's own shape, handset included */
+  --drop-shadow-phone: 0 16px 24px rgba(0, 0, 0, 0.2); /* follows the handset's silhouette */
   /* Lane accents, the same in both themes. */
   --color-lane-user: #3f8fd6;
   --color-lane-front: #d9902f;
@@ -505,6 +504,27 @@
 @utility bg-dots {
   background-image: radial-gradient(var(--color-line-2) 1px, transparent 1px);
   background-size: var(--spacing-dots) var(--spacing-dots);
+}
+
+/* A box of its recording's shape, as large as fits whole in its size container. */
+@utility fit-* {
+  aspect-ratio: --value(--aspect-*);
+  width: min(100cqw, 100cqh * (--value(--aspect-*)));
+}
+
+/*
+ * Cuts a recording to the silhouette in --recording-mask, an image the
+ * recording's size. Fullscreen shows the video unmasked, letterboxed as it is.
+ */
+@utility recording-mask {
+  -webkit-mask-image: var(--recording-mask);
+  mask-image: var(--recording-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  &:fullscreen {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
 }
 
 :root {

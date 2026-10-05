@@ -2,10 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import { openFullscreen, recordingFiles, shouldPlay, wantsPlay } from "./recording";
 
 describe("recordingFiles", () => {
-  it("serves the video and its poster side by side under /videos", () => {
+  it("serves the video, its poster and its mask side by side under /videos", () => {
     expect(recordingFiles("touch-phone")).toEqual({
       video: "/videos/touch-phone.mp4",
       poster: "/videos/touch-phone.webp",
+      mask: "/videos/touch-phone-mask.png",
     });
   });
 });

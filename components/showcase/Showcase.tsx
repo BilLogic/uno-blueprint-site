@@ -7,6 +7,7 @@ import { TabList, tabId, tabPanelId } from "@/components/ui/Tabs";
 import { useInView } from "@/hooks/use-in-view";
 import { useReducedMotion } from "@/hooks/use-media-query";
 import { shouldPlay, wantsPlay } from "@/lib/recording";
+import type { ZoomKeyframe } from "@/lib/recording-zoom";
 import { Recording, type RecordingHandle } from "./Recording";
 
 export type ShowcaseItem<T extends string> = {
@@ -17,8 +18,10 @@ export type ShowcaseItem<T extends string> = {
   caption: string;
   /** The screen recording played on the stage while this tab is selected. */
   recording: string;
-  /** The recording is a phone's, played inside a handset. */
-  handset: boolean;
+  /** The recording is a phone's, the handset alone on the stage. */
+  phone: boolean;
+  /** How the phone's recording zooms with its action. */
+  zoom?: readonly ZoomKeyframe[];
 };
 
 type ShowcaseProps<T extends string> = {
@@ -33,11 +36,11 @@ type ShowcaseProps<T extends string> = {
  * A row of pill tabs over a framed stage with a caption under it. Selecting a
  * tab swaps the stage's recording and the caption; the two together are the
  * tab's panel. The recording plays while its stage is on screen, until the
- * reader pauses it; a reader who asked for less motion starts it themselves.
+ * reader pauses it; a reader who asked for less motion starts it themselves,
+ * and the phone's recording never zooms for them.
  *
- * On a phone the stage leaves 16:9 so each recording shows whole: the canvas's
- * takes the desktop recordings' own 3:2, and a showcase with a handset stands
- * taller so the phone's screen reads. Every tab of a showcase shares its
+ * On a phone the stage leaves 16:9: the canvas's is 3:2, and a showcase with a
+ * phone stands taller so the phone's screen reads. Every tab of a showcase shares its
  * stage's shape, so switching tabs never moves the page. A second button there
  * opens the recording fullscreen.
  */
@@ -62,7 +65,7 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
   const wanted = wantsPlay({ choice, reducedMotion });
   const captionId = `${tabPanelId(idBase, item.value)}-caption`;
   const Icon = wanted ? Pause : Play;
-  const tall = items.some((candidate) => candidate.handset);
+  const tall = items.some((candidate) => candidate.phone);
   const buttonClass =
     "grid size-8 cursor-pointer place-items-center rounded-8 border border-line-2 bg-panel text-muted transition-[color,border-color] duration-t-1 motion-reduce:transition-none hover:border-line-hot hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
 
@@ -97,12 +100,13 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
             key={item.value}
             ref={recording}
             name={item.recording}
-            handset={item.handset}
+            phone={item.phone}
+            zoom={reducedMotion ? undefined : item.zoom}
             near={near}
             playing={shouldPlay({ choice, reducedMotion, inView })}
             labelledBy={captionId}
           />
-          {/* On a phone the fullscreen button sits under Pause/Play, down the corner and clear of the handset. */}
+          {/* On a phone the fullscreen button sits under Pause/Play, down the corner. */}
           <div className="absolute top-3.5 right-3.5 z-6 flex flex-col gap-2 max-lg:top-2 max-lg:right-2">
             <button
               type="button"

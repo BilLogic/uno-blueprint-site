@@ -101,13 +101,32 @@ async function expectOneStageSize(page: Page, list: Locator, tabs: readonly { la
   return { width, height };
 }
 
-/** A video's object-fit: on a phone each recording shows whole. */
-const fit = (video: Locator) => video.evaluate((node) => getComputedStyle(node).objectFit);
+/** Where `inner` sits inside `outer`: the margin on each side, in px. */
+async function margins(outer: Locator, inner: Locator) {
+  const [o, i] = [(await outer.boundingBox())!, (await inner.boundingBox())!];
+  return { left: i.x - o.x, top: i.y - o.y, right: o.x + o.width - i.x - i.width, bottom: o.y + o.height - i.y - i.height };
+}
+
+/** A desktop recording is a window inset on the stage's dots: whole, at its own shape, centred, with dots all round. */
+async function expectInsetWindow(stage: Locator) {
+  const window = stage.getByTestId("recording-window");
+  const box = (await window.boundingBox())!;
+  expect(box.width / box.height).toBeCloseTo(1620 / 1004, 2);
+  const margin = await margins(stage, window);
+  for (const side of Object.values(margin)) expect(side).toBeGreaterThanOrEqual(15);
+  expect(Math.abs(margin.left - margin.right)).toBeLessThan(1);
+  expect(Math.abs(margin.top - margin.bottom)).toBeLessThan(1);
+  // The recording fills its window, which rounds its corners.
+  const video = (await window.locator("video").boundingBox())!;
+  expect(video.width).toBeCloseTo(box.width, 0);
+  expect(video.height).toBeCloseTo(box.height, 0);
+  expect(await window.evaluate((node) => parseFloat(getComputedStyle(node).borderTopLeftRadius))).toBeGreaterThan(0);
+}
 
 const phone = touchPoints.tabs.find((tab) => tab.value === "phone")!;
 
 for (const width of [1440, 390]) {
-  test(`at ${width} px the touch points end on the phone, every tab's stage is one size, and the handset fills it`, async ({
+  test(`at ${width} px the touch points end on the phone, every tab's stage is one size, and the phone stands centred in it`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
@@ -116,38 +135,37 @@ for (const width of [1440, 390]) {
     await expect(list.getByRole("tab")).toHaveCount(touchPoints.tabs.length);
     await expect(list.getByRole("tab").last()).toHaveText(phone.label);
     const size = await expectOneStageSize(page, list, touchPoints.tabs);
-    if (width === 390) {
-      // A phone's stage stands taller than wide, so the handset's screen reads.
-      expect(size.height / size.width).toBeCloseTo(5 / 4, 1);
-      for (const tab of touchPoints.tabs.filter((candidate) => candidate !== phone)) {
-        await list.getByRole("tab", { name: tab.label }).click();
-        expect(await fit(page.getByRole("tabpanel", { name: tab.label }).locator("video"))).toBe("contain");
-      }
-      await list.getByRole("tab", { name: phone.label }).click();
+    // On a phone the stage stands taller than wide, so the phone's screen reads.
+    if (width === 390) expect(size.height / size.width).toBeCloseTo(5 / 4, 1);
+    for (const tab of touchPoints.tabs.filter((candidate) => candidate !== phone)) {
+      await list.getByRole("tab", { name: tab.label }).click();
+      await expectInsetWindow(page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage"));
     }
+    await list.getByRole("tab", { name: phone.label }).click();
 
     const panel = page.getByRole("tabpanel", { name: phone.label });
     await expect(panel.getByText(phone.caption)).toBeVisible();
-    const stage = (await panel.getByTestId("showcase-stage").boundingBox())!;
-    const frame = (await panel.getByTestId("phone-frame").boundingBox())!;
-    expect(frame.y).toBeGreaterThanOrEqual(stage.y);
-    expect(frame.y + frame.height).toBeLessThanOrEqual(stage.y + stage.height + 0.5);
-    expect(frame.x).toBeGreaterThanOrEqual(stage.x);
-    expect(frame.x + frame.width).toBeLessThanOrEqual(stage.x + stage.width);
-    expect(frame.height).toBeGreaterThan(stage.height * 0.75);
+    const stage = panel.getByTestId("showcase-stage");
+    const margin = await margins(stage, panel.getByTestId("phone"));
+    // Whole, with dots above and below it, and centred both ways.
+    expect(margin.top).toBeGreaterThanOrEqual(15);
+    expect(margin.bottom).toBeGreaterThanOrEqual(15);
+    expect(Math.abs(margin.top - margin.bottom)).toBeLessThan(1);
+    expect(Math.abs(margin.left - margin.right)).toBeLessThan(1);
+    const [stageBox, phoneBox] = [(await stage.boundingBox())!, (await panel.getByTestId("phone").boundingBox())!];
+    expect(phoneBox.height).toBeGreaterThan(stageBox.height * 0.75);
   });
 }
 
 for (const width of [1440, 390]) {
-  test(`at ${width} px every canvas tab's stage is one size, and its recording fills the stage`, async ({ page }) => {
+  test(`at ${width} px every canvas tab's stage is one size, and its recording is a window inset on it`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/");
     const list = page.getByRole("tablist", { name: canvas.tabsLabel });
     await expect(list.getByRole("tab")).toHaveText(canvas.tabs.map((tab) => tab.label));
     const size = await expectOneStageSize(page, list, canvas.tabs);
-    // On a phone the stage takes the recordings' own 3:2 and shows each whole; wider, it is 16:9 and they cover it.
-    const [ratio, objectFit] = width === 390 ? [3 / 2, "contain"] : [16 / 9, "cover"];
-    expect(size.width / size.height).toBeCloseTo(ratio, 1);
+    // On a phone the stage is 3:2; wider, it is 16:9.
+    expect(size.width / size.height).toBeCloseTo(width === 390 ? 3 / 2 : 16 / 9, 1);
 
     for (const tab of canvas.tabs) {
       await list.getByRole("tab", { name: tab.label }).click();
@@ -155,16 +173,12 @@ for (const width of [1440, 390]) {
       const video = stage.locator("video");
       await expect(video).toHaveAttribute("src", `/videos/${tab.recording}.mp4`);
       await expect(video).toHaveAttribute("poster", `/videos/${tab.recording}.webp`);
-      expect(await fit(video)).toBe(objectFit);
-      const [outer, inner] = [(await stage.boundingBox())!, (await video.boundingBox())!];
-      // The stage's border stays round the recording, which covers the rest.
-      expect(inner.width).toBeGreaterThan(outer.width - 4);
-      expect(inner.height).toBeGreaterThan(outer.height - 4);
+      await expectInsetWindow(stage);
     }
   });
 }
 
-test("the phone's recording keeps its own shape inside the handset", async ({ page }) => {
+test("the phone's recording keeps its own shape, cut to the handset's silhouette", async ({ page }) => {
   await page.goto("/");
   const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
   await list.getByRole("tab", { name: phone.label }).click();
@@ -182,6 +196,18 @@ test("the phone's recording keeps its own shape inside the handset", async ({ pa
   );
   const box = (await video.boundingBox())!;
   expect(box.width / box.height).toBeCloseTo(shape, 2);
+  expect(await video.evaluate((node) => getComputedStyle(node).maskImage)).toContain(`/videos/${phone.recording}-mask.png`);
+});
+
+test("the phone never zooms for a reader who asked for less motion", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
+  await list.getByRole("tab", { name: phone.label }).click();
+  const panel = page.getByRole("tabpanel", { name: phone.label });
+  await panel.getByTestId("showcase-stage").scrollIntoViewIfNeeded();
+  await panel.getByRole("button", { name: showcase.play }).click();
+  await expect(panel.getByTestId("phone")).toHaveCSS("transform", "none");
 });
 
 /**
