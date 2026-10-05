@@ -12,8 +12,8 @@ export const links = {
   github: { href: "https://github.com/BilLogic/uno-blueprint" },
   getStarted: { href: "#start" },
   caseStudy: { href: "#", notReady: true },
-  billGuo: { href: "#bill-linkedin", notReady: true },
-  meryemMarasli: { href: "#meryem-linkedin", notReady: true },
+  billGuo: { href: "https://www.linkedin.com/in/boyuang/" },
+  meryemMarasli: { href: "https://www.linkedin.com/in/meryemmarasli/" },
   plusBlueprint: { href: "https://plus-uno.netlify.app/blueprint/" },
   // Where each voice in the ideas timeline said it.
   shostackSource: { href: "https://hbr.org/1984/01/designing-services-that-deliver" },
