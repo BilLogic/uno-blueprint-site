@@ -101,6 +101,90 @@ export const poseOf = (step: number, opened = true): Pose =>
  */
 export const cellOpensLate = (step: number, previous: number) => step >= STEP.open && previous < STEP.open;
 
+/**
+ * How long the cell takes to arrive from above, in ms: lit for `cellBeat`,
+ * then its panel waits `panelDelay` for the beam and opens over `panelOpen`.
+ * The panel's two times are CSS tokens (`--duration-panel-delay` and
+ * `--duration-leave` in styles/tokens.css), read at runtime.
+ */
+export const cellArrival = ({ cellBeat, panelDelay, panelOpen }: { cellBeat: number; panelDelay: number; panelOpen: number }) =>
+  cellBeat + panelDelay + panelOpen;
+
+/** Short of where the walkthrough lets go, or past it by less than this, in px, is there: scroll positions come in fractions. */
+const EXIT_SLACK = 1;
+
+/**
+ * The scroll position where the walkthrough lets go of its frame, from the
+ * section's geometry on screen and the page's scroll `y`; `null` when the
+ * section is no taller than its frame, so nothing is pinned.
+ */
+export function exitScroll({ stickyTop, sectionTop, sectionHeight, stickyHeight }: ScrollGeometry, y: number): number | null {
+  const travel = sectionHeight - stickyHeight;
+  if (travel <= 0) return null;
+  return y + sectionTop - stickyTop + travel;
+}
+
+/** A scroll the reader asks for at the walkthrough's end. */
+export type ExitMove = {
+  /** The step on show. */
+  step: number;
+  /** On the last step: whether its cell is still lighting and opening (it was reached from above, and its panel is not yet open). */
+  opening: boolean;
+  /** How long ago this hold first stopped a move, in ms; `null` while it has stopped none. */
+  sinceHeld: number | null;
+  /** The longest a hold lasts from the first move it stops, in ms (see `cellArrival`). */
+  cap: number;
+  /** How far the move would scroll the page, in px: positive going down. */
+  delta: number;
+  /** The page's scroll position, and the one where the walkthrough lets go of its frame, in px. */
+  y: number;
+  exit: number;
+};
+
+/**
+ * Whether a move is held: stopped before the page moves, so a scroll does not
+ * carry the reader out of the walkthrough before its last step has shown and
+ * its cell has opened. Only a move down that would cross where the
+ * walkthrough lets go is held, while the walkthrough is still on its way to
+ * the last step or that step's cell is still opening, and never for longer
+ * than `cap` from the first move held. A page already past the exit, or any
+ * move up, is never held.
+ */
+export function holdsExit({ step, opening, sinceHeld, cap, delta, y, exit }: ExitMove): boolean {
+  if (delta <= 0 || y > exit + EXIT_SLACK || y + delta <= exit) return false;
+  if (sinceHeld !== null && sinceHeld >= cap) return false;
+  return step < STEP.cell || opening;
+}
+
+/** How far a wheel reported in lines scrolls, per line, in px. */
+const WHEEL_LINE = 40;
+
+/**
+ * A wheel's `delta` in px, from its `mode` (`WheelEvent.deltaMode`: 0 pixels,
+ * 1 lines, 2 pages) and the page's height, as some browsers report a mouse
+ * wheel in lines.
+ */
+export function wheelPixels(delta: number, mode: number, pageHeight: number): number {
+  if (mode === 1) return delta * WHEEL_LINE;
+  if (mode === 2) return delta * pageHeight;
+  return delta;
+}
+
+/** How far an arrow key scrolls, in px: a little more than browsers do, so a press that would cross the exit is caught. */
+const KEY_LINE = 60;
+
+/**
+ * How far a key (a `KeyboardEvent.key`) scrolls the page down, in px, at
+ * most: negative going up, 0 for a key that does not scroll down a page
+ * `pageHeight` tall.
+ */
+export function keyScroll(key: string, shift: boolean, pageHeight: number): number {
+  if (key === " ") return shift ? -pageHeight : pageHeight;
+  if (key === "PageDown") return pageHeight;
+  if (key === "ArrowDown") return KEY_LINE;
+  return 0;
+}
+
 /** Each step's end, as a fraction of the whole scroll, from the scroll length each step gets. */
 export function stepEdges(lengths: readonly number[]): number[] {
   const total = lengths.reduce((sum, length) => sum + length, 0);
