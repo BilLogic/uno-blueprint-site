@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { CLARITY_TAG_URL } from "../lib/clarity-tag.mjs";
 
 export const sha256 = (text) => `'sha256-${createHash("sha256").update(text).digest("base64")}'`;
 
@@ -20,10 +21,12 @@ export function hashProblem(hashes, bootScript) {
 }
 
 /** Whether a page loads the Clarity tag (lib/analytics.ts); only production builds do. */
-export const usesClarity = (html) => html.includes("https://www.clarity.ms/tag/");
+export const usesClarity = (html) => html.includes(CLARITY_TAG_URL);
 
-// Clarity's hosts, from its CSP guide: the tag and its script on *.clarity.ms,
-// data sent to *.clarity.ms, and a c.bing.com beacon.
+// Clarity's hosts: the tag on www.clarity.ms loads its script from
+// scripts.clarity.ms; data goes to a lettered *.clarity.ms host, and its CSP
+// guide adds a c.bing.com beacon. Scripts get the two exact hosts only.
+const CLARITY_SCRIPTS = ["https://www.clarity.ms", "https://scripts.clarity.ms"];
 const CLARITY = "https://*.clarity.ms";
 const BING = "https://c.bing.com";
 
@@ -32,7 +35,7 @@ export function buildPolicy(hashes, { clarity = false } = {}) {
   const also = (...hosts) => (clarity ? ` ${hosts.join(" ")}` : "");
   return [
     "default-src 'self'",
-    `script-src 'self' ${[...hashes].sort().join(" ")}${also(CLARITY)}`,
+    `script-src 'self' ${[...hashes].sort().join(" ")}${also(...CLARITY_SCRIPTS)}`,
     // Components pass custom properties (--row, --n) through React style props,
     // which the static HTML carries as style attributes. Attributes cannot be
     // hashed without 'unsafe-hashes', so styles allow inline; scripts never do.

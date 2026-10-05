@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { clarityLoader } from "../lib/analytics.ts";
 import { buildPolicy, hashProblem, inlineScriptHashes, sha256, usesClarity } from "./csp.mjs";
 
 const boot = "document.documentElement.dataset.x=1";
@@ -39,10 +40,15 @@ describe("Clarity in the policy", () => {
 
   it("allows Clarity's scripts, beacons and data when a page loads the tag", () => {
     const policy = buildPolicy(new Set([sha256(boot)]), { clarity: true });
-    expect(policy).toMatch(/script-src [^;]*https:\/\/\*\.clarity\.ms/);
+    expect(policy).toMatch(/script-src [^;]* https:\/\/www\.clarity\.ms https:\/\/scripts\.clarity\.ms;/);
+    expect(policy).not.toMatch(/script-src[^;]*\*/);
     expect(policy).toMatch(/connect-src 'self' https:\/\/\*\.clarity\.ms https:\/\/c\.bing\.com/);
     expect(policy).toMatch(/img-src 'self' data: https:\/\/\*\.clarity\.ms https:\/\/c\.bing\.com/);
     expect(policy).not.toMatch(/script-src[^;]*unsafe-inline/);
+  });
+
+  it("spots the tag the loader requests, so the two never drift apart", () => {
+    expect(usesClarity(clarityLoader("abc123"))).toBe(true);
   });
 
   it("spots the tag in a page", () => {
