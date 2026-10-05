@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { ToolLogo, type Tool } from "@/components/icons/ToolLogo";
 import { structure } from "@/content/structure";
 import type { RowState, Scene } from "@/lib/walkthrough";
-import { CARDS_LAYER, CARD_PLACES } from "@/lib/walkthrough-morph";
+import { CARDS_LAYER, cardPlace } from "@/lib/walkthrough-morph";
 import { EvidenceLogo, type EvidenceSource } from "./EvidenceLogo";
 import s from "./Walkthrough.module.css";
 
@@ -313,8 +313,8 @@ function ContextCards({ done }: { done: boolean }) {
   return (
     <div className={cx(s.context, done && s.done)} style={{ zIndex: CARDS_LAYER }}>
       {structure.context.cards.map((card, i) => {
-        const [x, y, r] = CARD_PLACES.wide[i]!;
-        const [nx, ny, nr] = CARD_PLACES.narrow[i]!;
+        const [x, y, r] = cardPlace(i, false);
+        const [nx, ny, nr] = cardPlace(i, true);
         const place = { "--x": `${x}px`, "--y": `${y}px`, "--r": `${r}deg`, "--nx": `${nx}px`, "--ny": `${ny}px`, "--nr": `${nr}deg` };
         return (
           <div

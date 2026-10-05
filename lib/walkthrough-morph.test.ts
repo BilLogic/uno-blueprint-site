@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { structure } from "@/content/structure";
 import { TIMING } from "./walkthrough";
 import {
   CARD_PLACES,
+  cardPlace,
   LANDING_ORDER,
   CARD_STYLE_NAMES,
   advanceMorph,
@@ -90,10 +92,10 @@ describe("morphFrame", () => {
 });
 
 describe("cardTransform", () => {
-  it("moves, tilts and turns the card like a layer, then swings and scales it", () => {
+  it("places the card, moves, tilts and turns it like a layer, then swings and scales it", () => {
     const [frame] = morphFrame(1, cards, layers, false);
     expect(cardTransform({ ...frame!, swingX: 0, swingY: 0 })).toBe(
-      "translate(0px,160px) rotateX(58deg) rotateZ(-45deg) translate(0px,0px) scale(1)",
+      "translate(355px,0px) translate(0px,160px) rotateX(58deg) rotateZ(-45deg) translate(0px,0px) scale(1)",
     );
   });
 });
@@ -102,15 +104,28 @@ describe("cardStyles", () => {
   it("writes every style a card is drawn with, and names each so it can be cleared", () => {
     const [frame] = morphFrame(1, cards, layers, false);
     const styles = cardStyles(frame!);
-    expect(styles).toMatchObject({ left: "355px", top: "0px", "border-radius": "16px", "z-index": "20", "--co": "0.000" });
+    expect(styles).toMatchObject({ width: "300px", "border-radius": "16px", "z-index": "20", "--co": "0.000" });
+    expect(styles.transform).toMatch(/^translate\(355px,0px\) /);
     expect([...CARD_STYLE_NAMES].sort()).toEqual(Object.keys(styles).sort());
   });
 });
 
 describe("CARD_PLACES", () => {
-  it("rests six cards on a wide frame and six on a phone", () => {
-    expect(CARD_PLACES.wide).toHaveLength(6);
-    expect(CARD_PLACES.narrow).toHaveLength(6);
-    expect(new Set(LANDING_ORDER)).toEqual(new Set([0, 1, 2, 3, 4, 5]));
+  it("has a place for every card the content lists, on a wide frame and on a phone", () => {
+    const count = structure.context.cards.length;
+    expect(CARD_PLACES.wide).toHaveLength(count);
+    expect(CARD_PLACES.narrow).toHaveLength(count);
+    expect(LANDING_ORDER).toHaveLength(count);
+    expect(new Set(LANDING_ORDER)).toEqual(new Set(Array.from({ length: count }, (_, i) => i)));
+  });
+
+  it("still places, and morphs, a card past the last place", () => {
+    const extra = CARD_PLACES.wide.length;
+    expect(cardPlace(extra, false)).toEqual(CARD_PLACES.wide[0]);
+    expect(cardPlace(extra, true)).toEqual(CARD_PLACES.narrow[0]);
+    const seven = [...cards, { ...cards[0]! }];
+    const frames = morphFrame(0.5, seven, layers, false);
+    expect(frames).toHaveLength(7);
+    for (const frame of frames) expect(Number.isFinite(frame.left + frame.top + frame.tx + frame.ty)).toBe(true);
   });
 });

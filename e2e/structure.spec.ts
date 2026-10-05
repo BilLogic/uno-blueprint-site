@@ -49,6 +49,14 @@ const section = (page: Page) =>
 
 const caption = (page: Page) => section(page).locator("[aria-live] b");
 
+/** Where the walkthrough's pinned frame sits, from the top of the viewport, in px. */
+const pinnedTop = (page: Page) =>
+  section(page).evaluate((el) => {
+    const pinned = [...el.querySelectorAll<HTMLElement>("*")].find((n) => getComputedStyle(n).position === "sticky");
+    if (!pinned) throw new Error("no pinned walkthrough in the section");
+    return Math.round(pinned.getBoundingClientRect().top);
+  });
+
 const nextFrame = (page: Page) =>
   page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
 
@@ -444,6 +452,38 @@ test.describe("structure walkthrough", () => {
     expect(style.overflow).toBe("visible");
     expect(style.foot).toMatch(/^\d+px$/);
     expect(style.clipPath).toBe(`inset(0px 0px -${style.foot})`);
+  });
+
+  for (const viewport of [
+    { width: 1280, height: 720 },
+    { width: 1280, height: 800 },
+    { width: 800, height: 600 },
+    { width: 375, height: 667 },
+  ]) {
+    test(`at ${viewport.width} by ${viewport.height} the pinned frame sits below the nav, never under it`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto("/");
+      await scrollToStep(section(page), 1, 0.5);
+      const navBottom = await page.locator("header").evaluate((nav) => nav.getBoundingClientRect().bottom);
+      await expect.poll(() => pinnedTop(page)).toBeGreaterThanOrEqual(navBottom);
+    });
+  }
+
+  test("switching to the agent view and back, with a resize between, pins the frame where it was", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    await scrollToStep(section(page), 1, 0.5);
+    const before = await pinnedTop(page);
+
+    await page.getByRole("button", { name: "For agents" }).click();
+    await expect(page.getByRole("heading", { level: 2, name: heading })).toBeHidden();
+    // Resized while hidden, the section measures nothing; it must not keep that.
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await page.waitForTimeout(TIMING.resizeSettle * 3);
+    await page.getByRole("button", { name: "For humans" }).click();
+
+    await scrollToStep(section(page), 1, 0.5);
+    await expect.poll(() => pinnedTop(page)).toBe(before);
   });
 
   test("on a phone the walkthrough reads the same steps, with nothing wider than the screen", async ({ page }) => {

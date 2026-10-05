@@ -22,8 +22,8 @@ import {
   type StageFit,
 } from "@/lib/walkthrough";
 import {
-  CARD_PLACES,
   CARD_STYLE_NAMES,
+  cardPlace,
   cardStyles,
   morphFrame,
   type CardRest,
@@ -122,15 +122,23 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
       worldEl.style.transform = poseTransform(fitted, currentPose.current, room);
     };
 
+    // Set when a measure was skipped because the section was hidden (the agent view is showing).
+    let stale = false;
     const refit = () => {
       const scrollerEl = scroller.current;
       const stickyEl = sticky.current;
       const stageEl = stage.current;
       if (!scrollerEl || !stickyEl || !stageEl) return;
+      // Hidden, everything measures 0 and the frame would be pinned far down: wait until it shows.
+      if (stickyEl.offsetHeight === 0) {
+        stale = true;
+        return;
+      }
+      stale = false;
       const headEl = head.current;
       const headHeight = headEl ? headEl.offsetHeight + (parseFloat(getComputedStyle(headEl).marginBottom) || 0) : 0;
       const captionHeight = caption.current?.offsetHeight || CAPTION_FALLBACK;
-      const fitted = fitStage(stageEl.clientWidth, availableStageHeight(innerHeight, headHeight, captionHeight), headHeight);
+      const fitted = fitStage(stageEl.clientWidth, availableStageHeight(innerHeight, headHeight, captionHeight));
       fit.current = fitted;
       // Whole pixels, so everything below the section sits on the pixel grid.
       stageEl.style.height = `${Math.round(fitted.height)}px`;
@@ -205,10 +213,9 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
     const measureMorph = () => {
       const worldEl = world.current;
       if (!worldEl) return;
-      const places = isNarrow() ? CARD_PLACES.narrow : CARD_PLACES.wide;
       cards = cardEls().map((el, i) => {
         atRest(el);
-        const [x, y, r] = places[i]!;
+        const [x, y, r] = cardPlace(i, isNarrow());
         return { x, y, r, w: el.offsetWidth, h: el.offsetHeight };
       });
       const layerEls = [
@@ -244,10 +251,15 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
       morph.current.draw(morph.current.progress);
     };
 
-    refit();
-    placeLaneLines();
-    draw.current();
-    remorph.current();
+    const remeasure = () => {
+      refit();
+      if (stale) return;
+      remorph.current();
+      placeLaneLines();
+      draw.current();
+    };
+
+    remeasure();
 
     // Lines follow the sheets while they move, and settle again when each move ends.
     const worldEl = world.current;
@@ -260,10 +272,8 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
     const onResize = () => {
       clearTimeout(settle);
       settle = window.setTimeout(() => {
-        refit();
-        remorph.current();
-        placeLaneLines();
-        draw.current();
+        remeasure();
+        if (stale) return;
         const beam = world.current?.querySelector<SVGElement>("[data-beam]");
         if (beam && currentOpen.current && !reduced) {
           beam.style.transition = "none";
@@ -273,18 +283,22 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
     };
     addEventListener("resize", onResize);
 
+    // A measure skipped while the section was hidden is taken again as soon as it shows.
+    const stickyEl = sticky.current;
+    const shown = new ResizeObserver(() => {
+      if (stale && stickyEl && stickyEl.offsetHeight > 0) remeasure();
+    });
+    if (stickyEl) shown.observe(stickyEl);
+
     let alive = true;
     document.fonts?.ready.then(() => {
-      if (!alive) return;
-      refit();
-      remorph.current();
-      placeLaneLines();
-      draw.current();
+      if (alive) remeasure();
     });
 
     return () => {
       alive = false;
       clearTimeout(settle);
+      shown.disconnect();
       removeEventListener("resize", onResize);
       worldEl?.removeEventListener("transitionend", onTransitionEnd);
     };

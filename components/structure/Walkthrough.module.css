@@ -76,10 +76,11 @@
   pointer-events: none;
 }
 
+/* A card is placed by a translate, not left and top, so moving it never lays the page out. */
 .card {
   position: absolute;
-  left: var(--x);
-  top: var(--y);
+  left: 0;
+  top: 0;
   width: 168px;
   box-sizing: border-box;
   overflow: hidden;
@@ -91,7 +92,7 @@
   border: 1px solid var(--color-line-2);
   border-radius: var(--radius-12);
   box-shadow: var(--shadow-context-card);
-  transform: rotate(var(--r));
+  transform: translate(var(--x), var(--y)) rotate(var(--r));
 }
 
 /* The diff's lines sit closer together than a card's other rows (see CARD_BODIES). */
@@ -105,10 +106,8 @@
 }
 
 .stage.narrow .card {
-  left: var(--nx);
-  top: var(--ny);
   width: 176px;
-  transform: rotate(var(--nr));
+  transform: translate(var(--nx), var(--ny)) rotate(var(--nr));
 }
 
 /* The cards and the stack they became cross-fade on one curve. */
@@ -182,7 +181,7 @@
 
 .card .message .bar {
   height: 14px;
-  border-radius: 7px;
+  border-radius: var(--radius-7);
   background: var(--color-card-2);
 }
 
@@ -198,7 +197,7 @@
 }
 
 .figmaFrame i {
-  border-radius: 3px;
+  border-radius: var(--radius-3);
   background: var(--color-card-2);
 }
 
@@ -232,7 +231,7 @@
 .funnel i {
   flex: 1;
   height: var(--h);
-  border-radius: 3px 3px 1px 1px;
+  border-radius: var(--radius-3) var(--radius-3) var(--radius-1) var(--radius-1);
   background: color-mix(in oklab, var(--color-brand) 40%, var(--color-card-2));
 }
 
@@ -255,7 +254,7 @@
 .card .code.added {
   margin: 0 -5px;
   padding: 3px 5px 3px 17px;
-  border-radius: 3px;
+  border-radius: var(--radius-3);
   background: color-mix(in oklab, var(--color-brand) 14%, transparent);
 }
 
@@ -702,7 +701,7 @@
   z-index: 1;
   padding: 3px 7px;
   border-radius: var(--radius-6);
-  background: color-mix(in oklab, var(--color-brand) 14%, var(--color-panel));
+  background: var(--color-brand-badge);
   color: var(--color-brand);
   font: 500 var(--text-11) / 1 var(--font-sans);
   opacity: 0;
@@ -730,7 +729,7 @@
 }
 
 .line.current span {
-  color: var(--color-brand);
+  color: var(--color-brand-badge-ink);
   transform: none;
 }
 
@@ -784,9 +783,10 @@
   border-color: var(--color-brand);
 }
 
+/* The badge's own ink, a shade under the brand in light, so the label clears 4.5:1 on it. */
 .tag.current b {
-  background: color-mix(in oklab, var(--color-brand) 14%, var(--color-panel));
-  color: var(--color-brand);
+  background: var(--color-brand-badge);
+  color: var(--color-brand-badge-ink);
 }
 
 .stage.flat .tag {
