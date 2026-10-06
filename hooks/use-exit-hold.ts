@@ -13,6 +13,7 @@ import {
   crossedExit,
   exitScroll,
   holdCap,
+  holdOpen,
   holdsExit,
   keyScroll,
   shouldLock,
@@ -24,8 +25,6 @@ const OWN_KEYS =
   "input, textarea, select, button, summary, [contenteditable]:not([contenteditable='false']), [role=tab], [role=menuitem], [role=option], [role=slider]";
 /** The hold listens only while the page is within this many screens above the exit, so the rest of the page scrolls freely. */
 const NEAR_SCREENS = 3;
-/** A key pressed this recently, in ms, may have moved the page itself (a Tab to a link further down), so a page it carried past the exit is left there. */
-const KEY_MOVES = 300;
 /** The attribute on the root that locks the page's scroll while the hold has it (see app/globals.css). */
 const LOCKED = "data-scroll-held";
 
@@ -36,19 +35,20 @@ const LOCKED = "data-scroll-held";
  * carry the page out of the pinned section is stopped before the page moves
  * (see `holdsExit`), and a wheel, a fling or a trackpad's momentum the browser
  * will not let be stopped is met by locking the page's scroll at the exit
- * (see `shouldLock`). A page the browser carried past the exit before the
- * hold could stop it (a busy phone that missed frames, or momentum that ran on
- * through the lock) is brought back to the exit and locked there (see
- * `crossedExit`). Held while the walkthrough is still on its way, it is
- * jumped to the last step at once (`toEnd`), skipping the steps between. The
- * hold lets go once the panel has opened, or at the cap (see `holdCap`) from
- * when the last step showed, and a timer of its own ends each hold and each
- * lock, so nothing keeps the page stuck. A move that would cross the exit
- * brings the page there and no further; it is pulled back up only to the exit,
- * and only having just been carried past it. A page that was already past the
- * exit is left alone. Scrolling up unlocks it at once; an in-page glide and
- * reduced motion are never held. The input listeners are there only near the
- * exit while a hold could come.
+ * (see `shouldLock`). A page the reader's wheel or finger carried past the
+ * exit before the hold could stop it (a busy phone that missed frames, or
+ * momentum that ran on through the lock) is brought back to the exit and
+ * locked there (see `crossedExit`). Held while the walkthrough is still on
+ * its way, it is jumped to the last step at once (`toEnd`), skipping the
+ * steps between. The hold lets go once the panel has opened, or at the cap
+ * (see `holdCap`) from when the last step showed, and a timer of its own ends
+ * each hold and each lock, so nothing keeps the page stuck. A move that would
+ * cross the exit brings the page there and no further; it is pulled back up
+ * only to the exit, and only having just been carried past it. A page that
+ * was already past the exit is left alone. Scrolling up unlocks it at once; an in-page glide and
+ * reduced motion are never held. The listeners that stop a move are there
+ * only near the exit while a hold could come; the page only notes, anywhere,
+ * when a wheel or a finger last moved it.
  *
  * `scroller` is the tall section and `sticky` the frame pinned inside it.
  */
@@ -151,18 +151,28 @@ export function useExitHold(
       settle();
     };
     const pending = () => step.current < STEP.cell || opening.current;
-    // When a key was last pressed near the exit, and whether the last scroll came from a glide.
-    let keyAt = -Infinity;
-    let glided = false;
+    // When the reader's wheel, or a finger that moved, last came. A tap is not a move.
+    let gestureAt: number | null = null;
+    let fingerMoved = false;
+    const onGestureWheel = () => {
+      gestureAt = performance.now();
+    };
+    const onFingerDown = () => {
+      fingerMoved = false;
+    };
+    const onFingerMove = () => {
+      fingerMoved = true;
+      gestureAt = performance.now();
+    };
+    const onFingerUp = () => {
+      if (fingerMoved) gestureAt = performance.now();
+    };
     const watchScroll = () => {
       const from = lastY;
       const delta = scrollY - from;
       const gap = performance.now() - lastAt;
       lastY = scrollY;
       lastAt = performance.now();
-      // A glide moves the page itself, and pins the walkthrough again as it ends, so its last move is none of the hold's.
-      const afterGlide = glided && !isGliding();
-      glided = isGliding();
       const at = exit();
       if (locked) {
         // Moved up off the exit by something else, or gliding, the page is free; still coming to rest, it is left to,
@@ -172,9 +182,11 @@ export function useExitHold(
         return;
       }
       if (at === null || isGliding()) return;
-      const crossing = { from, y: scrollY, exit: at, reach: NEAR_SCREENS * innerHeight, pending: pending(), sinceHeld: sinceHeld(), cap: cap.current };
-      // Carried past the exit before the hold could stop it, the page is brought straight back and locked there.
-      if (crossedExit(crossing) && !afterGlide && performance.now() - keyAt > KEY_MOVES) {
+      const sinceGesture = gestureAt === null ? null : performance.now() - gestureAt;
+      const crossing = { from, y: scrollY, exit: at, reach: NEAR_SCREENS * innerHeight, pending: pending(), sinceHeld: sinceHeld(), cap: cap.current, sinceGesture };
+      // Carried past the exit by the reader's wheel or finger before the hold could stop it, the page is brought straight
+      // back and locked there.
+      if (crossedExit(crossing)) {
         lock();
         toExit(at);
         return;
@@ -185,7 +197,7 @@ export function useExitHold(
     const stopAtExit = (event: Event) => {
       event.preventDefault();
       const at = exit();
-      if (at !== null && scrollY < at) scrollTo({ top: at, behavior: "instant" });
+      if (at !== null && scrollY < at && !atExit(scrollY, at)) scrollTo({ top: at, behavior: "instant" });
     };
 
     // A move up unlocks the page. The browser has already found nothing to scroll for this one, so it is scrolled here.
@@ -205,7 +217,6 @@ export function useExitHold(
       if (event.cancelable && holds(delta)) stopAtExit(event);
     };
     const onKey = (event: KeyboardEvent) => {
-      keyAt = performance.now();
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
       if (event.target instanceof Element && event.target.closest(OWN_KEYS)) return;
       const delta = keyScroll(event.key, event.shiftKey, innerHeight);
@@ -245,10 +256,10 @@ export function useExitHold(
     // Listen only near the exit, and only while a hold could still come.
     update.current = () => {
       const at = exit();
-      const since = sinceHeld();
-      const capped = since !== null && since >= cap.current;
-      if (capped || !pending()) unlock();
-      attach(locked || (at !== null && !capped && pending() && scrollY > at - NEAR_SCREENS * innerHeight && scrollY <= at + 1));
+      const open = holdOpen(sinceHeld(), cap.current);
+      if (!open || !pending()) unlock();
+      const near = at !== null && scrollY > at - NEAR_SCREENS * innerHeight && (scrollY <= at || atExit(scrollY, at));
+      attach(locked || (near && open && pending()));
     };
     // The panel has opened once its clip has run.
     const onTransitionEnd = (event: TransitionEvent) => {
@@ -264,6 +275,11 @@ export function useExitHold(
     const section = scroller.current;
     section?.addEventListener("transitionend", onTransitionEnd);
     addEventListener("scroll", onScroll, { passive: true });
+    addEventListener("wheel", onGestureWheel, { passive: true });
+    addEventListener("touchstart", onFingerDown, { passive: true });
+    addEventListener("touchmove", onFingerMove, { passive: true });
+    addEventListener("touchend", onFingerUp, { passive: true });
+    addEventListener("touchcancel", onFingerUp, { passive: true });
     update.current();
     return () => {
       clearTimeout(capTimer);
@@ -272,6 +288,11 @@ export function useExitHold(
       update.current = () => {};
       section?.removeEventListener("transitionend", onTransitionEnd);
       removeEventListener("scroll", onScroll);
+      removeEventListener("wheel", onGestureWheel);
+      removeEventListener("touchstart", onFingerDown);
+      removeEventListener("touchmove", onFingerMove);
+      removeEventListener("touchend", onFingerUp);
+      removeEventListener("touchcancel", onFingerUp);
     };
   }, [reduced, scroller, sticky, toEnd]);
 

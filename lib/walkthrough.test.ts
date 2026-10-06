@@ -15,6 +15,7 @@ import {
   flatLift,
   goalStep,
   holdCap,
+  holdOpen,
   holdsExit,
   introTriggered,
   keyScroll,
@@ -519,13 +520,23 @@ describe("crossedExit", () => {
   const exit = 5000;
   const cap = 2160;
   // A busy page hears of a fast fling only once it is well past the exit.
-  const carried = { from: exit - 400, y: exit + 1200, exit, reach: 2700, pending: true, sinceHeld: null, cap };
+  const carried = { from: exit - 400, y: exit + 1200, exit, reach: 2700, pending: true, sinceHeld: null, cap, sinceGesture: 50 };
 
   it("brings back a page carried past the exit while a hold is to come", () => {
     expect(crossedExit(carried)).toBe(true);
     expect(crossedExit({ ...carried, from: exit, y: exit + 30 })).toBe(true);
     expect(crossedExit({ ...carried, from: exit - 2700 })).toBe(true);
     expect(crossedExit({ ...carried, sinceHeld: cap - 1 })).toBe(true);
+  });
+
+  it("brings it back while a phone's momentum runs on after the finger lifts", () => {
+    expect(crossedExit({ ...carried, sinceGesture: 800 })).toBe(true);
+  });
+
+  it("leaves a page that no wheel or finger carried: a key, a link, find on the page, the scrollbar, a reload", () => {
+    expect(crossedExit({ ...carried, sinceGesture: null })).toBe(false);
+    expect(crossedExit({ ...carried, sinceGesture: 801 })).toBe(false);
+    expect(crossedExit({ ...carried, sinceGesture: 5000 })).toBe(false);
   });
 
   it("leaves a page that is at the exit, or a rounding past it", () => {
@@ -546,6 +557,16 @@ describe("crossedExit", () => {
   it("lets go once no hold is to come, or the hold has lasted its cap", () => {
     expect(crossedExit({ ...carried, pending: false })).toBe(false);
     expect(crossedExit({ ...carried, sinceHeld: cap })).toBe(false);
+  });
+});
+
+describe("holdOpen", () => {
+  it("is open until the hold has lasted its cap from the first move it stopped", () => {
+    expect(holdOpen(null, 2160)).toBe(true);
+    expect(holdOpen(0, 2160)).toBe(true);
+    expect(holdOpen(2159, 2160)).toBe(true);
+    expect(holdOpen(2160, 2160)).toBe(false);
+    expect(holdOpen(5000, 2160)).toBe(false);
   });
 });
 
