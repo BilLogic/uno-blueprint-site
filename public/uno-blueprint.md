@@ -2,19 +2,19 @@
 
 > An open-source toolkit for context engineering. A canvas for your team, a harness for your agents.
 
-For product teams whose context is spread across docs, designs, code, dashboards and threads, and for the AI agents that work beside them. People edit the blueprint on a canvas, a web app; agents read it through four skills that run in Claude Code, Cursor, Codex or any agent that reads markdown. It works on top of MCP, not instead of it.
+For product teams whose context is spread across docs, designs, code, dashboards, and threads, and for the AI agents that work beside them. People edit the blueprint on a canvas, a web app; agents read it through four skills that run in Claude Code, Cursor, Codex, or any agent that reads markdown. It works on top of MCP, not instead of it.
 
 Built by Bill Guo and Meryem Marasli. MIT license.
 
 - Website: https://uno-blueprint.netlify.app/
 - Package: create-uno-blueprint (npm)
-- Source, README and AGENTS.md: https://github.com/BilLogic/uno-blueprint
+- Source, README, and AGENTS.md: https://github.com/BilLogic/uno-blueprint
 - Demo blueprint: https://uno-blueprint.netlify.app/demo/
 - A blueprint in production: https://plus-uno.netlify.app/blueprint/
 
 ## What it is for
 
-A team's context is spread across docs, designs, code, dashboards and threads. A blueprint lays one service out step by step, by who does the work, and links every cell to the sources behind it.
+A team's context is spread across docs, designs, code, dashboards, and threads. A blueprint lays one service out step by step, by who does the work, and links every cell to the sources behind it.
 
 Use it to:
 
@@ -30,19 +30,19 @@ Service > phase > scenario > path. One path is one blueprint: a grid of lanes an
 - Lanes, top to bottom: User, Frontstage, Backstage, Support.
 - Lines between them: interaction, visibility, internal interaction.
 - Step: a column, one moment of the journey.
-- Cell: one lane at one step, one action by one actor. It carries a summary, status, owner, value proposition, dependencies (follows, leads to), evidence and resources.
-- Status: proposed, planned, built, live, at_risk or deprecated.
+- Cell: one lane at one step, one action by one actor. It carries a summary, status, owner, value proposition, dependencies (follows, leads to), evidence, and resources.
+- Status: proposed, planned, built, live, at_risk, or deprecated.
 
 ## Skills
 
-- ub:map: a blueprint has to be created, imported or updated from documents.
-- ub:slice: someone needs one part of it: a journey, a lane, a step, a cell or a custom set.
-- ub:audit: the blueprint has to be checked for gaps, conflicts and stale sources.
+- ub:map: a blueprint has to be created, imported, or updated from documents.
+- ub:slice: someone needs one part of it: a journey, a lane, a step, a cell, or a custom set.
+- ub:audit: the blueprint has to be checked for gaps, conflicts, and stale sources.
 - ub:whatif: a change is proposed and its effects have to be traced first.
 
 ## Workflow for coding agents
 
-1. Locate the blueprint. A workspace has a `blueprint-workspace.json` or a `blueprint/` folder at its root. Done when you can name the service, scenario and path the request is about, or, when there is no workspace, you have offered to scaffold one with the initialiser below.
+1. Locate the blueprint. A workspace has a `blueprint-workspace.json` or a `blueprint/` folder at its root. Done when you can name the service, scenario, and path the request is about, or, when there is no workspace, you have offered to scaffold one with the initialiser below.
 2. Read `AGENTS.md` at the workspace root. It routes each request to a skill, and that skill's SKILL.md is its contract. Done when you have opened the SKILL.md it points to.
 3. Answer from the blueprint first. Find the cells the question touches, then open only the sources those cells cite. Done when every claim in your answer names its cell or its source.
 4. Report the gap. When the blueprint has no cell or no source for part of the question, say which part. A named gap is a complete answer.
@@ -65,7 +65,7 @@ cd uno-blueprint
 npm run dev
 ```
 
-Use the project's package manager: `pnpm create`, `bun create` and `yarn create` work the same way. Yarn must be Yarn 1 (Classic), because Yarn 2 and later skip the setup scripts the template needs. The app serves on http://localhost:5173. Any coding agent can then work in the folder by reading its `AGENTS.md`.
+Use the project's package manager: `pnpm create`, `bun create`, and `yarn create` work the same way. Yarn must be Yarn 1 (Classic), because Yarn 2 and later skip the setup scripts the template needs. The app serves on http://localhost:5173. Any coding agent can then work in the folder by reading its `AGENTS.md`.
 
 ## Connect a database
 

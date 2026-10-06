@@ -40,6 +40,11 @@ jobs:
           path: out
           include-hidden-files: true
           retention-days: 7
+      # The site above is built as CI and previews are: without Clarity. Rebuild as
+      # Netlify's production context does (the .next cache keeps it short) and check
+      # the tag and its policy. It overwrites out/, after the upload, so no later job sees it.
+      - run: CONTEXT=production npm run build
+      - run: node scripts/check-clarity-build.mjs
 
   e2e:
     name: End-to-end, axe and visual snapshots

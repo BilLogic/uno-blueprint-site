@@ -166,6 +166,14 @@ export function holdsExit({ step, opening, sinceHeld, cap, delta, y, exit }: Exi
 
 /** How far ahead a scroll is looked at, at its last pace, for whether it is about to cross the exit, in ms: three frames or so. */
 const LOOK_AHEAD = 50;
+/**
+ * A scroll whose last event came within this long of the one before, in ms, is
+ * under way: its frames come a few to a busy frame apart, each moving it about
+ * as far as the last. A late frame makes its pace look low, so it is also
+ * looked at this many of its last moves ahead.
+ */
+const UNDER_WAY = 100;
+const MOVES_AHEAD = 2;
 /** A page that moved further than this between two scroll events, in px, jumped there (a link, a script, the page coming back to where it was). */
 const JUMP = 500;
 
@@ -189,7 +197,8 @@ export type ExitScroll = {
  * Whether the page's scroll is locked at the exit as it moves: whatever the
  * input, a trackpad's momentum and a wheel the browser will not let be
  * stopped among them. A page going down that has reached the exit, or would
- * cross it within `LOOK_AHEAD` at its last pace, is locked there (and brought
+ * cross it within `LOOK_AHEAD` at its last pace or within `MOVES_AHEAD` moves
+ * the size of its last while under way, is locked there (and brought
  * to the exit when short of it), while a hold is still to come and for no
  * longer than `cap` from when the hold first stopped the page. A page already
  * past the exit is left where it is, and a page going up is never locked. A
@@ -201,7 +210,8 @@ export function shouldLock({ y, exit, lastDelta, lastGap, pending, sinceHeld, ca
   if (!pending || lastDelta <= 0 || lastDelta > JUMP || y > exit + EXIT_SLACK) return false;
   if (sinceHeld !== null && sinceHeld >= cap) return false;
   const pace = lastDelta / Math.max(lastGap, 1);
-  return y + pace * LOOK_AHEAD >= exit - EXIT_SLACK;
+  const ahead = Math.max(pace * LOOK_AHEAD, lastGap <= UNDER_WAY ? lastDelta * MOVES_AHEAD : 0);
+  return y + ahead >= exit - EXIT_SLACK;
 }
 
 /** How far a wheel reported in lines scrolls, per line, in px. */

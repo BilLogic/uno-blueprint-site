@@ -7,7 +7,7 @@
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { themeBootScript } from "../lib/theme-boot.mjs";
-import { buildPolicy, hashProblem, inlineScriptHashes, metaPolicy } from "./csp.mjs";
+import { buildPolicy, hashProblem, inlineScriptHashes, metaPolicy, usesClarity } from "./csp.mjs";
 
 const out = "out";
 
@@ -31,7 +31,9 @@ function routesOf(file) {
 }
 
 const pages = htmlFiles(out);
-const hashes = new Set(pages.flatMap((file) => [...inlineScriptHashes(readFileSync(file, "utf8"))]));
+const html = pages.map((file) => readFileSync(file, "utf8"));
+const hashes = new Set(html.flatMap((page) => [...inlineScriptHashes(page)]));
+const options = { clarity: html.some(usesClarity) };
 
 const problem = hashProblem(hashes, themeBootScript);
 if (problem) {
@@ -43,13 +45,15 @@ if (problem) {
 // rule would also stamp it on the demo that netlify.toml forwards at /demo/,
 // whose scripts and connections it does not list.
 const routes = new Set(pages.flatMap(routesOf));
-const headerLine = `  Content-Security-Policy: ${buildPolicy(hashes)}\n`;
+const headerLine = `  Content-Security-Policy: ${buildPolicy(hashes, options)}\n`;
 writeFileSync(join(out, "_headers"), [...routes].map((route) => `${route}\n${headerLine}`).join(""));
 
 // An unknown path matches none of those routes, yet Netlify answers it with
 // 404.html, so that page carries the policy in a meta tag as well, ahead of its scripts.
 const notFound = join(out, "404.html");
-const meta = `<meta http-equiv="Content-Security-Policy" content="${metaPolicy(hashes)}">`;
+const meta = `<meta http-equiv="Content-Security-Policy" content="${metaPolicy(hashes, options)}">`;
 writeFileSync(notFound, readFileSync(notFound, "utf8").replace(/<head>/, `<head>${meta}`));
 
-console.log(`Wrote ${out}/_headers with ${hashes.size} inline script hashes for ${routes.size} routes`);
+console.log(
+  `Wrote ${out}/_headers with ${hashes.size} inline script hashes for ${routes.size} routes${options.clarity ? ", Clarity allowed" : ""}`,
+);

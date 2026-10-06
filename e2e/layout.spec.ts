@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { questions } from "@/content/questions";
 import { site } from "@/content/site";
+import { view } from "@/content/view";
 
 test("nothing is wider than a 375 px screen", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
@@ -35,11 +37,25 @@ test("the head describes the page for search and link previews", async ({ page }
   await expect(page.locator('link[rel="icon"]').first()).toHaveAttribute("href", /.+/);
 });
 
-test("the head carries the site and its source code as structured data", async ({ page }) => {
+test("the head carries the site, its source code and its questions as structured data", async ({ page }) => {
   await page.goto("/");
   const text = await page.locator('head script[type="application/ld+json"]').textContent();
-  const types = JSON.parse(text ?? "{}")["@graph"]?.map((node: { "@type": string }) => node["@type"]);
-  expect(types).toEqual(["WebSite", "SoftwareSourceCode"]);
+  const graph: { "@type": string; mainEntity?: { name: string; acceptedAnswer: { text: string } }[] }[] =
+    JSON.parse(text ?? "{}")["@graph"] ?? [];
+  expect(graph.map((node) => node["@type"])).toEqual(["WebSite", "SoftwareSourceCode", "FAQPage"]);
+  const faq = graph.find((node) => node["@type"] === "FAQPage")?.mainEntity ?? [];
+  expect(faq.map((entry) => entry.name)).toEqual(questions.list.map((entry) => entry.question));
+  expect(faq.every((entry) => entry.acceptedAnswer.text.length > 0 && !/[<>]/.test(entry.acceptedAnswer.text))).toBe(true);
+});
+
+test("answer engines find the whole agent guide in llms-full.txt, linked from llms.txt", async ({ request }) => {
+  const full = await request.get("/llms-full.txt");
+  expect(full.ok()).toBe(true);
+  const text = await full.text();
+  expect(text.startsWith("# Uno Blueprint\n")).toBe(true);
+  for (const skill of ["ub:map", "ub:slice", "ub:audit", "ub:whatif"]) expect(text).toContain(skill);
+  expect(text.trimEnd()).toBe((await (await request.get(`/${view.agentFile}`)).text()).trimEnd());
+  expect(await (await request.get("/llms.txt")).text()).toContain(`${site.url}/llms-full.txt`);
 });
 
 test("crawlers find a robots file that allows them and a sitemap", async ({ request }) => {
@@ -70,6 +86,19 @@ test("a link that is not ready yet cannot be followed", async ({ page }) => {
   await expect(caseStudy).not.toHaveAttribute("href", /.*/);
   await expect(caseStudy).toHaveCSS("cursor", "not-allowed");
   await expect(page.getByRole("link", { name: "Demo", exact: true })).toHaveAttribute("href", /\/demo\/$/);
+});
+
+test("the footer credits link to each author's LinkedIn profile", async ({ page }) => {
+  await page.goto("/");
+  const footer = page.getByRole("contentinfo");
+  await expect(footer.getByRole("link", { name: "Bill Guo", exact: true })).toHaveAttribute(
+    "href",
+    "https://www.linkedin.com/in/boyuang/",
+  );
+  await expect(footer.getByRole("link", { name: "Meryem Marasli", exact: true })).toHaveAttribute(
+    "href",
+    "https://www.linkedin.com/in/meryemmarasli/",
+  );
 });
 
 test("a link that is not ready yet says Coming soon on hover and on focus", async ({ page }) => {

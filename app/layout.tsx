@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Ubuntu_Sans, Ubuntu_Sans_Mono } from "next/font/google";
 import type { ReactNode } from "react";
+import { questions } from "@/content/questions";
 import { site } from "@/content/site";
 import { view } from "@/content/view";
+import { clarityIdFor, clarityLoader } from "@/lib/analytics";
 import { jsonLdText, structuredData } from "@/lib/structured-data";
 import { THEME_COLORS, themeBootScript } from "@/lib/theme";
 import "./globals.css";
@@ -36,7 +38,7 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: site.share.title, description: site.share.description },
 };
 
-const jsonLd = jsonLdText(structuredData(site));
+const jsonLd = jsonLdText(structuredData(site, questions.list));
 
 // THEME_COLORS explains why these are literals; a manual pick repoints them (boot script, useTheme).
 export const viewport: Viewport = {
@@ -46,12 +48,16 @@ export const viewport: Viewport = {
   ],
 };
 
+// Read at build time: the export is static, so this decides whether the HTML carries the tag at all.
+const clarityId = clarityIdFor(process.env.CONTEXT);
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     // The boot script sets data-theme before React hydrates, so the attribute is expected to differ.
     <html lang="en" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+        {clarityId && <script dangerouslySetInnerHTML={{ __html: clarityLoader(clarityId) }} />}
         {/* Data, not code: browsers never run it, so the content security policy does not list it. */}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
       </head>

@@ -8,7 +8,7 @@ type PromptBoxProps = { prompt: string } & Omit<ComponentPropsWithoutRef<"div">,
 export function PromptBox({ prompt, className = "", ...props }: PromptBoxProps) {
   return (
     <div {...props} className={`group relative grid rounded-12 border border-line bg-panel py-3.5 pr-13 pl-4 ${className}`}>
-      <p className="text-14 text-muted">{prompt}</p>
+      <p className="max-w-step text-14 text-muted">{prompt}</p>
       <CopyButton text={prompt} tone="panel" className={`top-2.5 right-2.5 ${revealOnHover}`} />
     </div>
   );

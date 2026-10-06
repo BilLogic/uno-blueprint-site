@@ -12,11 +12,30 @@ export type SiteFacts = {
   };
 };
 
+/** One question the page answers, as the Questions section shows it. */
+export type FaqEntry = { question: string; answer: string };
+
 /**
- * The page's JSON-LD: one graph holding the website and the source code it
- * presents, joined by ids so a reader can tell they are about the same thing.
+ * Text as an answer engine should quote it: markup goes, a link keeps its
+ * words, and runs of whitespace close up. Copy may carry an HTML tag, a
+ * markdown link, emphasis or code; the structured data never does. Underscores
+ * stay, since names such as at_risk use them.
  */
-export function structuredData(facts: SiteFacts) {
+export function plainText(text: string) {
+  return text
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/<[^>]*>/g, "")
+    .replace(/(\*\*|\*|`)(\S(?:.*?\S)?)\1/g, "$2")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * The page's JSON-LD: one graph holding the website, the source code it
+ * presents and the questions it answers, joined by ids so a reader can tell
+ * they are about the same thing.
+ */
+export function structuredData(facts: SiteFacts, faq: readonly FaqEntry[]) {
   const home = `${facts.url}/`;
   const websiteId = `${home}#website`;
   const codeId = `${home}#software`;
@@ -42,6 +61,19 @@ export function structuredData(facts: SiteFacts) {
         programmingLanguage: facts.source.language,
         license: facts.source.license,
         author: facts.source.authors.map((name) => ({ "@type": "Person", name })),
+      },
+      {
+        "@type": "FAQPage",
+        "@id": `${home}#questions`,
+        url: home,
+        inLanguage: "en",
+        isPartOf: { "@id": websiteId },
+        about: { "@id": codeId },
+        mainEntity: faq.map(({ question, answer }) => ({
+          "@type": "Question",
+          name: plainText(question),
+          acceptedAnswer: { "@type": "Answer", text: plainText(answer) },
+        })),
       },
     ],
   };

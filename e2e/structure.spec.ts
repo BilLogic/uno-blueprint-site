@@ -34,6 +34,10 @@ const SWIPE_X = 195;
 const SWIPE_FROM = 640;
 const SWIPE_TO = 340;
 const SWIPE_STEP = 30;
+/** How far from the screen's top or bottom edge a finger lands for a long swipe, in px. */
+const SWIPE_MARGIN = 40;
+/** A touch screen reports a finger's move once a frame. */
+const FRAMES_A_SECOND = 60;
 /** How far past the exit the swipes carry on, to show the page goes on after the hold, in px. */
 const SWIPE_PAST = 400;
 /** A continuous gesture, as a trackpad or a finger sends it: how fast it scrolls, in px a second, how far past the exit the first runs on, and how far each after it goes, in px. */
@@ -258,13 +262,19 @@ function expectInOrderToCells(shown: string[]) {
 }
 
 /**
- * Scrolls `distance` px down the page in one continuous gesture from the
- * middle of the screen, as a trackpad (`mouse`) or a finger (`touch`) sends
- * it, momentum and all; resolves once it has run. A browser lets only a
- * gesture's first wheel or move be stopped, unlike a run of separate wheels.
+ * Scrolls `distance` px down the page in one continuous gesture, as a
+ * trackpad (`mouse`) or a finger (`touch`) sends it; resolves once it has
+ * run. A browser lets only a gesture's first wheel or move be stopped, unlike
+ * a run of separate wheels. A trackpad's runs from the middle of the screen,
+ * momentum and all. A finger's is one swipe (see `swipe`), as far as the
+ * distance or the screen allows.
  */
 async function gestureDown(page: Page, cdp: CDPSession, distance: number, source: "mouse" | "touch") {
   const size = page.viewportSize()!;
+  if (source === "touch") {
+    await swipe(page, cdp, Math.sign(distance) * Math.min(Math.abs(distance), size.height - 2 * SWIPE_MARGIN));
+    return;
+  }
   await cdp.send("Input.synthesizeScrollGesture", {
     x: size.width / 2,
     y: size.height / 2,
@@ -273,6 +283,28 @@ async function gestureDown(page: Page, cdp: CDPSession, distance: number, source
     gestureSourceType: source,
     preventFling: false,
   });
+}
+
+/**
+ * One finger dragged `distance` px up the screen (down it when negative),
+ * from near one edge, a frame's worth of a gesture's pace a move, and lifted
+ * without a pause: it scrolls the page about `distance` px down. The browser may
+ * stop it at its first move only; once the page is under way it cannot.
+ * Driven as the touch screen sends it, since Chromium's synthesized touch
+ * scroll (`Input.synthesizeScrollGesture`) moves the page on macOS but never
+ * reaches it on Linux.
+ */
+async function swipe(page: Page, cdp: CDPSession, distance: number) {
+  const { height } = page.viewportSize()!;
+  const from = distance > 0 ? height - SWIPE_MARGIN : SWIPE_MARGIN;
+  const send = (type: "touchStart" | "touchMove" | "touchEnd", y: number) =>
+    cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x: SWIPE_X, y }] });
+  await send("touchStart", from);
+  for (let moved = 0; moved < Math.abs(distance); ) {
+    moved = Math.min(moved + GESTURE_SPEED / FRAMES_A_SECOND, Math.abs(distance));
+    await send("touchMove", from - Math.sign(distance) * moved);
+  }
+  await send("touchEnd", from - distance);
 }
 
 /** Scrolls `distance` px up the page in one continuous gesture, as `gestureDown` does down it. */
@@ -362,6 +394,42 @@ const cellState = (page: Page) =>
 /** Waits until the walkthrough has caught up with the scroll and shows `title`. */
 const settlesOn = (page: Page, title: string) =>
   expect(caption(page)).toHaveText(title, { timeout: WALK_TIMEOUT });
+
+/** How long the board must not move before it counts as settled, in ms: longer than any pause in its choreography. */
+const STEADY_MS = 600;
+
+/** The board's box within the pinned frame, as text, once it has stopped moving. */
+const steadyBoard = (page: Page) =>
+  section(page)
+    .locator("[data-board]")
+    .evaluate(
+      (board, ms) =>
+        new Promise<string>((done) => {
+          const frame = board.closest("[data-pin-frame]")!;
+          const read = () => {
+            const b = board.getBoundingClientRect();
+            const f = frame.getBoundingClientRect();
+            return [b.x - f.x, b.y - f.y, b.width, b.height].map((v) => v.toFixed(1)).join(",");
+          };
+          let last = read();
+          let since = performance.now();
+          const check = () => {
+            const now = read();
+            if (now !== last) since = performance.now();
+            last = now;
+            if (performance.now() - since >= ms) done(now);
+            else requestAnimationFrame(check);
+          };
+          requestAnimationFrame(check);
+        }),
+      STEADY_MS,
+    );
+
+/** How many lines the caption's text runs to. */
+const captionLines = (page: Page) =>
+  section(page)
+    .locator("[aria-live] p")
+    .evaluate((p) => Math.round(p.getBoundingClientRect().height / parseFloat(getComputedStyle(p).lineHeight)));
 
 test.describe("structure walkthrough", () => {
   test.describe.configure({ timeout: 90_000 });
@@ -453,6 +521,34 @@ test.describe("structure walkthrough", () => {
     expect(style.foot).toMatch(/^\d+px$/);
     expect(style.clipPath).toBe(`inset(0px 0px -${style.foot})`);
   });
+
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 1440, height: 900 },
+  ]) {
+    test(`at ${viewport.width} px the flat board stays put from step to step, however long each caption is`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await page.goto("/");
+      const boxes: string[] = [];
+      const lines = new Set<number>();
+      // Start from the flat board, once it has finished turning to face the reader.
+      await scrollToStep(section(page), titles.indexOf("Blueprint"), 0.5);
+      await settlesOn(page, "Blueprint");
+      await steadyBoard(page);
+      // The lanes, the lines between them and the steps: the board is flat throughout, and only the caption changes.
+      for (let step = titles.indexOf("User"); step <= titles.indexOf("Steps"); step++) {
+        await scrollToStep(section(page), step, 0.5);
+        await settlesOn(page, titles[step]!);
+        boxes.push(await steadyBoard(page));
+        lines.add(await captionLines(page));
+      }
+      // On a phone the captions run to different numbers of lines, which is what could move the board.
+      if (viewport.width < 768) expect(lines.size).toBeGreaterThan(1);
+      expect(new Set(boxes)).toEqual(new Set([boxes[0]]));
+    });
+  }
 
   for (const viewport of [
     { width: 1280, height: 720 },

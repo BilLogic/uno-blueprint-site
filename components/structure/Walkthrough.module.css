@@ -783,7 +783,6 @@
   border-color: var(--color-brand);
 }
 
-/* The badge's own ink, a shade under the brand in light, so the label clears 4.5:1 on it. */
 .tag.current b {
   background: var(--color-brand-badge);
   color: var(--color-brand-badge-ink);
@@ -1079,9 +1078,14 @@
     display: none;
   }
 
+  /*
+   * The pose is centred above the caption's first line, so that line stays put
+   * whatever the caption's length: the block is laid from its top and keeps
+   * room for the longest caption, three lines at a phone's width.
+   */
   .caption {
     display: grid;
-    align-content: end;
+    align-content: start;
     min-height: 116px;
     padding: 2px 14px 14px;
   }
