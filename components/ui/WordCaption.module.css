@@ -1,0 +1,55 @@
+/*
+ * A caption that changes word by word (the walkthrough's, the showcases'):
+ * the old caption leaves as the new one arrives in the same box. Each word
+ * rises out of a blur over --duration-t-3 on --ease-out, with the delay
+ * WordCaption.tsx gives it. The old caption goes whole, as one layer, in
+ * --duration-caption-out; a word still arriving carries on under it.
+ * --cap-dir is 1 going forward and -1 going back, when the words come down
+ * instead. The leaving caption is laid over the new one, out of the flow, so
+ * the block is always the new caption's height. A caption waiting for its
+ * entry holds the arriving pose, unseen.
+ */
+.cap {
+  position: relative;
+}
+
+.capLayer[data-phase="out"] {
+  position: absolute;
+  inset: 0 0 auto;
+}
+
+/* Inline blocks, so a word can move; they break at the same spaces as the plain text did. */
+.piece {
+  display: inline-block;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .capLayer[data-phase="from"] .piece {
+    opacity: 0;
+    filter: blur(var(--blur-caption));
+    transform: translateY(calc(var(--spacing-caption-rise) * var(--cap-dir, 1)));
+  }
+
+  .capLayer:is([data-phase="in"], [data-phase="out"]) .piece {
+    transition-property: opacity, filter, transform;
+    transition-duration: var(--duration-t-3);
+    transition-timing-function: var(--ease-out);
+    transition-delay: var(--cap-delay, 0ms);
+  }
+
+  .capLayer[data-phase="out"] {
+    opacity: 0;
+    filter: blur(var(--blur-caption));
+    transform: translateY(calc(var(--spacing-caption-rise) * var(--cap-dir, 1) * -1));
+    transition-property: opacity, filter, transform;
+    transition-duration: var(--duration-caption-out);
+    transition-timing-function: var(--ease-out);
+  }
+}
+
+/* Reduced motion: a caption changes at once; one that is arriving or leaving is unseen. */
+@media (prefers-reduced-motion: reduce) {
+  .capLayer:is([data-phase="from"], [data-phase="out"]) {
+    opacity: 0;
+  }
+}

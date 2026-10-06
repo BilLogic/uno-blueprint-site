@@ -2,6 +2,7 @@
 
 import { useEffect, useImperativeHandle, useRef, type Ref } from "react";
 import { vars } from "@/components/ui/vars";
+import { useLayerLeaving } from "@/hooks/use-layer-leaving";
 import { openFullscreen, recordingFiles } from "@/lib/recording";
 import { zoomAt, zoomTransform, type ZoomKeyframe } from "@/lib/recording-zoom";
 
@@ -25,6 +26,10 @@ type RecordingProps = {
   playing: boolean;
   /** The id of the text that names the recording for assistive technology. */
   labelledBy: string;
+  /** The recording of the tab just left, fading out under the new one: hidden from everyone, and never played. */
+  leaving?: boolean;
+  /** Its exit is over, run or cut short: take it off the stage. */
+  onLeft?: () => void;
   ref?: Ref<RecordingHandle>;
 };
 
@@ -35,9 +40,21 @@ type RecordingProps = {
  * It shows whole, however the stage is shaped: a desktop recording as a window
  * standing on the stage's foot, a phone's as the handset alone, centred.
  */
-export function Recording({ name, phone, masked, zoom, near, playing, labelledBy, ref: handle }: RecordingProps) {
+export function Recording({
+  name,
+  phone,
+  masked,
+  zoom,
+  near,
+  playing,
+  labelledBy,
+  leaving = false,
+  onLeft,
+  ref: handle,
+}: RecordingProps) {
   const ref = useRef<HTMLVideoElement>(null);
   const zoomRef = useRef<HTMLDivElement>(null);
+  const layerRef = useRef<HTMLDivElement>(null);
   const { video, poster, mask } = recordingFiles(name, masked);
 
   useImperativeHandle(handle, () => ({
@@ -68,6 +85,19 @@ export function Recording({ name, phone, masked, zoom, near, playing, labelledBy
     element.addEventListener("webkitendfullscreen", play);
     return () => element.removeEventListener("webkitendfullscreen", play);
   }, [playing]);
+
+  // A recording leaving is already paused. It sinks away, and goes once that is over. Once it is off the stage
+  // its download stops too.
+  useLayerLeaving(layerRef, leaving, onLeft);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!leaving || !element) return;
+    return () => {
+      element.removeAttribute("src");
+      element.load();
+    };
+  }, [leaving]);
 
   // The zoom follows the video's own clock, so a pause, a loop or a seek
   // keeps it in step; it is redrawn every frame only while the video plays.
@@ -124,11 +154,20 @@ export function Recording({ name, phone, masked, zoom, near, playing, labelledBy
     />
   );
 
+  // The layer on the stage.
+  const layer = {
+    ref: layerRef,
+    "data-recording": true,
+    "data-leaving": leaving || undefined,
+    "aria-hidden": leaving || undefined,
+    inert: leaving,
+  };
+
   if (phone) {
     return (
       // The stage, less a margin of dots; the handset is as large as fits
       // whole inside it, centred.
-      <div className="absolute inset-(--spacing-phone-inset) grid place-items-center [container-type:size]">
+      <div {...layer} className={`absolute inset-(--spacing-phone-inset) grid place-items-center [container-type:size]`}>
         {/* Scaled from its centre and moved so the point in focus stays at the stage's centre; the shadow follows the mask. */}
         <div ref={zoomRef} data-testid="phone" className="fit-phone drop-shadow-phone">
           {player}
@@ -142,7 +181,10 @@ export function Recording({ name, phone, masked, zoom, near, playing, labelledBy
     // large as fits whole inside it, standing on the stage's foot. It sinks
     // past the foot by its frame's width, so the stage clips the frame's lower
     // edge and its square lower corners.
-    <div className="absolute inset-x-window-margin top-window-margin bottom-0 grid items-end justify-items-center [container-type:size]">
+    <div
+      {...layer}
+      className={`absolute inset-x-window-margin top-window-margin bottom-0 grid items-end justify-items-center [container-type:size]`}
+    >
       <div data-testid="recording-window" className="window-outline relative fit-window translate-y-(--spacing-window-sink) overflow-hidden rounded-t-window shadow-window">
         {player}
       </div>
