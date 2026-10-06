@@ -35,7 +35,7 @@ const databaseHosts = [
     prompt: sentences(
       "Connect this Uno Blueprint workspace to a Supabase project, following SETUP.md from step 3. I will create the project and give you its URL and anon key.",
       KEEP_SECRETS,
-      "Link the project, push the migrations and load the seed, then run npm run check:target and show me the schema version it reports.",
+      "Link the project, push the migrations, and load the seed, then run npm run check:target and show me the schema version it reports.",
     ),
   },
   {
@@ -65,7 +65,7 @@ const databaseHosts = [
     label: "Postgres",
     connects: true,
     prompt: sentences(
-      "Connect this Uno Blueprint workspace to our own Postgres database (self-hosted, RDS, Railway or similar).",
+      "Connect this Uno Blueprint workspace to our own Postgres database (self-hosted, RDS, Railway, or similar).",
       PORTABLE_CORE,
       KEEP_SECRETS,
       "Then show me the app reading the blueprint from it.",
@@ -163,7 +163,7 @@ export const getStarted = {
     list: [
       { name: "ub:map", does: "Draft a blueprint from your docs." },
       { name: "ub:slice", does: "Cut a view for one audience." },
-      { name: "ub:audit", does: "List gaps, conflicts and stale sources." },
+      { name: "ub:audit", does: "List gaps, conflicts, and stale sources." },
       { name: "ub:whatif", does: "Trace a change before you make it." },
     ],
   },
@@ -188,7 +188,7 @@ export const getStarted = {
       {
         title: "Find what's missing",
         prompt:
-          "Audit the repair intake blueprint and list steps with no owner, conflicts and stale sources.",
+          "Audit the repair intake blueprint and list steps with no owner, conflicts, and stale sources.",
       },
     ],
   },

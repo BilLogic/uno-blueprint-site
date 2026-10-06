@@ -10,5 +10,5 @@ export function StepLabel({ children }: { children: ReactNode }) {
 }
 
 export function StepSub({ children }: { children: ReactNode }) {
-  return <p className="text-pretty text-muted">{children}</p>;
+  return <p className="max-w-step text-pretty text-muted">{children}</p>;
 }

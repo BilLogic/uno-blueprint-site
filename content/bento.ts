@@ -26,13 +26,13 @@ export const bento = {
   },
   context: {
     title: "Product context, built in",
-    body: "Each step carries what your team tracks: owner, status, value and dependencies.",
+    body: "Each step carries what your team tracks: owner, status, value, and dependencies.",
     /** The cell's status before and while the picture plays. */
     status: ["Planned", "Live"],
   },
   sources: {
     title: "Sources stay attached",
-    body: "Every step links to its sources, so anyone can trace it back to the PRD, design or thread behind it.",
+    body: "Every step links to its sources, so anyone can trace it back to the PRD, design, or thread behind it.",
     tools: ["Notion", "Figma", "Slack"],
   },
 } as const;
