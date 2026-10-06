@@ -201,7 +201,8 @@ export type ExitScroll = {
  * the size of its last while under way, is locked there (and brought
  * to the exit when short of it), while a hold is still to come and for no
  * longer than `cap` from when the hold first stopped the page. A page already
- * past the exit is left where it is, and a page going up is never locked. A
+ * past the exit is not locked here (see `crossedExit` for one carried past it
+ * just now), and a page going up is never locked. A
  * page that jumped (a link, a script) is not a scroll under way, so it is not
  * locked; a short jump after a pause has no pace to speak of, so it is locked
  * only once it is at the exit.
@@ -213,6 +214,41 @@ export function shouldLock({ y, exit, lastDelta, lastGap, pending, sinceHeld, ca
   const ahead = Math.max(pace * LOOK_AHEAD, lastGap <= UNDER_WAY ? lastDelta * MOVES_AHEAD : 0);
   return y + ahead >= exit - EXIT_SLACK;
 }
+
+/** The page's scroll as it moves at the walkthrough's end, for whether it has gone past the exit. */
+export type ExitCrossing = {
+  /** Where the page was at the last scroll event, where it is now, and where the walkthrough lets go of its frame, in px. */
+  from: number;
+  y: number;
+  exit: number;
+  /** How far above the exit the page may have been and still have been on its way out of the walkthrough, in px. */
+  reach: number;
+  /** Whether a hold is still to come: the walkthrough has not reached its last step, or that step's cell is still opening. */
+  pending: boolean;
+  /** How long ago this hold first stopped the page, in ms; `null` while it has not. */
+  sinceHeld: number | null;
+  /** The longest a hold lasts from when it first stops the page, in ms (see `cellArrival`). */
+  cap: number;
+};
+
+/**
+ * Whether the page has been carried past the exit before the hold could stop
+ * it, so it is brought back there: it was at the exit or no more than `reach`
+ * above it, and is now past it, while a hold is still to come and for no
+ * longer than `cap` from when the hold first stopped the page. The browser
+ * scrolls a page on its own while the page's script is busy, so a slow or busy
+ * phone that misses frames hears of a fast fling only once it is well past the
+ * exit, however far it went in one move; and a phone's momentum may run on
+ * through the lock. A page that was already past the exit, or came from far
+ * above it (put back where it was as the page loads), is left alone.
+ */
+export function crossedExit({ from, y, exit, reach, pending, sinceHeld, cap }: ExitCrossing): boolean {
+  if (!pending || y <= exit + EXIT_SLACK || from > exit + EXIT_SLACK || from < exit - reach) return false;
+  return sinceHeld === null || sinceHeld < cap;
+}
+
+/** Whether the page's scroll `y` is at `exit`, give or take a rounding. */
+export const atExit = (y: number, exit: number) => Math.abs(y - exit) <= EXIT_SLACK;
 
 /** How far a wheel reported in lines scrolls, per line, in px. */
 const WHEEL_LINE = 40;

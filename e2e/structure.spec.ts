@@ -152,6 +152,12 @@ type Notes = {
   litAt?: number;
   openEndAt?: number;
   leftAt?: number;
+  /** Where the page was when the panel finished opening. */
+  openY?: number;
+  /** When the page last went on past the exit from at or above it. */
+  lastLeftAt?: number;
+  /** Where the page came to each time it was carried back up. */
+  backTo: number[];
 };
 
 /**
@@ -166,13 +172,17 @@ async function note(page: Page, exit: number) {
   await page.evaluate(
     ([slack, exitY, lastTitle, lit]) => {
       const w = window as unknown as { notes: Notes };
-      const notes: Notes = { backs: 0, held: [], unstoppable: 0 };
+      const notes: Notes = { backs: 0, held: [], unstoppable: 0, backTo: [] };
       w.notes = notes;
       let last = scrollY;
       addEventListener(
         "scroll",
         () => {
-          if (scrollY < last - slack) notes.backs++;
+          if (scrollY < last - slack) {
+            notes.backs++;
+            notes.backTo.push(scrollY);
+          }
+          if (scrollY > exitY + slack && last <= exitY + slack) notes.lastLeftAt = performance.now();
           last = scrollY;
           if (notes.reachedAt === undefined && Math.abs(scrollY - exitY) <= slack) notes.reachedAt = performance.now();
           if (notes.leftAt === undefined && scrollY > exitY + slack) notes.leftAt = performance.now();
@@ -202,7 +212,10 @@ async function note(page: Page, exit: number) {
       }).observe(stage, { attributes: true, attributeFilter: ["class"] });
       document.querySelector("[data-panel]")!.addEventListener("transitionend", (event) => {
         const { propertyName } = event as TransitionEvent;
-        if (propertyName === "clip-path" && notes.cellsAt !== undefined && notes.openEndAt === undefined) notes.openEndAt = performance.now();
+        if (propertyName === "clip-path" && notes.cellsAt !== undefined && notes.openEndAt === undefined) {
+          notes.openEndAt = performance.now();
+          notes.openY = scrollY;
+        }
       });
     },
     [ROUNDING_SLACK, exit, titles.at(-1)!, LIT_CLASS.source] as const,
@@ -359,6 +372,29 @@ async function swipe(page: Page, cdp: CDPSession, distance: number) {
   await send("touchEnd", from - distance);
 }
 
+/** A fling's finger moves this far between reports, in px, and is reported this often, in ms: a fast flick on a 120 Hz screen. */
+const FLING_STEP = 50;
+const FLING_EVERY = 8;
+
+/**
+ * One finger flicked `distance` px up the screen from near its foot, and
+ * lifted on the move, so the page scrolls on under its momentum. Each move
+ * carries the time the screen reported it, from which the browser reckons the
+ * finger's speed; sent untimed, they would seem to come all at once.
+ */
+async function fling(page: Page, cdp: CDPSession, distance: number) {
+  const { height } = page.viewportSize()!;
+  const from = height - SWIPE_MARGIN;
+  let at = Date.now() / 1000;
+  const send = (type: "touchStart" | "touchMove" | "touchEnd", y: number) => {
+    at += FLING_EVERY / 1000;
+    return cdp.send("Input.dispatchTouchEvent", { type, timestamp: at, touchPoints: type === "touchEnd" ? [] : [{ x: SWIPE_X, y }] });
+  };
+  await send("touchStart", from);
+  for (let moved = FLING_STEP; moved <= distance; moved += FLING_STEP) await send("touchMove", from - moved);
+  await send("touchEnd", from - distance);
+}
+
 /** Scrolls `distance` px up the page in one continuous gesture, as `gestureDown` does down it. */
 async function gestureUp(page: Page, cdp: CDPSession, distance: number, source: "mouse" | "touch") {
   await gestureDown(page, cdp, -distance, source);
@@ -452,6 +488,75 @@ async function expectFastRunHeldForCells(page: Page, input: "wheel" | "trackpad"
   expectCellsPlayedThenLetGo(n);
   // On the browser's own clock, the hold still lets go within its cap of Cells showing, give or take a busy machine.
   expect(n.leftAt! - n.cellsAt!).toBeLessThan(cap + REAL_TIME_SLACK);
+  expect(await pageY(page)).toBeGreaterThan(exit + GESTURE_PAST);
+  expectInOrderToCells(await seen(page));
+}
+
+/** How long the page's main thread stalls as a fast gesture nears the exit, in ms, and from how far above the exit, in px. */
+const STALL_MS = 200;
+const STALL_ABOVE = 450;
+/** How far short of the stall a finger lifts, in px. */
+const STALL_LEAD = 50;
+
+/**
+ * Once, as the page going down comes within `STALL_ABOVE` px of `exit` with
+ * no finger on the screen, keeps the page's main thread busy for `STALL_MS`,
+ * as a slow or busy phone misses frames. A trackpad's gesture, or a finger's
+ * momentum once it has lifted, scrolls on meanwhile, and the page hears of it
+ * only after, by when it may be well past the exit.
+ */
+const stallNear = (page: Page, exit: number) =>
+  page.evaluate(
+    ([at, busy]) => {
+      let stalled = false;
+      let fingers = 0;
+      const count = (event: TouchEvent) => (fingers = event.touches.length);
+      addEventListener("touchstart", count, { passive: true });
+      addEventListener("touchend", count, { passive: true });
+      addEventListener(
+        "scroll",
+        () => {
+          if (stalled || fingers > 0 || scrollY < at) return;
+          stalled = true;
+          const until = performance.now() + busy;
+          while (performance.now() < until);
+        },
+        { passive: true },
+      );
+    },
+    [exit - STALL_ABOVE, STALL_MS] as const,
+  );
+
+/**
+ * One fast gesture into the end, as a trackpad (`mouse`) or a finger
+ * (`touch`) sends it, with the page stalling on the way: the browser carries
+ * it past the exit before the page hears of it, and the page is brought back
+ * to the exit, held there while Cells lights and opens however the reader
+ * carries on, then goes on. Runs on the browser's own clock, as a stall needs.
+ */
+async function expectStalledRunHeldForCells(page: Page, source: "mouse" | "touch") {
+  await watch(page);
+  const exit = await exitScroll(section(page));
+  // A finger lifts a little short of the stall, so its momentum carries the page into it.
+  const flick = page.viewportSize()!.height - 2 * SWIPE_MARGIN;
+  const from = exit - STALL_ABOVE - (source === "touch" ? flick + STALL_LEAD : 0);
+  await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), from);
+  await realFrames(page);
+  await note(page, exit);
+  await stallNear(page, exit);
+  const cdp = await page.context().newCDPSession(page);
+  if (source === "touch") await fling(page, cdp, flick);
+  else await gestureDown(page, cdp, exit - from + GESTURE_PAST, source);
+  // The reader carries on at once, as they would, while the cell lights and opens.
+  await keepGoing(page, cdp, exit + GESTURE_PAST, source, true);
+  const n = await notes(page);
+  expect(n.unstoppable).toBeGreaterThan(0);
+  // At the exit while the panel opened, gone on only after, and only ever carried back to the exit.
+  expect(n.reachedAt).toBeDefined();
+  expect(Math.abs(n.openY! - exit)).toBeLessThanOrEqual(ROUNDING_SLACK);
+  expect(n.lastLeftAt!).toBeGreaterThanOrEqual(n.openEndAt!);
+  for (const y of n.backTo) expect(Math.abs(y - exit)).toBeLessThanOrEqual(ROUNDING_SLACK);
+  expect(n.litAt!).toBeLessThan(n.openEndAt!);
   expect(await pageY(page)).toBeGreaterThan(exit + GESTURE_PAST);
   expectInOrderToCells(await seen(page));
 }
@@ -928,6 +1033,15 @@ test.describe("structure walkthrough", () => {
       });
     }
 
+    test("a fast trackpad swipe that the page stalls under is brought back to the end, held while Cells opens, then goes on", async ({
+      page,
+    }) => {
+      await keepRealFrames(page);
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto("/");
+      await expectStalledRunHeldForCells(page, "mouse");
+    });
+
     test("locked at the exit, a trackpad swipe up or a key going up goes at once", async ({ page }) => {
       await installClock(page);
       await page.setViewportSize({ width: 1440, height: 900 });
@@ -1051,6 +1165,14 @@ test.describe("structure walkthrough", () => {
         await installClock(page);
         await page.goto("/");
         await expectGestureHeldThenGoesOn(page, "touch");
+      });
+
+      test("a fast fling that the page stalls under is brought back to the end, held while Cells opens, then goes on", async ({
+        page,
+      }) => {
+        await keepRealFrames(page);
+        await page.goto("/");
+        await expectStalledRunHeldForCells(page, "touch");
       });
 
       test("locked at the exit, a swipe back down the screen goes up at once", async ({ page }) => {
