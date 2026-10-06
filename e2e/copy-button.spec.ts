@@ -79,17 +79,17 @@ test("the copy icon blurs into the tick, and the tick back into the copy icon wh
   await button.click();
   await expect(box.getByRole("status")).toHaveText("Copied");
 
-  // Early in the swap (it eases out, so most of the change comes first) both
-  // icons are part blurred, part faded and part grown.
-  expect(await holdAt(button, 30)).toBeGreaterThan(0);
+  // 60 ms in, both icons are still part blurred, part faded and part grown:
+  // the swap must not be mostly over this early, or it reads as a snap.
+  expect(await holdAt(button, 60)).toBeGreaterThan(0);
   for (const icon of [copyIcon, tick]) {
     const { opacity, blur, scale } = await look(icon);
-    expect(opacity).toBeGreaterThan(0.05);
-    expect(opacity).toBeLessThan(0.95);
-    expect(blur).toBeGreaterThan(0.2);
-    expect(blur).toBeLessThan(3.8);
-    expect(scale).toBeGreaterThan(0.81);
-    expect(scale).toBeLessThan(0.99);
+    expect(opacity).toBeGreaterThan(0.25);
+    expect(opacity).toBeLessThan(0.75);
+    expect(blur).toBeGreaterThan(1);
+    expect(blur).toBeLessThan(3);
+    expect(scale).toBeGreaterThan(0.85);
+    expect(scale).toBeLessThan(0.95);
   }
   // The swap takes about 200 ms: by then it has landed.
   await holdAt(button, 200);
@@ -101,10 +101,12 @@ test("the copy icon blurs into the tick, and the tick back into the copy icon wh
   await page.clock.runFor(1200);
   await flushRenders(page);
   await expect(box.getByRole("status")).toHaveText("");
-  expect(await holdAt(button, 30)).toBeGreaterThan(0);
+  expect(await holdAt(button, 60)).toBeGreaterThan(0);
   const back = await look(copyIcon);
-  expect(back.blur).toBeGreaterThan(0.2);
-  expect(back.blur).toBeLessThan(3.8);
+  expect(back.opacity).toBeGreaterThan(0.25);
+  expect(back.opacity).toBeLessThan(0.75);
+  expect(back.blur).toBeGreaterThan(1);
+  expect(back.blur).toBeLessThan(3);
   await finish(button);
   expect(await look(copyIcon)).toEqual(shown);
   expect(await look(tick)).toEqual(hidden);

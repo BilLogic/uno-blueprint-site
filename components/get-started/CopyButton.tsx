@@ -22,7 +22,7 @@ type CopyButtonProps = {
  * way. With reduced motion they swap at once.
  */
 const icon =
-  "col-start-1 row-start-1 transition-[opacity,filter,scale] duration-(--duration-copy-swap) ease-out motion-reduce:transition-none";
+  "col-start-1 row-start-1 transition-[opacity,filter,scale] duration-(--duration-copy-swap) ease-copy-swap motion-reduce:transition-none";
 const showing = "opacity-100 [filter:blur(0)] [scale:1]";
 const hidden = "opacity-0 [filter:blur(var(--blur-copy-swap))] [scale:var(--scale-copy-swap)]";
 
