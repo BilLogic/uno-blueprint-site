@@ -241,7 +241,7 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
           previous={layers.previous}
           waiting={waiting}
           entryDelay={entryCaptionDelay}
-          className="mt-4 max-w-caption text-14 text-pretty text-muted [&_b]:me-[0.3em] [&_b]:font-medium [&_b]:text-ink [&_p]:inline"
+          className="mt-4 max-w-caption text-14 text-pretty text-muted [&_b]:font-medium [&_b]:text-ink [&_p]:inline [&_b+p]:before:content-['_']"
         />
       </div>
     </>
