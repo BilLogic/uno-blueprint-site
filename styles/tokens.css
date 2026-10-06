@@ -151,6 +151,19 @@
   --duration-t-2: 280ms;
   --duration-t-3: 460ms;
   --duration-t-4: 800ms;
+  /*
+   * Switching between the human and agent views (hooks/use-view.ts): the view
+   * on the page sinks into a blur and fades, quickly; then the other rises out
+   * of a blur, taking its time.
+   */
+  --ease-view-leave: cubic-bezier(0.55, 0, 0.75, 0.2);
+  --ease-view-arrive: var(--ease-out);
+  --duration-view-leave: 300ms;
+  --duration-view-arrive: 500ms;
+  --spacing-view-sink: 12px; /* how far the view leaving drops */
+  --spacing-view-rise: 20px; /* how far below its place the view arriving starts */
+  --blur-view-leave: 8px;
+  --blur-view-arrive: 10px;
   /* Bento: a panel fades in and rises as it arrives; a token travels to its cell (the prototype's .55s, .85s, .5s). */
   --duration-arrive: 550ms;
   --duration-rise: 850ms;
