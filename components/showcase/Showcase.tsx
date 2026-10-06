@@ -1,14 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Maximize2, Pause, Play } from "lucide-react";
 import { showcase } from "@/content/showcase";
 import { revealOnHover } from "@/components/reveal";
 import { TabList, tabId, tabPanelId } from "@/components/ui/Tabs";
 import { useInView } from "@/hooks/use-in-view";
 import { useReducedMotion } from "@/hooks/use-media-query";
-import { useStageSwap } from "@/hooks/use-stage-swap";
-import { cssMs } from "@/lib/css-time";
+import { useStageGlide } from "@/hooks/use-stage-glide";
+import { cssMs, rootToken } from "@/lib/css-time";
 import { shouldPlay, wantsPlay, type ShowcaseTab } from "@/lib/recording";
 import { Recording, type RecordingHandle } from "./Recording";
 import s from "./Showcase.module.css";
@@ -27,6 +27,12 @@ type ShowcaseProps<T extends string> = {
   items: readonly ShowcaseItem<T>[];
 };
 
+/** One recording on the stage. `key` is new at every tab change, so a recording always mounts afresh. */
+type Layer<T> = { value: T | undefined; key: number };
+
+// No subscription: the value only tells the server's HTML, and hydration, from the live page.
+const noSubscription = () => () => {};
+
 /**
  * A row of pill tabs over a framed stage with a caption under it. Selecting a
  * tab swaps the stage's recording and the caption; the two together are the
@@ -41,52 +47,65 @@ type ShowcaseProps<T extends string> = {
  * second button there opens the recording fullscreen.
  *
  * The first time the stage comes into view it enters, and its recording
- * starts once it has settled. A tab change crossfades the recordings, the
- * caption arriving with the new one, and where the stage's height changes it
- * glides there (see `useStageSwap`). A reader who asked for less motion sees
- * the stage already in place, and tabs that change at once.
+ * starts once it has settled. A tab change crossfades the recordings: the old
+ * one, paused, stays on the stage only while it fades out under the new one
+ * (Showcase.module.css), and the caption arrives with the new one. Where the
+ * stage's height changes it glides there (`useStageGlide`). A reader who
+ * asked for less motion sees the stage already in place, and tabs that
+ * change at once.
  */
 export function Showcase<T extends string>({ idBase, label, items }: ShowcaseProps<T>) {
-  const [value, setValue] = useState(items[0]?.value);
+  // The tab showing, and the one just left while it fades out under it.
+  const [layers, setLayers] = useState<{ current: Layer<T>; leaving: Layer<T> | null }>({
+    current: { value: items[0]?.value, key: 0 },
+    leaving: null,
+  });
   const [choice, setChoice] = useState<boolean | null>(null);
   const reducedMotion = useReducedMotion();
-  const [stage, inView] = useInView<HTMLDivElement>();
+  const live = useSyncExternalStore(noSubscription, () => true, () => false);
+  // The recording plays while its stage is on screen.
+  const [watchOnScreen, onScreen] = useInView<HTMLDivElement>();
   // The poster waits until the stage is near, so it never competes with the page's first paint.
-  const [nearStage, near] = useInView<HTMLDivElement>({ rootMargin: "50% 0px", once: true });
+  const [watchNear, near] = useInView<HTMLDivElement>({ rootMargin: "50% 0px", once: true });
   // The entry waits until the stage is well into view, so it is seen.
-  const [entryStage, entered] = useInView<HTMLDivElement>({ threshold: 0.25, once: true });
+  const [watchEntry, entered] = useInView<HTMLDivElement>({ threshold: 0.25, once: true });
   const [settled, setSettled] = useState(false);
   const recording = useRef<RecordingHandle>(null);
   const stageNode = useRef<HTMLDivElement | null>(null);
-  const leaving = useRef<HTMLDivElement>(null);
-  const caption = useRef<HTMLParagraphElement>(null);
   const stageRef = useCallback(
     (node: HTMLDivElement | null) => {
       stageNode.current = node;
-      stage(node);
-      nearStage(node);
-      entryStage(node);
+      watchOnScreen(node);
+      watchNear(node);
+      watchEntry(node);
     },
-    [stage, nearStage, entryStage],
+    [watchOnScreen, watchNear, watchEntry],
   );
-  const beforeSwap = useStageSwap(String(value), { stage: stageNode, leaving, caption });
+  const measureGlide = useStageGlide(layers.current.key, stageNode, reducedMotion);
 
-  // The recording starts once the entry has run.
+  // The recording starts once the entry has run; with less motion there is none to wait for.
   useEffect(() => {
-    if (!entered || settled) return;
-    const entry = reducedMotion ? 0 : cssMs(getComputedStyle(document.documentElement).getPropertyValue("--duration-t-3"));
-    const timer = window.setTimeout(() => setSettled(true), entry);
+    if (settled || !(entered || reducedMotion)) return;
+    const timer = window.setTimeout(() => setSettled(true), reducedMotion ? 0 : cssMs(rootToken("--duration-t-3")));
     return () => clearTimeout(timer);
   }, [entered, settled, reducedMotion]);
 
-  const item = items.find((candidate) => candidate.value === value) ?? items[0];
+  const find = (layer: Layer<T> | null) => layer && items.find((candidate) => candidate.value === layer.value);
+  const item = find(layers.current) ?? items[0];
   if (!item) return null;
+  const left = find(layers.leaving);
+  const leavingKey = layers.leaving?.key;
 
+  // A tab picked mid-change drops the recording still leaving at once, so there are never more than two.
   const pick = (next: T) => {
     if (next === item.value) return;
-    beforeSwap();
-    setValue(next);
+    measureGlide();
+    setLayers(({ current }) => ({ current: { value: next, key: current.key + 1 }, leaving: reducedMotion ? null : current }));
   };
+  const dropLeaving = (key: number) =>
+    setLayers((was) => (was.leaving?.key === key ? { ...was, leaving: null } : was));
+  // Only a tab picked arrives; the first one is simply there.
+  const arrive = layers.current.key > 0 ? s.arrive : undefined;
   const wanted = wantsPlay({ choice, reducedMotion });
   const captionId = `${tabPanelId(idBase, item.value)}-caption`;
   const Icon = wanted ? Pause : Play;
@@ -119,20 +138,34 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
         <div
           ref={stageRef}
           data-testid="showcase-stage"
-          data-entry={entered ? "in" : "waiting"}
+          data-entry={live ? (entered ? "in" : "waiting") : undefined}
           className={`${s.stage} group relative aspect-video max-w-full overflow-clip rounded-16 border border-line bg-card bg-dots ${item.phone ? "max-sm:aspect-stage-tall" : "max-sm:aspect-stage-window-phone"}`}
         >
-          {/* The still of a recording leaving, under the one arriving; filled by `useStageSwap`. */}
-          <div ref={leaving} className="contents" aria-hidden />
+          {left && leavingKey !== undefined && (
+            <Recording
+              key={leavingKey}
+              name={left.recording}
+              phone={left.phone}
+              masked={left.masked ?? false}
+              zoom={reducedMotion ? undefined : left.zoom}
+              near={near}
+              playing={false}
+              labelledBy={captionId}
+              className={s.leave}
+              leaving
+              onLeft={() => dropLeaving(leavingKey)}
+            />
+          )}
           <Recording
-            key={item.value}
+            key={layers.current.key}
             ref={recording}
+            className={arrive}
             name={item.recording}
             phone={item.phone}
             masked={item.masked ?? false}
             zoom={reducedMotion ? undefined : item.zoom}
             near={near}
-            playing={shouldPlay({ choice, reducedMotion, inView }) && (settled || reducedMotion)}
+            playing={shouldPlay({ choice, reducedMotion, inView: onScreen }) && settled}
             labelledBy={captionId}
           />
           {/*
@@ -162,7 +195,7 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
             </button>
           </div>
         </div>
-        <p ref={caption} id={captionId} className="mt-4 max-w-caption text-14 text-pretty text-muted">
+        <p key={layers.current.key} id={captionId} className={`mt-4 max-w-caption text-14 text-pretty text-muted ${arrive ?? ""}`}>
           <b className="font-medium text-ink">{item.label}.</b> {item.caption}
         </p>
       </div>

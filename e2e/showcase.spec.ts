@@ -2,7 +2,6 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { canvas } from "@/content/canvas";
 import { showcase } from "@/content/showcase";
 import { touchPoints } from "@/content/touch-points";
-import { animationsDone } from "./clock";
 
 /** A showcase's tab labels, in order: the first, the second, then the rest. */
 function labels(tabs: readonly { label: string }[]): readonly [string, string, string, ...string[]] {
@@ -27,12 +26,20 @@ const rows = [
   },
 ] as const;
 
-/** Picks a tab and waits for its stage to settle: the crossfade, and on a phone the glide to its height. */
+/**
+ * Picks a tab and brings its stage to rest at once: the crossfade run to its
+ * end, with the recording it replaced gone from the stage, and on a phone the
+ * glide at its new height. The motion itself is showcase-motion.spec.ts's.
+ */
 async function pick(page: Page, list: Locator, label: string, how: "click" | "dispatch" = "click") {
   const tab = list.getByRole("tab", { name: label });
   if (how === "click") await tab.click();
   else await tab.dispatchEvent("click");
-  await animationsDone(page.getByRole("tabpanel", { name: label }).getByTestId("showcase-stage"));
+  const stage = page.getByRole("tabpanel", { name: label }).getByTestId("showcase-stage");
+  await stage.evaluate((node) => {
+    for (const animation of node.getAnimations({ subtree: true })) animation.finish();
+  });
+  await expect(stage.locator("[data-leaving]")).toHaveCount(0);
 }
 
 const caption = (page: Page, tab: string) =>
@@ -169,6 +176,8 @@ for (const width of [1440, 390]) {
   test(`at ${width} px the touch points end on the phone, ${shapes}, and the phone stands centred in it`, async ({
     page,
   }) => {
+    // Held at its first frame: the phone's zoom moves in 1.2 s into its recording, and it is measured at rest.
+    await stubPlayback(page);
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/");
     const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
@@ -380,7 +389,8 @@ test.describe("a showcase recording", () => {
     const list = page.getByRole("tablist", { name: canvas.tabsLabel });
     await list.scrollIntoViewIfNeeded();
     await list.getByRole("tab", { name: check.label }).click();
-    const video = page.getByRole("tabpanel", { name: check.label }).locator("video");
+    // The recording showing, not the one fading out under it.
+    const video = page.getByRole("tabpanel", { name: check.label }).locator("[data-recording]:not([data-leaving]) video");
     await expect(video).toHaveAttribute("data-state", "playing");
     expect(await video.evaluate((node: HTMLVideoElement) => node.currentTime)).toBe(0);
   });

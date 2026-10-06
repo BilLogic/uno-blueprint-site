@@ -1,9 +1,15 @@
 /*
  * The stage's entry: the first time it comes into view it fades in, rises and
- * sharpens, on a caption word's duration, curve and blur. Without script, or
- * for a reader who asked for less motion, it is simply there.
+ * sharpens, on a caption word's duration, curve and blur. It waits only once
+ * the page is live (Showcase sets `data-entry` after hydrating), so without
+ * script, or before it runs, the stage is simply there.
+ *
+ * A tab change: the incoming recording and its caption fade and rise in, while
+ * the outgoing recording, paused under it, fades out. The one arrives on a
+ * curve that is quick to show it and the other leaves on one that is slow to
+ * go, so the stage never thins to its dots between them.
  */
-@media (prefers-reduced-motion: no-preference) and (scripting: enabled) {
+@media (prefers-reduced-motion: no-preference) {
   .stage {
     transition-property: opacity, translate, filter;
     transition-duration: var(--duration-t-3);
@@ -14,5 +20,26 @@
     opacity: 0;
     translate: 0 var(--spacing-stage-rise);
     filter: blur(var(--blur-caption));
+  }
+
+  .arrive {
+    animation: arrive var(--duration-recording-swap) var(--ease-out) both;
+  }
+
+  .leave {
+    animation: leave var(--duration-recording-swap) var(--ease-in) both;
+  }
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    translate: 0 var(--spacing-recording-rise);
+  }
+}
+
+@keyframes leave {
+  to {
+    opacity: 0;
   }
 }
