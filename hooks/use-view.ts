@@ -62,14 +62,22 @@ function poseOf(main: HTMLElement): Keyframe {
   return { opacity, transform, filter };
 }
 
-let running: { phase: Phase; animation: Animation } | null = null;
+/** The phase under way, if a switch is. */
+let running: Animation | null = null;
+
+/**
+ * One list for the reduced-motion query, so its listener comes off the list it
+ * went on. It is made on first use, since the server has no window.
+ */
+let reducedMotion: MediaQueryList | null = null;
+const reducedMotionList = () => (reducedMotion ??= matchMedia(REDUCED_MOTION_QUERY));
 
 /** Stops the phase under way, leaving the view on the page as it is at rest. The view is not swapped. */
 function cancelMotion() {
-  running?.animation.cancel();
+  running?.cancel();
   running = null;
   document.removeEventListener("visibilitychange", onHidden);
-  matchMedia(REDUCED_MOTION_QUERY).removeEventListener("change", onReducedMotion);
+  reducedMotionList().removeEventListener("change", onReducedMotion);
 }
 
 /** Ends the switch at once: the view picked is on the page, at rest. */
@@ -99,12 +107,12 @@ function play(phase: Phase, main: HTMLElement, from: Keyframe, to: Keyframe, the
   const { duration, easing } = PHASES[phase];
   // Held at its end until `then` runs, so the view leaving does not flash back whole before the swap.
   const animation = main.animate([from, to], { duration: cssMs(token(duration)), easing: token(easing), fill: "forwards" });
-  running = { phase, animation };
+  running = animation;
   document.addEventListener("visibilitychange", onHidden);
-  matchMedia(REDUCED_MOTION_QUERY).addEventListener("change", onReducedMotion);
+  reducedMotionList().addEventListener("change", onReducedMotion);
   animation.finished.then(
     () => {
-      if (running?.animation === animation) then();
+      if (running === animation) then();
     },
     // Cancelled by a later pick, which has taken over.
     () => {},
@@ -129,7 +137,7 @@ function setView(next: View) {
   for (const listener of listeners) listener();
 
   const main = viewMain(shownView());
-  if (!main || matchMedia(REDUCED_MOTION_QUERY).matches || document.visibilityState === "hidden") return swapNow();
+  if (!main || reducedMotionList().matches || document.visibilityState === "hidden") return swapNow();
   if (next === shownView()) play("arrive", main, poseOf(main), atRest, cancelMotion);
   else play("leave", main, poseOf(main), outOfSight("leave"), arrive);
 }

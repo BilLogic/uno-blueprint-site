@@ -196,8 +196,13 @@ test.describe("switching views", () => {
     const half = await hold(page, "human", 200);
     expect(half.opacity).toBeLessThan(0.9);
 
-    // Picked again before it has gone, the human view rises back from where it was.
+    // Picked again before it has gone, the human view rises back from where it was, not from rest.
     await pick(human);
+    const turn = await hold(page, "human", 0);
+    expect(turn.running).toBe(1);
+    expect(turn.opacity).toBeLessThan(1);
+    expect(turn.opacity).toBeCloseTo(half.opacity, 2);
+    expect(turn.blur).toBeCloseTo(half.blur, 2);
     const back = await hold(page, "human", 100);
     expect(back.shown).toBe(true);
     expect(back.opacity).toBeGreaterThan(half.opacity);
@@ -218,6 +223,50 @@ test.describe("switching views", () => {
     await flushRenders(page);
     await expect(human).toHaveAttribute("aria-pressed", "true");
     await expect(agent).toHaveAttribute("aria-pressed", "false");
+  });
+
+  test("however many switches, at most one reduced-motion listener is attached, and none at rest", async ({ page }) => {
+    // Counts the change listeners left on lists for the reduced-motion query, list by list: one taken off a
+    // different list than it went on stays counted.
+    await page.addInitScript(() => {
+      const w = window as unknown as { reducedMotionListeners: number };
+      w.reducedMotionListeners = 0;
+      const { addEventListener: add, removeEventListener: remove } = MediaQueryList.prototype;
+      const counted = new WeakMap<MediaQueryList, Set<EventListenerOrEventListenerObject>>();
+      const on = (list: MediaQueryList) => counted.get(list) ?? counted.set(list, new Set()).get(list)!;
+      const watched = (list: MediaQueryList, type: string) => type === "change" && list.media.includes("reduced-motion");
+      MediaQueryList.prototype.addEventListener = function (this: MediaQueryList, type: string, listener: EventListenerOrEventListenerObject, ...rest: unknown[]) {
+        if (watched(this, type) && listener && !on(this).has(listener)) {
+          on(this).add(listener);
+          w.reducedMotionListeners++;
+        }
+        return add.call(this, type, listener, ...(rest as []));
+      } as typeof add;
+      MediaQueryList.prototype.removeEventListener = function (this: MediaQueryList, type: string, listener: EventListenerOrEventListenerObject, ...rest: unknown[]) {
+        if (watched(this, type) && on(this).delete(listener)) w.reducedMotionListeners--;
+        return remove.call(this, type, listener, ...(rest as []));
+      } as typeof remove;
+    });
+    await page.goto("/");
+    const listeners = () => page.evaluate(() => (window as unknown as { reducedMotionListeners: number }).reducedMotionListeners);
+    const { human, agent } = views(page);
+    // The count is taken once the page has hydrated, with its own listeners on: a switch there and back is the proof.
+    await agent.click();
+    await expect(human).toHaveAttribute("aria-pressed", "false");
+    await settle(page);
+    await pick(human);
+    await settle(page);
+    const atStart = await listeners();
+    for (let round = 0; round < 5; round++) {
+      await pick(agent);
+      await pick(human);
+      await pick(agent);
+      expect(await listeners()).toBeLessThanOrEqual(atStart + 1);
+      await settle(page);
+      await pick(human);
+      await settle(page);
+    }
+    expect(await listeners()).toBe(atStart);
   });
 
   test("focus stays on the switch, and the other view opens at its top", async ({ page }) => {
