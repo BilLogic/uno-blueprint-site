@@ -1,5 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
-import { FRAME, flushRenders, installClock, stopClockASecondOn } from "./clock";
+import { expect, test, type Locator, type Page } from "@playwright/test";
+import { flushRenders } from "./clock";
 
 const headline = "Get your human and AI teammates on the same page.";
 
@@ -57,75 +57,98 @@ function cubicBezier([x1, y1, x2, y2]: readonly [number, number, number, number]
   };
 }
 
-type Look = { opacity: number; y: number; blur: number };
+type Pose = { opacity: number; y: number; blur: number };
 
 /** How a view looks `ms` into leaving, and `ms` into arriving. */
-const leaving = (ms: number): Look => {
-  const p = cubicBezier(LEAVE.ease)(Math.min(1, Math.max(0, ms / LEAVE.ms)));
+const leaving = (ms: number): Pose => {
+  const p = cubicBezier(LEAVE.ease)(ms / LEAVE.ms);
   return { opacity: 1 - p, y: LEAVE.sink * p, blur: LEAVE.blur * p };
 };
-const arriving = (ms: number): Look => {
-  const p = cubicBezier(ARRIVE.ease)(Math.min(1, Math.max(0, ms / ARRIVE.ms)));
+const arriving = (ms: number): Pose => {
+  const p = cubicBezier(ARRIVE.ease)(ms / ARRIVE.ms);
   return { opacity: p, y: ARRIVE.rise * (1 - p), blur: ARRIVE.blur * (1 - p) };
 };
 
-/** A view's main element as drawn: its opacity, how far down it is moved, and its blur, from its computed style. */
-const look = (page: Page, view: string) =>
-  page.locator(`#${view}`).evaluate((main) => {
-    const style = getComputedStyle(main);
-    const blur = /blur\(([\d.]+)px\)/.exec(style.filter);
-    return {
-      shown: style.display !== "none",
-      opacity: Number(style.opacity),
-      y: style.transform === "none" ? 0 : new DOMMatrix(style.transform).m42,
-      blur: blur ? Number(blur[1]) : 0,
-      transform: style.transform,
-      filter: style.filter,
-      animations: main.getAnimations().length,
-    };
+/**
+ * Picks a view with `control`, clicked from inside the page, and holds the
+ * switch still in the same task, before the browser draws a frame of it. The
+ * browser runs the switch on its own time, which the page's clock does not
+ * hold, so each test moves it on by hand. Focus stays where it was.
+ */
+const pick = (control: Locator) =>
+  control.evaluate((element: HTMLElement) => {
+    element.click();
+    for (const id of ["human", "agent"]) for (const animation of document.getElementById(id)!.getAnimations()) animation.pause();
   });
 
-/**
- * The page's clock moves its frames on 16ms at a time, so `ms` into a phase the
- * last frame drawn fell somewhere in the frame before: each value lies between
- * the look `frames` frames earlier and the look at `ms`. The arrival starts on
- * the frame the leaving view is gone, itself up to a frame late, so it allows two.
- */
-async function expectMidway(page: Page, view: string, at: (ms: number) => Look, ms: number, frames = 1) {
-  const drawn = await look(page, view);
-  expect(drawn.shown).toBe(true);
-  const [early, late] = [at(ms - frames * FRAME), at(ms)];
+/** Holds `view`'s main element `ms` into the phase under way, and reads how it looks there. */
+const hold = (page: Page, view: string, ms = 0) =>
+  page.evaluate(
+    ([view, ms]) => {
+      const main = document.getElementById(view)!;
+      const running = main.getAnimations();
+      for (const animation of running) {
+        animation.pause();
+        animation.currentTime = ms;
+      }
+      const style = getComputedStyle(main);
+      const blur = /blur\(([\d.]+)px\)/.exec(style.filter);
+      return {
+        shown: style.display !== "none",
+        running: running.length,
+        opacity: Number(style.opacity),
+        y: style.transform === "none" ? 0 : new DOMMatrix(style.transform).m42,
+        blur: blur ? Number(blur[1]) : 0,
+        transform: style.transform,
+        filter: style.filter,
+      };
+    },
+    [view, ms] as const,
+  );
+
+/** Runs the phase under way to its end, and holds the next one, if there is one, at its start. */
+const nextPhase = (page: Page) =>
+  page.evaluate(async () => {
+    const mains = ["human", "agent"].map((id) => document.getElementById(id)!);
+    const running = mains.flatMap((main) => main.getAnimations());
+    for (const animation of running) animation.finish();
+    await Promise.allSettled(running.map((animation) => animation.finished));
+    for (const animation of mains.flatMap((main) => main.getAnimations())) animation.pause();
+  });
+
+/** Runs the switch to its end. */
+async function settle(page: Page) {
+  for (let phase = 0; phase < 4; phase++) await nextPhase(page);
+}
+
+/** `view`, held `ms` into its phase, looks as `at` says it should there. */
+async function expectPose(page: Page, view: string, at: (ms: number) => Pose, ms: number) {
+  const drawn = await hold(page, view, ms);
+  expect(drawn.shown, `${view} is on the page`).toBe(true);
+  expect(drawn.running).toBe(1);
+  const expected = at(ms);
   for (const key of ["opacity", "y", "blur"] as const) {
-    const [low, high] = [Math.min(early[key], late[key]), Math.max(early[key], late[key])];
-    expect(drawn[key], `${view}'s ${key} ${ms}ms in`).toBeGreaterThanOrEqual(low - 0.02);
-    expect(drawn[key], `${view}'s ${key} ${ms}ms in`).toBeLessThanOrEqual(high + 0.02);
+    expect(drawn[key], `${view}'s ${key} ${ms}ms in`).toBeCloseTo(expected[key], 2);
   }
-  // Truly mid-animation: neither where it started nor where it ends.
-  expect(drawn.opacity).toBeGreaterThan(0.02);
-  expect(drawn.opacity).toBeLessThan(0.98);
+  return drawn;
 }
 
 /** A view at rest: whole, in place, sharp, and nothing left running on it. */
 async function expectAtRest(page: Page, view: string) {
-  const drawn = await look(page, view);
-  expect(drawn).toMatchObject({ shown: true, opacity: 1, transform: "none", filter: "none", animations: 0 });
+  expect(await hold(page, view)).toMatchObject({ shown: true, running: 0, opacity: 1, transform: "none", filter: "none" });
   expect(await page.locator(`#${view} pre, #${view} h1`).first().evaluate((el) => getComputedStyle(el).filter)).toBe("none");
 }
+
+const shown = async (page: Page, view: string) => (await hold(page, view)).shown;
 
 const views = (page: Page) => ({
   human: page.getByRole("button", { name: "For humans" }),
   agent: page.getByRole("button", { name: "For agents" }),
 });
 
-/** Opens the page on its stopped clock, wide enough for the nav's switch. */
-async function open(page: Page) {
-  await installClock(page);
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/");
-  await stopClockASecondOn(page);
-}
-
 test.describe("switching views", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
   for (const [from, to] of [
     ["human", "agent"],
     ["agent", "human"],
@@ -133,105 +156,94 @@ test.describe("switching views", () => {
     test(`from ${from} to ${to}, the ${from} view sinks into a blur and the ${to} view rises out of one`, async ({
       page,
     }) => {
-      await open(page);
+      await page.goto("/");
       if (from === "agent") {
-        await views(page).agent.click();
-        await page.clock.runFor(2000);
+        await pick(views(page).agent);
+        await settle(page);
         await expectAtRest(page, "agent");
       }
 
-      await views(page)[to].click();
+      await pick(views(page)[to]);
       // The switch shows the pick at once, while the page is still leaving.
       await flushRenders(page);
       await expect(views(page)[to]).toHaveAttribute("aria-pressed", "true");
 
-      await page.clock.runFor(150);
-      await expectMidway(page, from, leaving, 150);
-      expect((await look(page, to)).shown).toBe(false);
+      await expectPose(page, from, leaving, 0);
+      await expectPose(page, from, leaving, 150);
+      expect(await shown(page, to)).toBe(false);
 
-      // Out, then in: the other view takes its place once this one has gone.
-      await page.clock.runFor(LEAVE.ms - 150 + FRAME);
-      expect((await look(page, from)).shown).toBe(false);
+      // Out, then in: the other view takes its place once this one has gone, and opens at its top.
+      await nextPhase(page);
+      expect(await shown(page, from)).toBe(false);
       expect(await page.evaluate(() => scrollY)).toBe(0);
-      const start = await look(page, to);
-      expect(start.opacity).toBeLessThan(0.3);
-      expect(start.blur).toBeGreaterThan(ARRIVE.blur * 0.6);
-      expect(start.y).toBeGreaterThan(ARRIVE.rise * 0.6);
-
+      await expectPose(page, to, arriving, 0);
       // 120ms in, the view arriving is still well short of whole: any sooner and the switch reads as a cut.
-      await page.clock.runFor(120 - FRAME);
-      await expectMidway(page, to, arriving, 120, 2);
-      expect((await look(page, to)).opacity).toBeLessThan(0.5);
+      const early = await expectPose(page, to, arriving, 120);
+      expect(early.opacity).toBeLessThan(0.5);
+      await expectPose(page, to, arriving, 250);
 
-      await page.clock.runFor(250 - 120);
-      await expectMidway(page, to, arriving, 250, 2);
-
-      await page.clock.runFor(ARRIVE.ms - 250 + 2 * FRAME);
+      await nextPhase(page);
       await expectAtRest(page, to);
       expect(await page.evaluate(() => document.documentElement.dataset.view ?? "human")).toBe(to);
     });
   }
 
   test("rapid toggling ends on the view picked last", async ({ page }) => {
-    await open(page);
+    await page.goto("/");
     const { human, agent } = views(page);
 
-    await agent.click();
-    await page.clock.runFor(200);
-    const half = await look(page, "human");
+    await pick(agent);
+    const half = await hold(page, "human", 200);
     expect(half.opacity).toBeLessThan(0.9);
 
     // Picked again before it has gone, the human view rises back from where it was.
-    await human.click();
-    await page.clock.runFor(100);
-    const back = await look(page, "human");
+    await pick(human);
+    const back = await hold(page, "human", 100);
     expect(back.shown).toBe(true);
     expect(back.opacity).toBeGreaterThan(half.opacity);
     expect(back.blur).toBeLessThan(half.blur);
-    expect((await look(page, "agent")).shown).toBe(false);
+    expect(await shown(page, "agent")).toBe(false);
 
-    // Once more to the agent view, then back to human as the agent view is arriving.
-    await agent.click();
-    await page.clock.runFor(LEAVE.ms + 100);
-    expect((await look(page, "agent")).shown).toBe(true);
-    await human.click();
-    await agent.click();
-    await human.click();
+    // Once more to the agent view, then back to human and to and fro as the agent view is arriving.
+    await pick(agent);
+    await nextPhase(page);
+    expect((await hold(page, "agent", 100)).shown).toBe(true);
+    await pick(human);
+    await pick(agent);
+    await pick(human);
 
-    await page.clock.runFor(2000);
+    await settle(page);
     await expectAtRest(page, "human");
-    expect((await look(page, "agent")).shown).toBe(false);
+    expect(await shown(page, "agent")).toBe(false);
     await flushRenders(page);
     await expect(human).toHaveAttribute("aria-pressed", "true");
     await expect(agent).toHaveAttribute("aria-pressed", "false");
   });
 
   test("focus stays on the switch, and the other view opens at its top", async ({ page }) => {
-    await open(page);
+    await page.goto("/");
     await page.evaluate(() => scrollTo(0, 2000));
-    await views(page).agent.click();
-    await page.clock.runFor(150);
-    // The view leaves from where the reader was.
+    await views(page).agent.focus();
+    await pick(views(page).agent);
+    await hold(page, "human", 150);
+    // The view leaves from where the reader was: the page scrolls at the swap, not on the pick.
     expect(await page.evaluate(() => scrollY)).toBe(2000);
 
-    await page.clock.runFor(2000);
+    await settle(page);
     expect(await page.evaluate(() => scrollY)).toBe(0);
     await expect(views(page).agent).toBeFocused();
   });
 
   test("from the footer menu on a phone, focus goes back to the menu's button", async ({ page }) => {
-    await installClock(page);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
-    await stopClockASecondOn(page);
     const menu = page.getByRole("button", { name: "Page format" });
 
     await menu.click();
-    await page.getByRole("menuitemradio", { name: "Agent" }).click();
-    await page.clock.runFor(150);
-    await expectMidway(page, "human", leaving, 150);
+    await pick(page.getByRole("menuitemradio", { name: "Agent" }));
+    await expectPose(page, "human", leaving, 150);
 
-    await page.clock.runFor(2000);
+    await settle(page);
     await expectAtRest(page, "agent");
     expect(await page.evaluate(() => scrollY)).toBe(0);
     await expect(menu).toBeFocused();
@@ -239,15 +251,27 @@ test.describe("switching views", () => {
 
   test("with reduced motion the switch is instant", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
-    await open(page);
+    await page.goto("/");
 
-    await views(page).agent.click();
-    // Not a moment of the page's clock has passed.
+    await pick(views(page).agent);
     await expectAtRest(page, "agent");
-    expect((await look(page, "human")).shown).toBe(false);
+    expect(await shown(page, "human")).toBe(false);
 
-    await views(page).human.click();
+    await pick(views(page).human);
     await expectAtRest(page, "human");
-    expect((await look(page, "agent")).shown).toBe(false);
+    expect(await shown(page, "agent")).toBe(false);
+  });
+
+  test("asking for reduced motion mid-switch ends the switch at once", async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(() => scrollTo(0, 2000));
+    await pick(views(page).agent);
+    await expectPose(page, "human", leaving, 150);
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect.poll(() => shown(page, "agent")).toBe(true);
+    await expectAtRest(page, "agent");
+    expect(await shown(page, "human")).toBe(false);
+    expect(await page.evaluate(() => scrollY)).toBe(0);
   });
 });

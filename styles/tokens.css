@@ -28,6 +28,10 @@
  * Walkthrough stage edges, v7.6 (the prototype writes these inline, so the names are new):
  *   .sx clip-path foot       --spacing-stage-foot
  *   .sx .hv-dots mask        --spacing-dots-fade-in, --spacing-dots-fade-out
+ *
+ * Switching between the human and agent views (not in the prototype, so the names are new):
+ *   the view leaving         --duration-view-leave, --ease-view-leave, --spacing-view-sink, --blur-view-leave
+ *   the view arriving        --duration-view-arrive, --ease-view-arrive, --spacing-view-rise, --blur-view-arrive
  */
 
 @theme static {
