@@ -441,6 +441,10 @@
   --duration-t-grow: 450ms; /* a proof bar growing, on a wide screen */
   --blur-case: 7px;
   --blur-caption: 4px; /* a caption word sharpens out of this as it arrives, and its caption blurs to it as it leaves */
+  /* A copy button's icon and its tick trade places: the one leaving blurs, fades and shrinks to these as the other sharpens out of them. */
+  --duration-copy-swap: 200ms;
+  --blur-copy-swap: 4px;
+  --scale-copy-swap: 0.8;
 
   --animate-menu-in: menu-in var(--duration-t-1) var(--ease-out);
   @keyframes menu-in {
