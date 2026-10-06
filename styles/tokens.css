@@ -32,6 +32,10 @@
  * Get started tab panels (new; a quiet take on the caption's rise out of a blur):
  *   a tab's new panel        --spacing-panel-swap-rise, --blur-panel-swap, --duration-panel-swap,
  *                            --ease-panel-swap, --animate-panel-swap (keyframes panel-swap)
+ *
+ * Switching between the human and agent views (not in the prototype, so the names are new):
+ *   the view leaving         --duration-view-leave, --ease-view-leave, --spacing-view-sink, --blur-view-leave
+ *   the view arriving        --duration-view-arrive, --ease-view-arrive, --spacing-view-rise, --blur-view-arrive
  */
 
 @theme static {
@@ -155,6 +159,24 @@
   --duration-t-2: 280ms;
   --duration-t-3: 460ms;
   --duration-t-4: 800ms;
+  /*
+   * Switching between the human and agent views (hooks/use-view.ts): the view
+   * on the page sinks into a blur and fades, quickly; then the other rises out
+   * of a blur, taking its time.
+   */
+  --ease-view-leave: cubic-bezier(0.55, 0, 0.75, 0.2);
+  /*
+   * Gentler than --ease-out, which is three quarters done in a quarter of its
+   * time: on a whole page that reads as a cut. This one is under a third of the
+   * way in at 120ms, and settles by 400ms.
+   */
+  --ease-view-arrive: cubic-bezier(0.33, 0, 0.2, 1);
+  --duration-view-leave: 300ms;
+  --duration-view-arrive: 500ms;
+  --spacing-view-sink: 12px; /* how far the view leaving drops */
+  --spacing-view-rise: 20px; /* how far below its place the view arriving starts */
+  --blur-view-leave: 8px;
+  --blur-view-arrive: 10px;
   /* Bento: a panel fades in and rises as it arrives; a token travels to its cell (the prototype's .55s, .85s, .5s). */
   --duration-arrive: 550ms;
   --duration-rise: 850ms;
