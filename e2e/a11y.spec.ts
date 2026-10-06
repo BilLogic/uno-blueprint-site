@@ -52,7 +52,8 @@ for (const colorScheme of ["light", "dark"] as const) {
     const section = page
       .locator("section")
       .filter({ has: page.getByRole("heading", { level: 2, name: structure.heading.main }) });
-    const stage = section.locator("[aria-hidden]");
+    // The stage, not the caption under it, which is hidden too (it is read out from a live copy).
+    const stage = section.locator("[aria-hidden]:not([data-caption])");
     /** Scrolls to the step titled `title` and waits for the walkthrough to show it. */
     const reach = async (title: string) => {
       await scrollToStep(section, structure.steps.findIndex((step) => step.title === title));
