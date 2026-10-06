@@ -88,6 +88,19 @@ test("a link that is not ready yet cannot be followed", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Demo", exact: true })).toHaveAttribute("href", /\/demo\/$/);
 });
 
+test("the footer credits link to each author's LinkedIn profile", async ({ page }) => {
+  await page.goto("/");
+  const footer = page.getByRole("contentinfo");
+  await expect(footer.getByRole("link", { name: "Bill Guo", exact: true })).toHaveAttribute(
+    "href",
+    "https://www.linkedin.com/in/boyuang/",
+  );
+  await expect(footer.getByRole("link", { name: "Meryem Marasli", exact: true })).toHaveAttribute(
+    "href",
+    "https://www.linkedin.com/in/meryemmarasli/",
+  );
+});
+
 test("a link that is not ready yet says Coming soon on hover and on focus", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
