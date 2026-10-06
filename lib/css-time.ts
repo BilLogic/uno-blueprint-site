@@ -5,3 +5,8 @@ export function cssMs(value: string) {
   if (Number.isNaN(number)) return 0;
   return time.endsWith("ms") ? number : time.endsWith("s") ? number * 1000 : number;
 }
+
+/** A token's value on the page's root, as styles/tokens.css sets it. */
+export function rootToken(name: string) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
