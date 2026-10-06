@@ -82,9 +82,9 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
 
   const reduced = useReducedMotion();
   const morph = useRef<Morph>({ progress: 0, draw: () => {} });
-  const change = useScrollStep(scroller, sticky, edges, reduced, morph);
+  const { change, toEnd } = useScrollStep(scroller, sticky, edges, reduced, morph);
   const { step, previous } = change;
-  useExitHold(scroller, sticky, change, reduced);
+  useExitHold(scroller, sticky, change, reduced, toEnd);
   const [layout, setLayout] = useState<StageLayout>({ narrow: false, lift: 0 });
   // The step change whose cell beat has run out, so its cell may open. Matched by identity:
   // `useScrollStep` makes a new change object for each move, so a later arrival waits afresh.
