@@ -387,6 +387,42 @@ const cellState = (page: Page) =>
 const settlesOn = (page: Page, title: string) =>
   expect(caption(page)).toHaveText(title, { timeout: WALK_TIMEOUT });
 
+/** How long the board must not move before it counts as settled, in ms: longer than any pause in its choreography. */
+const STEADY_MS = 600;
+
+/** The board's box within the pinned frame, as text, once it has stopped moving. */
+const steadyBoard = (page: Page) =>
+  section(page)
+    .locator("[data-board]")
+    .evaluate(
+      (board, ms) =>
+        new Promise<string>((done) => {
+          const frame = board.closest("[data-pin-frame]")!;
+          const read = () => {
+            const b = board.getBoundingClientRect();
+            const f = frame.getBoundingClientRect();
+            return [b.x - f.x, b.y - f.y, b.width, b.height].map((v) => v.toFixed(1)).join(",");
+          };
+          let last = read();
+          let since = performance.now();
+          const check = () => {
+            const now = read();
+            if (now !== last) since = performance.now();
+            last = now;
+            if (performance.now() - since >= ms) done(now);
+            else requestAnimationFrame(check);
+          };
+          requestAnimationFrame(check);
+        }),
+      STEADY_MS,
+    );
+
+/** How many lines the caption's text runs to. */
+const captionLines = (page: Page) =>
+  section(page)
+    .locator("[aria-live] p")
+    .evaluate((p) => Math.round(p.getBoundingClientRect().height / parseFloat(getComputedStyle(p).lineHeight)));
+
 test.describe("structure walkthrough", () => {
   test.describe.configure({ timeout: 90_000 });
 
@@ -477,6 +513,34 @@ test.describe("structure walkthrough", () => {
     expect(style.foot).toMatch(/^\d+px$/);
     expect(style.clipPath).toBe(`inset(0px 0px -${style.foot})`);
   });
+
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 1440, height: 900 },
+  ]) {
+    test(`at ${viewport.width} px the flat board stays put from step to step, however long each caption is`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await page.goto("/");
+      const boxes: string[] = [];
+      const lines = new Set<number>();
+      // Start from the flat board, once it has finished turning to face the reader.
+      await scrollToStep(section(page), titles.indexOf("Blueprint"), 0.5);
+      await settlesOn(page, "Blueprint");
+      await steadyBoard(page);
+      // The lanes, the lines between them and the steps: the board is flat throughout, and only the caption changes.
+      for (let step = titles.indexOf("User"); step <= titles.indexOf("Steps"); step++) {
+        await scrollToStep(section(page), step, 0.5);
+        await settlesOn(page, titles[step]!);
+        boxes.push(await steadyBoard(page));
+        lines.add(await captionLines(page));
+      }
+      // On a phone the captions run to different numbers of lines, which is what could move the board.
+      if (viewport.width < 768) expect(lines.size).toBeGreaterThan(1);
+      expect(new Set(boxes)).toEqual(new Set([boxes[0]]));
+    });
+  }
 
   test("on a phone the walkthrough reads the same steps, with nothing wider than the screen", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
