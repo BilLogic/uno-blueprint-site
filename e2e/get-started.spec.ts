@@ -60,7 +60,8 @@ test.describe("install", () => {
     const height = async (name: string) => {
       await page.getByRole("tab", { name, exact: true }).click();
       const panel = page.getByRole("tabpanel", { name, exact: true });
-      // Measured at rest: mid-swap the box is still rising, which leaves its edges between pixels.
+      // Measured at rest: the swap's rise never changes the box's height, but mid-rise its edges sit between
+      // pixels, and the measured height can be off by a rounding error.
       await atRest(panel);
       return (await panel.boundingBox())?.height;
     };
@@ -138,29 +139,31 @@ test.describe("skills", () => {
 });
 
 /**
- * Holds the panel's own animations at `at` of the way through, and reads how
- * it looks there. The browser runs CSS animations on its own time, which the
- * page's clock does not hold, so each one is paused and set to that moment.
+ * Holds the panel's own animations `ms` into their run, and reads how it looks
+ * there. The browser runs CSS animations on its own time, which the page's
+ * clock does not hold, so each one is paused and set to that moment.
  */
-async function holdSwap(panel: Locator, at: number) {
-  return panel.evaluate((element, at) => {
+async function holdSwap(panel: Locator, ms: number) {
+  return panel.evaluate((element, ms) => {
     const running = element.getAnimations();
     let duration = 0;
     for (const animation of running) {
       duration = Number(animation.effect?.getComputedTiming().duration);
       animation.pause();
-      animation.currentTime = duration * at;
+      animation.currentTime = ms;
     }
     const style = getComputedStyle(element);
     const blur = /blur\(([\d.]+)px\)/.exec(style.filter)?.[1];
     return {
       running: running.length,
       duration,
+      marked: element.hasAttribute("data-tab-swap"),
+      animationName: style.animationName,
       opacity: Number(style.opacity),
       rise: new DOMMatrix(style.transform === "none" ? undefined : style.transform).m42,
       blur: blur === undefined ? 0 : Number(blur),
     };
-  }, at);
+  }, ms);
 }
 
 /** Lets the panel's animations run out, then reads how it looks at rest. */
@@ -173,6 +176,19 @@ const atRest = (panel: Locator) =>
   });
 
 const rest = { opacity: "1", transform: "none", filter: "none" };
+const still = { running: 0, opacity: 1, rise: 0, blur: 0 };
+
+/** A third of the way into the swap the panel is still faint, low and soft: the arrival reads as motion. */
+async function expectMidSwap(panel: Locator) {
+  const held = await holdSwap(panel, 120);
+  expect(held.running).toBe(1);
+  expect(held.opacity).toBeLessThan(0.75);
+  expect(held.rise).toBeGreaterThan(3);
+  expect(held.rise).toBeLessThanOrEqual(8);
+  expect(held.blur).toBeGreaterThan(1);
+  expect(held.blur).toBeLessThanOrEqual(3);
+  return held;
+}
 
 test.describe("a tab's panel swap", () => {
   const rows = [
@@ -186,50 +202,47 @@ test.describe("a tab's panel swap", () => {
       await page.goto("/");
       const [first, second] = tabs;
       // Before any swap the panel is still, and sharp.
-      expect(await holdSwap(page.getByRole("tabpanel", { name: first.label, exact: true }), 0)).toMatchObject({
-        running: 0,
-        opacity: 1,
-        rise: 0,
-        blur: 0,
-      });
+      expect(await holdSwap(page.getByRole("tabpanel", { name: first.label, exact: true }), 0)).toMatchObject(still);
 
       await page.getByRole("tablist", { name: list }).getByRole("tab", { name: second.label, exact: true }).click();
       const panel = page.getByRole("tabpanel", { name: second.label, exact: true });
-      // A fifth of the way through, on the curve's fast start: still faint, low and soft.
-      const held = await holdSwap(panel, 0.2);
-      expect(held.running).toBe(1);
-      expect(held.duration).toBeGreaterThanOrEqual(200);
-      expect(held.duration).toBeLessThanOrEqual(300);
-      expect(held.opacity).toBeLessThan(0.9);
-      expect(held.rise).toBeGreaterThan(2);
-      expect(held.rise).toBeLessThanOrEqual(8);
-      expect(held.blur).toBeGreaterThan(0.5);
-      expect(held.blur).toBeLessThanOrEqual(3);
+      const held = await expectMidSwap(panel);
+      expect(held.duration).toBeGreaterThanOrEqual(300);
+      expect(held.duration).toBeLessThanOrEqual(400);
       expect(await atRest(panel)).toEqual(rest);
     });
   }
 
+  test("picking the tab already shown changes nothing", async ({ page }) => {
+    await page.goto("/");
+    const npm = page.getByRole("tab", { name: "npm", exact: true });
+    const panel = page.getByRole("tabpanel", { name: "npm", exact: true });
+    await npm.click();
+    expect(await holdSwap(panel, 0)).toMatchObject({ ...still, marked: false });
+    // Home on the first tab picks it again.
+    await npm.focus();
+    await page.keyboard.press("Home");
+    expect(await holdSwap(panel, 0)).toMatchObject({ ...still, marked: false });
+  });
+
   test("rapid switching ends on the last tab picked, with one panel showing", async ({ page }) => {
     await page.goto("/");
     const tabs = page.getByRole("tablist", { name: getStarted.install.tabsLabel });
-    const panels = page.locator('[role="tabpanel"][id^="install-panel-"]');
-    // Every tab, then back to the first, all inside one swap's time.
+    // Every tab, then back to the first, all inside one swap's time; the panels are counted once each pick is drawn.
     const picks = [...getStarted.install.tabs.slice(1), getStarted.install.tabs[0]].map(({ value }) => value);
-    const seen = await tabs.evaluate((list, picks) => {
-      const counts = [];
+    const seen = await tabs.evaluate(async (list, picks) => {
+      const shown = [];
       for (const value of picks) {
         list.querySelector<HTMLElement>(`#install-tab-${value}`)?.click();
-        counts.push(document.querySelectorAll('[role="tabpanel"][id^="install-panel-"]').length);
+        await new Promise((frame) => requestAnimationFrame(frame));
+        shown.push([...document.querySelectorAll('[role="tabpanel"][id^="install-panel-"]')].map((panel) => panel.id));
       }
-      return counts;
+      return shown;
     }, picks);
-    expect(seen).toEqual(picks.map(() => 1));
-    const last = page.getByRole("tabpanel", { name: getStarted.install.tabs[0].label, exact: true });
-    await expect(panels).toHaveCount(1);
+    expect(seen).toEqual(picks.map((value) => [`install-panel-${value}`]));
     // The last pick arrives with the swap's motion, from its start.
-    const held = await holdSwap(last, 0.2);
-    expect(held.running).toBe(1);
-    expect(held.opacity).toBeLessThan(0.9);
+    const last = page.getByRole("tabpanel", { name: getStarted.install.tabs[0].label, exact: true });
+    await expectMidSwap(last);
     expect(await atRest(last)).toEqual(rest);
   });
 
@@ -237,20 +250,34 @@ test.describe("a tab's panel swap", () => {
     await page.goto("/");
     await page.getByRole("tab", { name: "pnpm", exact: true }).click();
     const panel = page.getByRole("tabpanel", { name: "pnpm", exact: true });
-    expect((await holdSwap(panel, 0.2)).opacity).toBeLessThan(0.9);
+    await expectMidSwap(panel);
     expect(await copyFrom(page, panel)).toBe("pnpm create uno-blueprint\ncd uno-blueprint\npnpm dev");
+  });
+
+  test("a settled panel does not play the swap again when the page comes back from the agent view", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    await page.getByRole("tab", { name: "pnpm", exact: true }).click();
+    const panel = page.getByRole("tabpanel", { name: "pnpm", exact: true });
+    expect(await atRest(panel)).toEqual(rest);
+    await expect(panel).not.toHaveAttribute("data-tab-swap");
+
+    await page.getByRole("button", { name: "For agents" }).click();
+    await expect(panel).toBeHidden();
+    await page.getByRole("button", { name: "For humans" }).click();
+    await expect(panel).toBeVisible();
+    expect(await holdSwap(panel, 0)).toMatchObject(still);
   });
 
   test("with reduced motion the panel swaps at once", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
     await page.getByRole("tab", { name: "Cursor", exact: true }).click();
-    // Read straight after the click, without waiting: there is nothing to wait for.
-    expect(await holdSwap(page.getByRole("tabpanel", { name: "Cursor", exact: true }), 0.2)).toMatchObject({
-      running: 0,
-      opacity: 1,
-      rise: 0,
-      blur: 0,
+    // Read straight after the click, without waiting: marked as a swap, yet nothing plays.
+    expect(await holdSwap(page.getByRole("tabpanel", { name: "Cursor", exact: true }), 120)).toMatchObject({
+      ...still,
+      marked: true,
+      animationName: "none",
     });
   });
 });
