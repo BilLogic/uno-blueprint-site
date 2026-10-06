@@ -1,12 +1,11 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { canvas } from "@/content/canvas";
 import { touchPoints } from "@/content/touch-points";
-import { FRAME, flushRenders, installClock, keepRealFrames, realFrames, runUntil, stopClockASecondOn, tick } from "./clock";
+import { flushRenders, installClock, keepRealFrames, realFrames, stopClockASecondOn, tick } from "./clock";
 import {
   ARRIVE_DELAY,
   GLIDE_MS,
   RECORDING_ENTRY_DELAY,
-  RECORDING_ENTRY_MS,
   captionWords,
   countAnimations,
   expectWordByWord,
@@ -64,7 +63,7 @@ async function pickFrozen(page: Page, section: Locator, label: string) {
 
 /**
  * Brings the stage into view on a stopped page clock and runs its entry to
- * its end: the motion at once, the clock to the recording's start.
+ * its end at once; the recording then plays.
  */
 async function enter(page: Page, section: Locator) {
   const stage = stageIn(section);
@@ -73,10 +72,7 @@ async function enter(page: Page, section: Locator) {
   await flushRenders(page);
   await expect(stage).toHaveAttribute("data-entry", "in");
   await finishAll(panelIn(section));
-  await runUntil(page, async () => (await playing(stage).count()) === 1, {
-    step: FRAME,
-    limit: RECORDING_ENTRY_DELAY + RECORDING_ENTRY_MS + 8 * FRAME,
-  });
+  await expect(playing(stage)).toHaveCount(1);
 }
 
 for (const section of sections) {
@@ -124,12 +120,13 @@ for (const section of sections) {
     // The caption arrives word by word, with the recording.
     expectWordByWord(await captionWords(panelIn(sectionLocator)), section.tabs[0], RECORDING_ENTRY_DELAY);
 
-    // The recording plays once it is in place, by the page's clock.
-    await finishAll(panelIn(sectionLocator));
-    await tick(page, RECORDING_ENTRY_DELAY + RECORDING_ENTRY_MS - 4 * FRAME);
+    // The recording plays once its entry has brought it into place, on the entry's own time: held mid-flight,
+    // it waits however long the page's clock runs on.
+    await tick(page, 2000);
     await flushRenders(page);
     expect(await video.getAttribute("data-state")).not.toBe("playing");
-    await runUntil(page, async () => (await video.getAttribute("data-state")) === "playing", { step: FRAME, limit: 8 * FRAME });
+    await finishAll(panelIn(sectionLocator));
+    await expect(video).toHaveAttribute("data-state", "playing");
     expect(await look(stage)).toMatchObject({ opacity: 1, down: 0, blur: 0, scale: 1 });
 
     // Scrolled away and back, it is simply there, and plays at once.
@@ -198,67 +195,74 @@ test("without script the stages and their captions are simply there", async ({ b
   await context.close();
 });
 
-test("a tab change: the old recording sinks away, the new one rises in after it, and the caption changes word by word", async ({
-  page,
-}) => {
-  await stubPlayback(page);
-  await installClock(page);
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/");
-  await stopClockASecondOn(page);
-  const section = sectionOf(page, canvas.headline);
-  const stage = stageIn(section);
-  await enter(page, section);
-  const [first, second] = canvas.tabs;
+for (const showcase of sections) {
+  test(`a ${showcase.name} tab change: the old recording sinks away, the new one rises in after it, and the caption changes word by word`, async ({
+    page,
+  }) => {
+    await stubPlayback(page);
+    await installClock(page);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    await stopClockASecondOn(page);
+    const section = sectionOf(page, showcase.headline);
+    const stage = stageIn(section);
+    await enter(page, section);
+    const [first, second] = showcase.tabs;
 
-  await pickFrozen(page, section, second.label);
+    await pickFrozen(page, section, second.label);
 
-  // The old recording stays, paused and hidden from everyone, under the new one, which plays.
-  await expect(layers(stage)).toHaveCount(2);
-  const out = leaving(stage);
-  await expect(out).toHaveAttribute("aria-hidden", "true");
-  await expect(out).toHaveAttribute("inert", "");
-  await expect(out.locator("video")).toHaveAttribute("src", `/videos/${first.recording}.mp4`);
-  await expect(out.locator("video")).toHaveAttribute("data-state", "paused");
-  await expect(current(stage).locator("video")).toHaveAttribute("src", `/videos/${second.recording}.mp4`);
-  await expect(playing(stage)).toHaveCount(1);
+    // The old recording stays, paused and hidden from everyone, under the new one, which plays.
+    await expect(layers(stage)).toHaveCount(2);
+    const out = leaving(stage);
+    await expect(out).toHaveAttribute("aria-hidden", "true");
+    await expect(out).toHaveAttribute("inert", "");
+    await expect(out.locator("video")).toHaveAttribute("src", `/videos/${first.recording}.mp4`);
+    await expect(out.locator("video")).toHaveAttribute("data-state", "paused");
+    await expect(current(stage).locator("video")).toHaveAttribute("src", `/videos/${second.recording}.mp4`);
+    await expect(playing(stage)).toHaveCount(1);
 
-  // Before its delay the new one waits, unseen, as the old one starts to go.
-  await seek(panelIn(section), ARRIVE_DELAY / 2);
-  expect((await look(current(stage))).opacity).toBe(0);
+    // Before its delay the new one waits, unseen, as the old one starts to go.
+    await seek(panelIn(section), ARRIVE_DELAY / 2);
+    expect((await look(current(stage))).opacity).toBe(0);
 
-  // 150 ms in: the old one is sinking, shrinking and blurring; the new one has only begun.
-  await seek(panelIn(section), 150);
-  const going = await look(out);
-  expect(going.opacity).toBeLessThan(1);
-  expect(going.opacity).toBeGreaterThan(0);
-  expect(going.down).toBeGreaterThan(1);
-  expect(going.blur).toBeGreaterThan(0.5);
-  expect(going.scale).toBeLessThan(1);
-  const coming = await look(current(stage));
-  expect(coming.opacity).toBeLessThan(0.5);
-  expect(coming.down).toBeGreaterThan(10);
-  expect(coming.blur).toBeGreaterThan(3);
-  expect(coming.scale).toBeLessThan(1);
+    // 150 ms in: the old one is sinking, shrinking and blurring; the new one has only begun.
+    await seek(panelIn(section), 150);
+    // The exit eases in, so it starts slowly: on the approved curve it is 2.2 px down and blurred 1.5 px here.
+    const going = await look(out);
+    expect(going.opacity).toBeLessThan(0.95);
+    expect(going.opacity).toBeGreaterThan(0.5);
+    expect(going.down).toBeGreaterThan(1.8);
+    expect(going.blur).toBeGreaterThan(1.2);
+    expect(going.scale).toBeLessThan(0.997);
+    const coming = await look(current(stage));
+    expect(coming.opacity).toBeLessThan(0.5);
+    expect(coming.down).toBeGreaterThan(10);
+    expect(coming.blur).toBeGreaterThan(3);
+    expect(coming.scale).toBeLessThan(1);
 
-  // 250 ms in, the new one is still rising out of its blur.
-  await seek(panelIn(section), 250);
-  const rising = await look(current(stage));
-  expect(rising.opacity).toBeLessThan(0.9);
-  expect(rising.down).toBeGreaterThan(5);
-  expect(rising.blur).toBeGreaterThan(2);
+    // 250 ms in, the old one is well on its way down (10.9 px, blurred 7.6 px), and the new one is still rising.
+    await seek(panelIn(section), 250);
+    const sinking = await look(out);
+    expect(sinking.down).toBeGreaterThan(9);
+    expect(sinking.blur).toBeGreaterThan(6);
+    expect(sinking.opacity).toBeLessThan(0.6);
+    const rising = await look(current(stage));
+    expect(rising.opacity).toBeLessThan(0.9);
+    expect(rising.down).toBeGreaterThan(5);
+    expect(rising.blur).toBeGreaterThan(2);
 
-  // The caption: the old one leaves whole as the new one's words arrive one by one.
-  await expect(panelIn(section).locator('[data-caption] > [data-phase="out"]')).toContainText(first.caption.split(" ")[0]!);
-  expectWordByWord(await captionWords(panelIn(section)), second, 0);
+    // The caption: the old one leaves whole as the new one's words arrive one by one.
+    await expect(panelIn(section).locator('[data-caption] > [data-phase="out"]')).toContainText(first.caption.split(" ")[0]!);
+    expectWordByWord(await captionWords(panelIn(section)), second, 0);
 
-  // Then the old recording goes, and the new one is at rest.
-  await finishAll(panelIn(section));
-  await expect(leaving(stage)).toHaveCount(0);
-  await expect(stage.locator("video")).toHaveCount(1);
-  expect(await look(current(stage))).toMatchObject({ opacity: 1, down: 0, blur: 0, scale: 1 });
-  await expect(playing(stage)).toHaveCount(1);
-});
+    // Then the old recording goes, and the new one is at rest.
+    await finishAll(panelIn(section));
+    await expect(leaving(stage)).toHaveCount(0);
+    await expect(stage.locator("video")).toHaveCount(1);
+    expect(await look(current(stage))).toMatchObject({ opacity: 1, down: 0, blur: 0, scale: 1 });
+    await expect(playing(stage)).toHaveCount(1);
+  });
+}
 
 test("a recording leaving goes even when its exit is cut short, as when the reader asks for less motion mid-change", async ({
   page,
@@ -281,6 +285,73 @@ test("a recording leaving goes even when its exit is cut short, as when the read
   await expect(stage.locator("video")).toHaveCount(1);
   expect(await look(current(stage))).toMatchObject({ opacity: 1, down: 0, blur: 0 });
   await expect(stage.locator("video")).toHaveAttribute("src", `/videos/${second.recording}.mp4`);
+});
+
+test("a tab picked during the entry glides between the true sizes, and ends at the new tab's height with no snap", async ({
+  page,
+}) => {
+  await stubPlayback(page);
+  await installClock(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await stopClockASecondOn(page);
+  const section = sectionOf(page, touchPoints.headline);
+  const stage = stageIn(section);
+  const laidOut = () => stage.evaluate((node: HTMLElement) => ({ width: node.offsetWidth, height: node.offsetHeight }));
+
+  // The entry, held 150 ms in, while the stage is still scaled down.
+  await freezeNext(stage, { attributes: true, attributeFilter: ["data-entry"] });
+  await stage.scrollIntoViewIfNeeded();
+  await realFrames(page);
+  await flushRenders(page);
+  await expect(stage).toHaveAttribute("data-entry", "in");
+  await seek(panelIn(section), 150);
+  expect((await look(stage)).scale).toBeLessThan(0.98);
+  const before = await laidOut();
+
+  await pickFrozen(page, section, touchPoints.tabs.at(-1)!.label);
+  const glide = await stage.evaluate((node) => {
+    const animation = node.getAnimations().find((each) => (each.effect as KeyframeEffect).getKeyframes()[0]?.height)!;
+    const [from, to] = (animation.effect as KeyframeEffect).getKeyframes().map((frame) => ({
+      width: parseFloat(String(frame.width)),
+      height: parseFloat(String(frame.height)),
+    }));
+    return { from: from!, to: to! };
+  });
+  // From the stage's true size, not its scaled look, to the phone's shape at its true width.
+  expect(glide.from.height).toBeCloseTo(before.height, 0);
+  expect(glide.from.width).toBeCloseTo(before.width, 0);
+  expect(glide.to.height).toBeCloseTo(before.width * (5 / 4), 0);
+
+  // Run to its end, the glide leaves the stage where it stands at rest: no snap.
+  await finishAll(panelIn(section));
+  await expect(leaving(stage)).toHaveCount(0);
+  const after = await laidOut();
+  expect(after.height).toBeCloseTo(glide.to.height, 0);
+  expect(after.width).toBeCloseTo(glide.to.width, 0);
+  expect((await stage.boundingBox())!.height).toBeCloseTo(after.height, 0);
+});
+
+test("turning less motion on and off again never replays a recording's arrival", async ({ page }) => {
+  await stubPlayback(page);
+  await installClock(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await stopClockASecondOn(page);
+  const section = sectionOf(page, canvas.headline);
+  const stage = stageIn(section);
+  await enter(page, section);
+  await pickFrozen(page, section, canvas.tabs[1].label);
+  await finishAll(panelIn(section));
+  await expect(leaving(stage)).toHaveCount(0);
+
+  for (const reducedMotion of ["reduce", "no-preference"] as const) {
+    await page.emulateMedia({ reducedMotion });
+    await realFrames(page);
+    await flushRenders(page);
+  }
+  expect(await current(stage).evaluate((node) => node.getAnimations().length)).toBe(0);
+  expect(await look(current(stage))).toMatchObject({ opacity: 1, down: 0, blur: 0, scale: 1 });
 });
 
 test("on a phone the touch-points stage glides between the window's shape and the phone's", async ({ page }) => {

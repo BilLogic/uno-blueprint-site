@@ -8,8 +8,8 @@ import { TabList, tabId, tabPanelId } from "@/components/ui/Tabs";
 import { WordCaption } from "@/components/ui/WordCaption";
 import { useInView } from "@/hooks/use-in-view";
 import { useReducedMotion } from "@/hooks/use-media-query";
-import { useStageEntry } from "@/hooks/use-stage-entry";
 import { useStageGlide } from "@/hooks/use-stage-glide";
+import { useStageMotion } from "@/hooks/use-stage-motion";
 import { shouldPlay, wantsPlay, type ShowcaseTab } from "@/lib/recording";
 import { Recording, type RecordingHandle } from "./Recording";
 import s from "./Showcase.module.css";
@@ -51,9 +51,9 @@ type Layer<T> = { value: T | undefined; key: number };
  * rises in just after; the old one stays on the stage only while it goes.
  * Where the stage's height changes it glides there (`useStageGlide`). The
  * caption changes word by word, as the walkthrough's does (`WordCaption`).
- * The motion is in stage-motion.ts, the entry in `useStageEntry`. A reader
- * who asked for less motion sees the stage already in place, and tabs that
- * change at once.
+ * The motion is in stage-motion.ts, run by `useStageMotion`. A reader who
+ * asked for less motion sees the stage already in place, and tabs that change
+ * at once.
  */
 export function Showcase<T extends string>({ idBase, label, items }: ShowcaseProps<T>) {
   // The tab showing, the one just left while it sinks away under it, and which tab showed before (its
@@ -69,9 +69,13 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
   const [watchOnScreen, onScreen] = useInView<HTMLDivElement>();
   // The poster waits until the stage is near, so it never competes with the page's first paint.
   const [watchNear, near] = useInView<HTMLDivElement>({ rootMargin: "50% 0px", once: true });
-  // The entry: the frame, then the recording, while the caption's words come in. The recording plays once
-  // the entry has brought it into place.
-  const { watch: watchEntry, entry, waiting, settled } = useStageEntry("[data-recording]:not([data-leaving])", reducedMotion);
+  // The entry, the frame and then the recording, while the caption's words come in; the recording of a tab
+  // picked rising in. The recording plays once the entry has brought it into place.
+  const { watch: watchStage, entry, waiting, inPlace } = useStageMotion(
+    "[data-recording]:not([data-leaving])",
+    layers.current.key,
+    reducedMotion,
+  );
   const recording = useRef<RecordingHandle>(null);
   const stageNode = useRef<HTMLDivElement | null>(null);
   const stageRef = useCallback(
@@ -79,16 +83,16 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
       stageNode.current = node;
       watchOnScreen(node);
       watchNear(node);
-      watchEntry(node);
+      watchStage(node);
     },
-    [watchOnScreen, watchNear, watchEntry],
+    [watchOnScreen, watchNear, watchStage],
   );
   const measureGlide = useStageGlide(layers.current.key, stageNode, reducedMotion);
 
-  const find = (layer: Layer<T> | null) => layer && items.find((candidate) => candidate.value === layer.value);
-  const item = find(layers.current) ?? items[0];
+  const tabOf = (layer: Layer<T> | null) => layer && items.find((candidate) => candidate.value === layer.value);
+  const item = tabOf(layers.current) ?? items[0];
   if (!item) return null;
-  const leaving = layers.leaving && { key: layers.leaving.key, tab: find(layers.leaving) };
+  const leaving = layers.leaving && { key: layers.leaving.key, tab: tabOf(layers.leaving) };
 
   // A tab picked mid-change drops the recording still leaving at once, so there are never more than two.
   const pick = (next: T) => {
@@ -102,10 +106,17 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
   };
   const dropLeaving = (key: number) =>
     setLayers((was) => (was.leaving?.key === key ? { ...was, leaving: null } : was));
-  // Only a tab picked arrives; the first one is simply there.
-  const arriving = layers.current.key > 0 && !reducedMotion;
   const wanted = wantsPlay({ choice, reducedMotion });
   const captionId = `${tabPanelId(idBase, item.value)}-caption`;
+  // What a tab's recording is, whether it is showing or leaving.
+  const recordingOf = (tab: ShowcaseItem<T>) => ({
+    name: tab.recording,
+    phone: tab.phone,
+    masked: tab.masked ?? false,
+    zoom: reducedMotion ? undefined : tab.zoom,
+    near,
+    labelledBy: captionId,
+  });
   const Icon = wanted ? Pause : Play;
   const buttonClass =
     "grid size-8 cursor-pointer place-items-center rounded-8 border border-line-2 bg-panel text-muted transition-[color,border-color] duration-t-1 motion-reduce:transition-none hover:border-line-hot hover:text-ink";
@@ -142,13 +153,8 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
           {leaving?.tab && (
             <Recording
               key={leaving.key}
-              name={leaving.tab.recording}
-              phone={leaving.tab.phone}
-              masked={leaving.tab.masked ?? false}
-              zoom={reducedMotion ? undefined : leaving.tab.zoom}
-              near={near}
+              {...recordingOf(leaving.tab)}
               playing={false}
-              labelledBy={captionId}
               leaving
               onLeft={() => dropLeaving(leaving.key)}
             />
@@ -156,14 +162,8 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
           <Recording
             key={layers.current.key}
             ref={recording}
-            arriving={arriving}
-            name={item.recording}
-            phone={item.phone}
-            masked={item.masked ?? false}
-            zoom={reducedMotion ? undefined : item.zoom}
-            near={near}
-            playing={shouldPlay({ choice, reducedMotion, inView: onScreen }) && settled}
-            labelledBy={captionId}
+            {...recordingOf(item)}
+            playing={shouldPlay({ choice, reducedMotion, inView: onScreen }) && inPlace}
           />
           {/*
             Pause/Play shows while the stage is pointed at or focused, and always

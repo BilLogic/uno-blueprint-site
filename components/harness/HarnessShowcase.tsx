@@ -8,10 +8,10 @@ import showcase from "@/components/showcase/Showcase.module.css";
 import { TabList, tabId, tabPanelId } from "@/components/ui/Tabs";
 import { WordCaption } from "@/components/ui/WordCaption";
 import { useInView } from "@/hooks/use-in-view";
-import { useLayerMotion } from "@/hooks/use-layer-motion";
+import { useLayerLeaving } from "@/hooks/use-layer-leaving";
 import { useReducedMotion } from "@/hooks/use-media-query";
-import { useStageEntry } from "@/hooks/use-stage-entry";
 import { useStageGlide } from "@/hooks/use-stage-glide";
+import { useStageMotion } from "@/hooks/use-stage-motion";
 import { HARNESS_HOLD, HARNESS_LOOP_START, harnessLoop } from "@/lib/harness-loop";
 import { AuditPicture } from "./AuditPicture";
 import { MapPicture } from "./MapPicture";
@@ -56,8 +56,6 @@ type Layer = { skill: SkillId; key: number };
 const noop = () => {};
 
 type PictureLayerProps = {
-  /** The picture of a tab just picked: it rises in out of a blur. */
-  arriving?: boolean;
   /** The picture of the tab just left, sinking away under the new one: hidden from everyone, and stopped. */
   leaving?: boolean;
   /** Its exit is over, run or cut short: take it off the stage. */
@@ -70,9 +68,9 @@ type PictureLayerProps = {
  * wide screen and sets its height on a narrow one, where the stage's height
  * follows it; one leaving lies over it, out of the flow, from the top.
  */
-function PictureLayer({ arriving = false, leaving = false, onLeft, children }: PictureLayerProps) {
+function PictureLayer({ leaving = false, onLeft, children }: PictureLayerProps) {
   const ref = useRef<HTMLDivElement>(null);
-  useLayerMotion(ref, { arriving, leaving, onLeft });
+  useLayerLeaving(ref, leaving, onLeft);
   return (
     <div
       ref={ref}
@@ -116,15 +114,17 @@ export function HarnessShowcase() {
   const [loop, dispatch] = useReducer(harnessLoop, HARNESS_LOOP_START);
   const reducedMotion = useReducedMotion();
   const [watchInView, inView] = useInView<HTMLDivElement>({ threshold: 0.3 });
-  const { watch: watchEntry, entry, waiting, settled } = useStageEntry(SHOWING, reducedMotion);
+  // The entry, the frame and then the picture, while the caption's words come in; the picture of a tab picked
+  // rising in. The picture plays once the entry has brought it into place.
+  const { watch: watchStage, entry, waiting, inPlace } = useStageMotion(SHOWING, layers.current.key, reducedMotion);
   const stageNode = useRef<HTMLDivElement | null>(null);
   const stageRef = useCallback(
     (node: HTMLDivElement | null) => {
       stageNode.current = node;
       watchInView(node);
-      watchEntry(node);
+      watchStage(node);
     },
-    [watchInView, watchEntry],
+    [watchInView, watchStage],
   );
   const measureGlide = useStageGlide(layers.current.key, stageNode, reducedMotion);
   if (inView !== loop.shown) dispatch(inView ? "shown" : "hidden");
@@ -189,9 +189,9 @@ export function HarnessShowcase() {
             <Leaving key={leaving.run} running={false} onStale={noop} onDone={noop} />
           </PictureLayer>
         )}
-        <PictureLayer key={layers.current.key} arriving={layers.current.key > 0 && !reducedMotion}>
+        <PictureLayer key={layers.current.key}>
           {/* A new key starts the picture from its first frame. */}
-          <Picture key={loop.run} running={loop.shown && settled} onStale={restart} onDone={done} />
+          <Picture key={loop.run} running={loop.shown && inPlace} onStale={restart} onDone={done} />
         </PictureLayer>
       </div>
       {/* What describes the picture for assistive technology; the caption under the stage is drawn for the eye. */}

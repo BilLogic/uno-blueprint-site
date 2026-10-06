@@ -2,7 +2,7 @@
 
 import { useEffect, useImperativeHandle, useRef, type Ref } from "react";
 import { vars } from "@/components/ui/vars";
-import { useLayerMotion } from "@/hooks/use-layer-motion";
+import { useLayerLeaving } from "@/hooks/use-layer-leaving";
 import { openFullscreen, recordingFiles } from "@/lib/recording";
 import { zoomAt, zoomTransform, type ZoomKeyframe } from "@/lib/recording-zoom";
 
@@ -26,8 +26,6 @@ type RecordingProps = {
   playing: boolean;
   /** The id of the text that names the recording for assistive technology. */
   labelledBy: string;
-  /** The recording of a tab just picked: it rises in out of a blur. */
-  arriving?: boolean;
   /** The recording of the tab just left, fading out under the new one: hidden from everyone, and never played. */
   leaving?: boolean;
   /** Its exit is over, run or cut short: take it off the stage. */
@@ -50,7 +48,6 @@ export function Recording({
   near,
   playing,
   labelledBy,
-  arriving = false,
   leaving = false,
   onLeft,
   ref: handle,
@@ -89,9 +86,9 @@ export function Recording({
     return () => element.removeEventListener("webkitendfullscreen", play);
   }, [playing]);
 
-  // A recording arriving rises in; one leaving, already paused, sinks away and then goes. Once it is off the
-  // stage its download stops too.
-  useLayerMotion(layerRef, { arriving, leaving, onLeft });
+  // A recording leaving is already paused. It sinks away, and goes once that is over. Once it is off the stage
+  // its download stops too.
+  useLayerLeaving(layerRef, leaving, onLeft);
 
   useEffect(() => {
     const element = ref.current;

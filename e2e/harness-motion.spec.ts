@@ -7,7 +7,6 @@ import {
   ARRIVE_DELAY,
   GLIDE_MS,
   RECORDING_ENTRY_DELAY,
-  RECORDING_ENTRY_MS,
   captionWords,
   countAnimations,
   expectWordByWord,
@@ -26,7 +25,6 @@ import {
  */
 
 const [mapTab, sliceTab, auditTab, whatIfTab] = harness.skills;
-const ENTRY_SETTLES = RECORDING_ENTRY_DELAY + RECORDING_ENTRY_MS;
 
 /** The map picture's first placed phrase, and when it lands after the picture starts, in ms. */
 const firstPlace = mapSteps(map.readOrder).find((step) => step.kind === "place")!;
@@ -52,7 +50,7 @@ async function pickFrozen(page: Page, section: Locator, label: string) {
   await flushRenders(page);
 }
 
-/** Brings the stage into view on a stopped page clock and runs its entry to its end: the motion at once, the clock to the picture's start. */
+/** Brings the stage into view on a stopped page clock and runs its entry to its end at once; the picture then plays. */
 async function enter(page: Page, section: Locator) {
   const stage = stageIn(section);
   await stage.scrollIntoViewIfNeeded();
@@ -60,7 +58,6 @@ async function enter(page: Page, section: Locator) {
   await flushRenders(page);
   await expect(stage).toHaveAttribute("data-entry", "in");
   await finishAll(section);
-  await page.clock.runFor(ENTRY_SETTLES);
   await flushRenders(page);
 }
 
@@ -107,15 +104,14 @@ test("the harness stage enters once, in two beats, as its caption arrives word b
   // The caption arrives word by word, with the picture.
   expectWordByWord(await captionWords(section), mapTab, RECORDING_ENTRY_DELAY);
 
-  // The picture plays once it is in place, by the page's clock: not from the moment the stage came into view.
-  await finishAll(section);
-  await page.clock.runFor(firstPlace.at + 100);
+  // The picture plays once it is in place: held mid-entry, it has not started, however long the page's clock runs.
+  await page.clock.runFor(firstPlace.at + 500);
   await flushRenders(page);
   await expect(placed(section)).toHaveCount(0);
-  await runUntil(page, async () => (await placed(section).count()) === 1, {
-    step: FRAME,
-    limit: ENTRY_SETTLES - 100 + 8 * FRAME,
-  });
+  // Once the entry ends, it plays from its start.
+  await finishAll(section);
+  await flushRenders(page);
+  await runUntil(page, async () => (await placed(section).count()) === 1, { step: FRAME, limit: firstPlace.at + 8 * FRAME });
   expect(await look(stage)).toMatchObject({ opacity: 1, down: 0, blur: 0, scale: 1 });
   expect(await look(current(stage))).toMatchObject({ opacity: 1, down: 0, blur: 0, scale: 1 });
 
