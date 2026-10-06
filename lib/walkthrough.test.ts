@@ -444,6 +444,14 @@ describe("shouldLock", () => {
     expect(shouldLock({ ...moving, sinceHeld: cap - 1 })).toBe(true);
   });
 
+  it("locks a page whose last frame came late, before its next move crosses the exit", () => {
+    // A slow frame makes the pace look low, yet the next move is about as long as the last.
+    expect(shouldLock({ ...moving, y: exit - 48, lastDelta: 50, lastGap: 55 })).toBe(true);
+    // Or the next two, should a frame be dropped.
+    expect(shouldLock({ ...moving, y: exit - 95, lastDelta: 50, lastGap: 80 })).toBe(true);
+    expect(shouldLock({ ...moving, y: exit - 110, lastDelta: 50, lastGap: 80 })).toBe(false);
+  });
+
   it("locks a page that has just reached the exit, or is a rounding past it", () => {
     expect(shouldLock({ ...moving, y: exit })).toBe(true);
     expect(shouldLock({ ...moving, y: exit + 1 })).toBe(true);
