@@ -128,7 +128,7 @@ export function Recording({ name, phone, masked, zoom, near, playing, labelledBy
     return (
       // The stage, less a margin of dots; the handset is as large as fits
       // whole inside it, centred.
-      <div className="absolute inset-(--spacing-phone-inset) grid place-items-center [container-type:size]">
+      <div data-recording className="absolute inset-(--spacing-phone-inset) grid place-items-center [container-type:size]">
         {/* Scaled from its centre and moved so the point in focus stays at the stage's centre; the shadow follows the mask. */}
         <div ref={zoomRef} data-testid="phone" className="fit-phone drop-shadow-phone">
           {player}
@@ -142,7 +142,7 @@ export function Recording({ name, phone, masked, zoom, near, playing, labelledBy
     // large as fits whole inside it, standing on the stage's foot. It sinks
     // past the foot by its frame's width, so the stage clips the frame's lower
     // edge and its square lower corners.
-    <div className="absolute inset-x-window-margin top-window-margin bottom-0 grid items-end justify-items-center [container-type:size]">
+    <div data-recording className="absolute inset-x-window-margin top-window-margin bottom-0 grid items-end justify-items-center [container-type:size]">
       <div data-testid="recording-window" className="window-outline relative fit-window translate-y-(--spacing-window-sink) overflow-hidden rounded-t-window shadow-window">
         {player}
       </div>

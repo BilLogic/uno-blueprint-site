@@ -83,6 +83,56 @@ export const transitionsDone = (root: Locator) =>
   });
 
 /**
+ * Resolves once every animation in `root`, and in what it holds, has finished
+ * or been cancelled: CSS transitions and animations, and those the page starts
+ * from script. Animations held by `holdAnimations` must be let go first.
+ */
+export const animationsDone = (root: Locator) =>
+  root.evaluate(async (element) => {
+    await Promise.allSettled(element.getAnimations({ subtree: true }).map((animation) => animation.finished));
+  });
+
+type Held = { heldAnimations?: Animation[] };
+
+/**
+ * Lets `holdAnimations` hold the animations the page starts from script
+ * (`element.animate`); call it before the page loads.
+ */
+export async function keepScriptedAnimations(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (...args: Parameters<Element["animate"]>) {
+      const animation = animate.apply(this, args);
+      const held = (window as Held).heldAnimations;
+      if (held) {
+        animation.pause();
+        held.push(animation);
+      }
+      return animation;
+    };
+  });
+}
+
+/**
+ * From now on, each animation the page starts from script waits at its first
+ * frame, so a test can read it mid-flight however fast or slow the machine
+ * is; like CSS transitions, these run on the browser's own time, not the
+ * page's clock. Needs `keepScriptedAnimations`. The returned function lets
+ * them run on, from wherever the test left them.
+ */
+export async function holdAnimations(page: Page): Promise<() => Promise<void>> {
+  await page.evaluate(() => {
+    (window as Held).heldAnimations = [];
+  });
+  return () =>
+    page.evaluate(() => {
+      const held = (window as Held).heldAnimations ?? [];
+      delete (window as Held).heldAnimations;
+      for (const animation of held) animation.play();
+    });
+}
+
+/**
  * Lets React finish rendering what the clock last set in motion: its renders
  * are queued as messages, which a stopped clock does not hold.
  */

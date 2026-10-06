@@ -1,14 +1,17 @@
 "use client";
 
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Maximize2, Pause, Play } from "lucide-react";
 import { showcase } from "@/content/showcase";
 import { revealOnHover } from "@/components/reveal";
 import { TabList, tabId, tabPanelId } from "@/components/ui/Tabs";
 import { useInView } from "@/hooks/use-in-view";
 import { useReducedMotion } from "@/hooks/use-media-query";
+import { useStageSwap } from "@/hooks/use-stage-swap";
+import { cssMs } from "@/lib/css-time";
 import { shouldPlay, wantsPlay, type ShowcaseTab } from "@/lib/recording";
 import { Recording, type RecordingHandle } from "./Recording";
+import s from "./Showcase.module.css";
 
 export type ShowcaseItem<T extends string> = ShowcaseTab<T> & {
   icon: ReactNode;
@@ -33,9 +36,15 @@ type ShowcaseProps<T extends string> = {
  *
  * On a phone the stage leaves 16:9 and each tab takes its own: a window's is
  * 3:2, snug round it, and the phone's stands taller so its screen reads.
- * Switching between a window and the phone may move what is below, but a tab's
+ * Switching between a window and the phone moves what is below, but a tab's
  * stage never changes size while it shows: the phone's zoom is a transform. A
  * second button there opens the recording fullscreen.
+ *
+ * The first time the stage comes into view it enters, and its recording
+ * starts once it has settled. A tab change crossfades the recordings, the
+ * caption arriving with the new one, and where the stage's height changes it
+ * glides there (see `useStageSwap`). A reader who asked for less motion sees
+ * the stage already in place, and tabs that change at once.
  */
 export function Showcase<T extends string>({ idBase, label, items }: ShowcaseProps<T>) {
   const [value, setValue] = useState(items[0]?.value);
@@ -44,17 +53,40 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
   const [stage, inView] = useInView<HTMLDivElement>();
   // The poster waits until the stage is near, so it never competes with the page's first paint.
   const [nearStage, near] = useInView<HTMLDivElement>({ rootMargin: "50% 0px", once: true });
+  // The entry waits until the stage is well into view, so it is seen.
+  const [entryStage, entered] = useInView<HTMLDivElement>({ threshold: 0.25, once: true });
+  const [settled, setSettled] = useState(false);
   const recording = useRef<RecordingHandle>(null);
+  const stageNode = useRef<HTMLDivElement | null>(null);
+  const leaving = useRef<HTMLDivElement>(null);
+  const caption = useRef<HTMLParagraphElement>(null);
   const stageRef = useCallback(
     (node: HTMLDivElement | null) => {
+      stageNode.current = node;
       stage(node);
       nearStage(node);
+      entryStage(node);
     },
-    [stage, nearStage],
+    [stage, nearStage, entryStage],
   );
+  const beforeSwap = useStageSwap(String(value), { stage: stageNode, leaving, caption });
+
+  // The recording starts once the entry has run.
+  useEffect(() => {
+    if (!entered || settled) return;
+    const entry = reducedMotion ? 0 : cssMs(getComputedStyle(document.documentElement).getPropertyValue("--duration-t-3"));
+    const timer = window.setTimeout(() => setSettled(true), entry);
+    return () => clearTimeout(timer);
+  }, [entered, settled, reducedMotion]);
+
   const item = items.find((candidate) => candidate.value === value) ?? items[0];
   if (!item) return null;
 
+  const pick = (next: T) => {
+    if (next === item.value) return;
+    beforeSwap();
+    setValue(next);
+  };
   const wanted = wantsPlay({ choice, reducedMotion });
   const captionId = `${tabPanelId(idBase, item.value)}-caption`;
   const Icon = wanted ? Pause : Play;
@@ -74,7 +106,7 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
         idBase={idBase}
         tabs={items}
         value={item.value}
-        onChange={setValue}
+        onChange={pick}
         className="mb-4 flex flex-wrap gap-2"
         tabClassName="inline-flex cursor-pointer items-center gap-2 rounded-pill border border-line bg-panel px-3.5 py-2.5 text-14 leading-none font-medium text-muted aria-selected:border-ink aria-selected:text-ink"
       />
@@ -87,8 +119,11 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
         <div
           ref={stageRef}
           data-testid="showcase-stage"
-          className={`group relative aspect-video max-w-full overflow-clip rounded-16 border border-line bg-card bg-dots ${item.phone ? "max-sm:aspect-stage-tall" : "max-sm:aspect-stage-window-phone"}`}
+          data-entry={entered ? "in" : "waiting"}
+          className={`${s.stage} group relative aspect-video max-w-full overflow-clip rounded-16 border border-line bg-card bg-dots ${item.phone ? "max-sm:aspect-stage-tall" : "max-sm:aspect-stage-window-phone"}`}
         >
+          {/* The still of a recording leaving, under the one arriving; filled by `useStageSwap`. */}
+          <div ref={leaving} className="contents" aria-hidden />
           <Recording
             key={item.value}
             ref={recording}
@@ -97,7 +132,7 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
             masked={item.masked ?? false}
             zoom={reducedMotion ? undefined : item.zoom}
             near={near}
-            playing={shouldPlay({ choice, reducedMotion, inView })}
+            playing={shouldPlay({ choice, reducedMotion, inView }) && (settled || reducedMotion)}
             labelledBy={captionId}
           />
           {/*
@@ -127,7 +162,7 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
             </button>
           </div>
         </div>
-        <p id={captionId} className="mt-4 max-w-caption text-14 text-pretty text-muted">
+        <p ref={caption} id={captionId} className="mt-4 max-w-caption text-14 text-pretty text-muted">
           <b className="font-medium text-ink">{item.label}.</b> {item.caption}
         </p>
       </div>

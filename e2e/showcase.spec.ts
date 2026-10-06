@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { canvas } from "@/content/canvas";
 import { showcase } from "@/content/showcase";
 import { touchPoints } from "@/content/touch-points";
+import { animationsDone } from "./clock";
 
 /** A showcase's tab labels, in order: the first, the second, then the rest. */
 function labels(tabs: readonly { label: string }[]): readonly [string, string, string, ...string[]] {
@@ -25,6 +26,14 @@ const rows = [
     tabs: labels(touchPoints.tabs),
   },
 ] as const;
+
+/** Picks a tab and waits for its stage to settle: the crossfade, and on a phone the glide to its height. */
+async function pick(page: Page, list: Locator, label: string, how: "click" | "dispatch" = "click") {
+  const tab = list.getByRole("tab", { name: label });
+  if (how === "click") await tab.click();
+  else await tab.dispatchEvent("click");
+  await animationsDone(page.getByRole("tabpanel", { name: label }).getByTestId("showcase-stage"));
+}
 
 const caption = (page: Page, tab: string) =>
   page.getByRole("tabpanel", { name: tab }).getByText(`${tab}.`, { exact: true });
@@ -91,7 +100,7 @@ for (const row of rows) {
 async function expectOneStageSize(page: Page, list: Locator, tabs: readonly { label: string }[]) {
   const sizes = [];
   for (const tab of tabs) {
-    await list.getByRole("tab", { name: tab.label }).click();
+    await pick(page, list, tab.label);
     const box = await page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage").boundingBox();
     sizes.push([box!.width, box!.height] as const);
   }
@@ -167,10 +176,10 @@ for (const width of [1440, 390]) {
     await expect(list.getByRole("tab").last()).toHaveText(phone.label);
     const windowSize = await expectOneStageSize(page, list, desktopTabs);
     for (const tab of desktopTabs) {
-      await list.getByRole("tab", { name: tab.label }).click();
+      await pick(page, list, tab.label);
       await expectFlushWindow(page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage"));
     }
-    await list.getByRole("tab", { name: phone.label }).click();
+    await pick(page, list, phone.label);
 
     const panel = page.getByRole("tabpanel", { name: phone.label });
     await expect(panel.getByText(phone.caption)).toBeVisible();
@@ -260,7 +269,7 @@ test("on a phone each touch-points stage keeps its size from before its poster l
   const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
   for (const tab of touchPoints.tabs) {
     // Selected without scrolling, so the stage is measured far off screen, before its poster loads.
-    await list.getByRole("tab", { name: tab.label }).dispatchEvent("click");
+    await pick(page, list, tab.label, "dispatch");
     const stage = page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage");
     const video = stage.locator("video");
     if (tab === touchPoints.tabs[0]) await expect(video).not.toHaveAttribute("poster", /./);
@@ -289,7 +298,7 @@ for (const width of [1440, 390]) {
     expect(size.width / size.height).toBeCloseTo(width === 390 ? 3 / 2 : 16 / 9, 1);
 
     for (const tab of canvas.tabs) {
-      await list.getByRole("tab", { name: tab.label }).click();
+      await pick(page, list, tab.label);
       const stage = page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage");
       const video = stage.locator("video");
       await expect(video).toHaveAttribute("src", `/videos/${tab.recording}.mp4`);
@@ -302,7 +311,7 @@ for (const width of [1440, 390]) {
 test("the phone's recording keeps its own shape, cut to the handset's silhouette", async ({ page }) => {
   await page.goto("/");
   const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
-  await list.getByRole("tab", { name: phone.label }).click();
+  await pick(page, list, phone.label);
   const video = page.getByRole("tabpanel", { name: phone.label }).locator("video");
   await video.scrollIntoViewIfNeeded();
   const shape = await posterShape(video);

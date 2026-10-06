@@ -286,6 +286,16 @@
   --aspect-stage-window-phone: 3 / 2; /* a window's stage on a phone, snug round it */
   --aspect-stage-tall: 4 / 5; /* the phone recording's stage on a phone, tall enough for its screen to read */
   --spacing-phone-inset: clamp(16px, 3.5vw, 44px); /* the dots round the phone, at least */
+  /*
+   * Its motion. The first time the stage comes into view it fades in, rises
+   * and sharpens, on a caption word's duration, curve and blur (--duration-t-3,
+   * --ease-out, --blur-caption). A tab change crossfades the recordings, the
+   * incoming one rising in with its caption, and on a phone the stage glides
+   * to the new tab's height.
+   */
+  --spacing-stage-rise: 12px; /* the stage rises this far as it enters */
+  --spacing-recording-rise: 8px; /* the incoming recording, and its caption, rise this far as they arrive */
+  --duration-recording-swap: 300ms; /* a tab change: the crossfade, the caption's arrival and the stage's glide */
   /* The dots above a window and beside it, at least, the same both ways; it meets the stage's foot, so it reads large. */
   --spacing-window-margin: clamp(12px, 2vw, 28px);
   --aspect-window: 1620 / 1004; /* a desktop recording's own shape: the app window, edge to edge */
