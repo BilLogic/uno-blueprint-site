@@ -328,12 +328,15 @@
   --spacing-stage-foot: 80px; /* how far past the stage's foot the open cell's shadow may run */
   --spacing-dots-fade-in: 56px; /* the dotted field fades in over its top */
   --spacing-dots-fade-out: 72px; /* and out over its bottom */
+  --spacing-caption-rise: 5px; /* a caption word rises this far as it arrives, and its caption lifts as much as it leaves */
   --ease-settle: cubic-bezier(0.2, 0.8, 0.2, 1); /* a label sliding to its sheet */
   --text-10: 10px; /* the status on a context card's ticket */
   --text-11-5: 11.5px;
   --text-14-5: 14.5px;
   --duration-stagger: 70ms; /* between one sheet, or one column, and the next */
   --duration-word-delay: 100ms; /* a word follows its bar out */
+  --duration-caption-fade: 150ms; /* with reduced motion, the caption crossfades whole */
+  --duration-caption-out: calc(var(--duration-t-3) * 2 / 3); /* the old caption leaves, in two thirds of the time a word takes to arrive */
   --duration-word-out: 350ms;
   --duration-fade: 400ms;
   --duration-fade-slow: 450ms;
@@ -344,10 +347,6 @@
   --duration-sheet: 900ms;
   --duration-tag: 950ms;
   --duration-board: 1000ms;
-  /* The walkthrough caption: each word rises this far out of this blur; with reduced motion it crossfades whole. */
-  --blur-caption: 4px;
-  --spacing-caption-rise: 5px;
-  --duration-caption-fade: 150ms;
   --duration-named-delay: 1050ms; /* the board's words arrive once it has turned to face the reader */
 
   /* Hero picture (it shares the lane accents above) */
@@ -447,6 +446,7 @@
   --duration-t-rail: 200ms; /* the line catching up with the scroll; a card's hover */
   --duration-t-grow: 450ms; /* a proof bar growing, on a wide screen */
   --blur-case: 7px;
+  --blur-caption: 4px; /* a caption word sharpens out of this as it arrives, and its caption blurs to it as it leaves */
 
   --animate-menu-in: menu-in var(--duration-t-1) var(--ease-out);
   @keyframes menu-in {

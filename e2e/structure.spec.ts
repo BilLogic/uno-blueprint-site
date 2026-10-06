@@ -661,24 +661,51 @@ test.describe("structure walkthrough", () => {
     expect(leftOver).toBe(0);
   });
 
-  test("with reduced motion the caption has no blur, movement or stagger, only a crossfade", async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: "reduce" });
+  test("with reduced motion the caption changes by a crossfade, with no blur, movement or stagger", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
-    await expect(caption(page)).toHaveText(titles.at(-1)!);
-    const styles = await section(page)
+    await scrollToStep(section(page), titles.indexOf("User"));
+    await settlesOn(page, "User");
+    // Asking for less motion now moves the walkthrough to its last step: a step change under reduced motion.
+    await section(page)
       .locator("[data-caption]")
       .evaluate((cap) => {
-        const layer = cap.firstElementChild!;
-        const pieces = [...layer.querySelectorAll("span")].map((el) => getComputedStyle(el));
-        return {
-          layer: getComputedStyle(layer).transitionProperty,
-          blurred: pieces.filter((style) => style.filter !== "none").length,
-          moved: pieces.filter((style) => style.transform !== "none").length,
-          animated: pieces.filter((style) => style.transitionDuration !== "0s").length,
+        const w = window as unknown as { crossfade: { layers: number; moved: number; fades: Set<string> } };
+        w.crossfade = { layers: 0, moved: 0, fades: new Set() };
+        const sample = () => {
+          const layers = [...cap.children];
+          w.crossfade.layers = Math.max(w.crossfade.layers, layers.length);
+          for (const el of [...layers, ...cap.querySelectorAll("span")]) {
+            const style = getComputedStyle(el);
+            if (style.filter !== "none" || style.transform !== "none") w.crossfade.moved++;
+          }
+          for (const layer of layers) w.crossfade.fades.add(getComputedStyle(layer).transitionProperty);
+          requestAnimationFrame(sample);
         };
+        requestAnimationFrame(sample);
       });
-    expect(styles).toEqual({ layer: "opacity", blurred: 0, moved: 0, animated: 0 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await settlesOn(page, titles.at(-1)!);
+    await expect(section(page).locator("[data-caption] > *")).toHaveCount(1);
+    await nextFrame(page);
+    const seen = await page.evaluate(() => {
+      const { layers, moved, fades } = (window as unknown as { crossfade: { layers: number; moved: number; fades: Set<string> } })
+        .crossfade;
+      return { layers, moved, fades: [...fades] };
+    });
+    // Both captions were on screen at once, crossfading, and nothing was ever blurred or moved.
+    expect(seen.layers).toBe(2);
+    expect(seen.moved).toBe(0);
+    expect(seen.fades).toContain("opacity");
+    const words = await shownCaption(page)
+      .locator("span")
+      .evaluateAll((spans) =>
+        spans.filter((el) => {
+          const style = getComputedStyle(el);
+          return style.filter !== "none" || style.transform !== "none" || style.transitionDuration !== "0s";
+        }).length,
+      );
+    expect(words).toBe(0);
   });
 
   for (const width of [1440, 390]) {

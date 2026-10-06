@@ -66,7 +66,7 @@ export function Walkthrough() {
               </div>
             </div>
             <div ref={caption} className={s.caption}>
-              <Caption steps={structure.steps} step={step} />
+              <Caption steps={structure.steps} step={step} previous={previous} />
               <div className="sr-only" aria-live="polite">
                 <b>{shown.title}</b> <p>{shown.caption}</p>
               </div>

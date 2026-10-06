@@ -9,15 +9,6 @@ type Step = { readonly title: string; readonly caption: string };
 /** One caption on screen: arriving (`from`, then `in` once its words have their delays) or leaving (`out`). */
 type Layer = { id: number; step: number; phase: "from" | "in" | "out"; direction: 1 | -1 };
 
-/** The longest transition on `element`, delay included, in ms. */
-function transitionMs(element: Element): number {
-  const style = getComputedStyle(element);
-  const ms = (list: string) => list.split(",").map((t) => parseFloat(t) * (t.trim().endsWith("ms") ? 1 : 1000) || 0);
-  const durations = ms(style.transitionDuration);
-  const delays = ms(style.transitionDelay);
-  return Math.max(0, ...durations.map((d, i) => d + (delays[i % delays.length] ?? 0)));
-}
-
 /**
  * The step's title and caption, drawn for the eye only (the walkthrough reads
  * them out once, from a live copy beside this). On a step change the old
@@ -26,36 +17,40 @@ function transitionMs(element: Element): number {
  * (right to left going back), on the board's own duration and curve.
  *
  * Interrupted, whatever is still leaving goes at once and the caption that
- * was arriving leaves from wherever it had got to, as transitions turn from
- * their current value, so there are never more than two, and once the old
+ * was arriving leaves from wherever it had got to (its words carry on under
+ * the layer's own exit), so there are never more than two, and once the old
  * one's exit has run there is one, at rest.
+ *
+ * `previous` is the step the walkthrough came from, which says which way it
+ * went; the walkthrough moves one change at a time, so it is always the step
+ * the caption last showed.
  */
-export function Caption({ steps, step }: { steps: readonly Step[]; step: number }) {
+export function Caption({ steps, step, previous }: { steps: readonly Step[]; step: number; previous: number }) {
   const root = useRef<HTMLDivElement>(null);
-  const shown = useRef(step);
   const nextId = useRef(1);
   const [layers, setLayers] = useState<Layer[]>(() => [{ id: 0, step, phase: "in", direction: 1 }]);
 
   useLayoutEffect(() => {
-    if (step === shown.current) return;
-    const direction: 1 | -1 = step > shown.current ? 1 : -1;
-    shown.current = step;
+    const direction: 1 | -1 = step < previous ? -1 : 1;
     const id = nextId.current++;
     setLayers((was) => {
       const current = was.findLast((layer) => layer.phase !== "out");
+      // Only a new step starts a change (not the first run, nor `previous` alone changing).
+      if (current?.step === step) return was;
       return [
         ...(current ? [{ ...current, phase: "out" as const, direction }] : []),
         { id, step, phase: "from", direction },
       ];
     });
-  }, [step]);
+  }, [step, previous]);
 
   // The new caption is laid out at its starting pose: its lines are read, which also fixes
   // that pose for the browser, each word gets its delay, and then it is let go.
   useLayoutEffect(() => {
     const arriving = layers.find((layer) => layer.phase === "from");
-    const element = root.current?.querySelector<HTMLElement>(`[data-id="${arriving?.id}"]`);
-    if (!arriving || !element) return;
+    if (!arriving) return;
+    const element = root.current?.querySelector<HTMLElement>(`[data-id="${arriving.id}"]`);
+    if (!element) return;
     const words = [...element.querySelectorAll<HTMLElement>(`p > .${s.piece}`)];
     const lines: HTMLElement[][] = [];
     for (const word of words) {
@@ -71,15 +66,25 @@ export function Caption({ steps, step }: { steps: readonly Step[]; step: number 
     setLayers((was) => was.map((layer) => (layer.id === arriving.id ? { ...layer, phase: "in" } : layer)));
   }, [layers]);
 
-  // The old caption goes once its exit has run.
+  // The old caption goes once its exit, and any word still arriving under it, has run; at
+  // once if nothing is running (transitions off, or a duration of nothing).
   const leaving = layers.find((layer) => layer.phase === "out")?.id;
   useEffect(() => {
-    const element = root.current?.querySelector(`[data-id="${leaving}"]`);
-    if (leaving === undefined || !element) return;
-    const piece = element.querySelector(`.${s.piece}`);
-    const ms = Math.max(transitionMs(element), piece ? transitionMs(piece) : 0);
-    const timer = setTimeout(() => setLayers((was) => was.filter((layer) => layer.id !== leaving)), ms);
-    return () => clearTimeout(timer);
+    if (leaving === undefined) return;
+    const element = root.current?.querySelector<HTMLElement>(`[data-id="${leaving}"]`);
+    if (!element) return;
+    let live = true;
+    const remove = () => {
+      if (live) setLayers((was) => was.filter((layer) => layer.id !== leaving));
+    };
+    void getComputedStyle(element).opacity; // the exit's transitions start with the style it now has
+    const running = element.getAnimations({ subtree: true });
+    const timer = running.length ? 0 : window.setTimeout(remove);
+    if (running.length) void Promise.allSettled(running.map((animation) => animation.finished)).then(remove);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
   }, [leaving]);
 
   return (

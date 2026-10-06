@@ -1051,10 +1051,11 @@
  * A step change: the old caption leaves as the new one arrives in the same
  * box. Each word rises out of a blur on the board's own duration and curve
  * (--duration-t-3, --ease-out), so the two move as one, with the delay
- * Caption.tsx gives it; the old caption goes all at once in two thirds of
- * that. --cap-dir is 1 going forward and -1 going back, when the words come
- * down instead. The leaving caption is laid over the new one, out of the flow,
- * so the block is always the new caption's height.
+ * Caption.tsx gives it. The old caption goes whole, as one layer, in
+ * --duration-caption-out; a word still arriving carries on under it.
+ * --cap-dir is 1 going forward and -1 going back, when the words come down
+ * instead. The leaving caption is laid over the new one, out of the flow, so
+ * the block is always the new caption's height.
  */
 .cap {
   position: relative;
@@ -1077,19 +1078,19 @@
     transform: translateY(calc(var(--spacing-caption-rise) * var(--cap-dir, 1)));
   }
 
-  .capLayer[data-phase="in"] .piece {
+  .capLayer:is([data-phase="in"], [data-phase="out"]) .piece {
     transition-property: opacity, filter, transform;
     transition-duration: var(--duration-t-3);
     transition-timing-function: var(--ease-out);
     transition-delay: var(--cap-delay, 0ms);
   }
 
-  .capLayer[data-phase="out"] .piece {
+  .capLayer[data-phase="out"] {
     opacity: 0;
     filter: blur(var(--blur-caption));
     transform: translateY(calc(var(--spacing-caption-rise) * var(--cap-dir, 1) * -1));
     transition-property: opacity, filter, transform;
-    transition-duration: calc(var(--duration-t-3) * 2 / 3);
+    transition-duration: var(--duration-caption-out);
     transition-timing-function: var(--ease-out);
   }
 }
@@ -1189,7 +1190,7 @@
 
   /* Except the caption, which crossfades whole: no blur, movement or stagger. */
   .scroller .capLayer {
-    transition: opacity var(--duration-caption-fade) linear !important;
+    transition: opacity var(--duration-caption-fade) var(--ease-linear) !important;
   }
 
   .capLayer:is([data-phase="from"], [data-phase="out"]) {
