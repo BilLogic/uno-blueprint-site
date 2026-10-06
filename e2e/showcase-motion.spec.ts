@@ -3,13 +3,14 @@ import { canvas } from "@/content/canvas";
 import { touchPoints } from "@/content/touch-points";
 import { FRAME, flushRenders, installClock, keepRealFrames, realFrames, runUntil, stopClockASecondOn, tick } from "./clock";
 
-/** The motion's numbers, as styles/tokens.css has them. */
-const ENTRY_MS = 900; // --duration-stage-entry
+/**
+ * The motion's numbers, as styles/tokens.css has them. Mid-flight checks are
+ * at fixed times, not fractions of a duration, so a curve that reads as
+ * instant fails them however long it nominally lasts.
+ */
 const RECORDING_ENTRY_DELAY = 220; // --delay-recording-entry
 const RECORDING_ENTRY_MS = 640; // --duration-recording-entry
-const LEAVE_MS = 300; // --duration-recording-leave
 const ARRIVE_DELAY = 100; // --delay-recording-arrive
-const ARRIVE_MS = 560; // --duration-recording-arrive
 const GLIDE_MS = 560; // --duration-stage-glide
 const STAGGER = 30; // lib/caption.ts
 
@@ -173,20 +174,23 @@ for (const section of sections) {
     await flushRenders(page);
     await expect(stage).toHaveAttribute("data-entry", "in");
 
-    // A quarter of the way in, the frame is still on its way, and the recording has barely begun.
-    await seek(panelIn(sectionLocator), ENTRY_MS / 4);
+    // 150 ms in, the frame is still well on its way, and the recording has not yet begun: its own beat.
+    await seek(panelIn(sectionLocator), 150);
     const frame = await look(stage);
-    expect(frame.opacity).toBeLessThan(0.9);
-    expect(frame.down).toBeGreaterThan(10);
+    expect(frame.opacity).toBeLessThan(0.85);
+    expect(frame.down).toBeGreaterThan(12);
     expect(frame.blur).toBeGreaterThan(3);
-    expect(frame.scale).toBeLessThan(1);
+    expect(frame.scale).toBeLessThan(0.98);
+    expect((await look(current(stage))).opacity).toBe(0);
+    // 300 ms in, the frame has nearly arrived, and the recording is only starting to rise.
+    await seek(panelIn(sectionLocator), 300);
     const inner = await look(current(stage));
     expect(inner.opacity).toBeLessThan(0.5);
     expect(inner.down).toBeGreaterThan(10);
     expect(inner.blur).toBeGreaterThan(3);
-    // The recording's own beat: held back until the frame is under way.
-    await seek(panelIn(sectionLocator), RECORDING_ENTRY_DELAY / 2);
-    expect((await look(current(stage))).opacity).toBe(0);
+    // 500 ms in, the recording is still on its way.
+    await seek(panelIn(sectionLocator), 500);
+    expect((await look(current(stage))).opacity).toBeLessThan(0.95);
 
     // The caption arrives word by word, with the recording.
     expectWordByWord(await captionWords(sectionLocator), section.tabs[0], RECORDING_ENTRY_DELAY);
@@ -294,8 +298,8 @@ test("a tab change: the old recording sinks away, the new one rises in after it,
   await seek(panelIn(section), ARRIVE_DELAY / 2);
   expect((await look(current(stage))).opacity).toBe(0);
 
-  // Halfway through the old one's exit: it is sinking, shrinking and blurring; the new one has only begun.
-  await seek(panelIn(section), LEAVE_MS / 2);
+  // 150 ms in: the old one is sinking, shrinking and blurring; the new one has only begun.
+  await seek(panelIn(section), 150);
   const going = await look(out);
   expect(going.opacity).toBeLessThan(1);
   expect(going.opacity).toBeGreaterThan(0);
@@ -308,12 +312,12 @@ test("a tab change: the old recording sinks away, the new one rises in after it,
   expect(coming.blur).toBeGreaterThan(3);
   expect(coming.scale).toBeLessThan(1);
 
-  // A quarter of the way into the new one's rise, after the old one has gone, it is still on its way.
-  await seek(panelIn(section), ARRIVE_DELAY + ARRIVE_MS / 4);
+  // 250 ms in, the new one is still rising out of its blur.
+  await seek(panelIn(section), 250);
   const rising = await look(current(stage));
-  expect(rising.opacity).toBeLessThan(0.95);
-  expect(rising.down).toBeGreaterThan(3);
-  expect(rising.blur).toBeGreaterThan(1);
+  expect(rising.opacity).toBeLessThan(0.9);
+  expect(rising.down).toBeGreaterThan(5);
+  expect(rising.blur).toBeGreaterThan(2);
 
   // The caption: the old one leaves whole as the new one's words arrive one by one.
   await expect(panelIn(section).locator('[data-caption] > [data-phase="out"]')).toContainText(first.caption.split(" ")[0]!);
