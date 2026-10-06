@@ -2,6 +2,9 @@ name: CI
 
 on:
   pull_request:
+    # A pull request that only changes Markdown builds and tests nothing.
+    paths-ignore:
+      - "**.md"
   push:
     branches: [main]
 
