@@ -28,6 +28,10 @@
  * Walkthrough stage edges, v7.6 (the prototype writes these inline, so the names are new):
  *   .sx clip-path foot       --spacing-stage-foot
  *   .sx .hv-dots mask        --spacing-dots-fade-in, --spacing-dots-fade-out
+ *
+ * Get started tab panels (new; a quiet take on the caption's rise out of a blur):
+ *   a tab's new panel        --spacing-panel-swap-rise, --blur-panel-swap, --duration-panel-swap,
+ *                            --ease-panel-swap, --animate-panel-swap (keyframes panel-swap)
  */
 
 @theme static {
@@ -470,6 +474,25 @@
   --duration-t-grow: 450ms; /* a proof bar growing, on a wide screen */
   --blur-case: 7px;
   --blur-caption: 4px; /* a caption word sharpens out of this as it arrives, and its caption blurs to it as it leaves */
+
+  /*
+   * Get started: a tab's new panel rises out of a slight blur, a quiet take on
+   * the walkthrough caption's arrival, and the panel it replaces goes at once.
+   * Nothing is left blurred at rest, so the code stays sharp to read and copy.
+   */
+  --spacing-panel-swap-rise: 8px;
+  --blur-panel-swap: 3px;
+  --duration-panel-swap: 350ms;
+  /* Gentler out of the start than --ease-out, so the arrival reads as motion rather than a cut. */
+  --ease-panel-swap: cubic-bezier(0.33, 0, 0.2, 1);
+  --animate-panel-swap: panel-swap var(--duration-panel-swap) var(--ease-panel-swap) backwards;
+  @keyframes panel-swap {
+    from {
+      opacity: 0;
+      filter: blur(var(--blur-panel-swap));
+      transform: translateY(var(--spacing-panel-swap-rise));
+    }
+  }
 
   --animate-menu-in: menu-in var(--duration-t-1) var(--ease-out);
   @keyframes menu-in {

@@ -35,6 +35,19 @@
     outline: none;
   }
 
+  /*
+   * A tab's panel that has replaced another arrives with the swap's motion
+   * (hooks/use-tabs.ts marks it, and clears the mark once it has played). A
+   * rule here rather than a motion-safe:animate-panel-swap class: the hook's
+   * panelProps cannot carry a class, since each panel's own className would
+   * replace it.
+   */
+  @media (prefers-reduced-motion: no-preference) {
+    [role="tabpanel"][data-tab-swap] {
+      animation: var(--animate-panel-swap);
+    }
+  }
+
   /* The agent view replaces the human page while it is chosen. */
   [data-view="agent"] #human,
   :root:not([data-view="agent"]) #agent {
