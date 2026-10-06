@@ -61,6 +61,12 @@ Visual baselines in `e2e/__snapshots__/` are Linux renders. On macOS `npm run e2
 
 Netlify builds the site from this repository: a merge to `main` deploys production, and every pull request gets a deploy preview. `netlify.toml` holds the build, Node 22, the security headers, the immutable cache for `/_next/static/`, and the rewrite that serves `/demo/` from the demo site. `npm run build` writes the content security policy into `out/_headers` (`scripts/write-csp.mjs`), and `scripts/serve.mjs` applies it, so the end-to-end tests run under the production policy.
 
+### Keeping our own visits out of Clarity
+
+Only the production site loads Microsoft Clarity, and never in a browser a script drives (`navigator.webdriver`). To keep your own visits out of the recordings and the numbers, open https://uno-blueprint.netlify.app/?clarity=off once. That marks the browser in its localStorage, and Clarity never loads there again; https://uno-blueprint.netlify.app/?clarity=on undoes it. The page takes the parameter out of the address as it reads it, so a link copied afterwards never carries it.
+
+The mark belongs to one browser on one device, so do it once in each: every phone and laptop, every browser on them, and each in-app browser (Instagram, LinkedIn, Slack) you open the site from. Clearing site data or a private window forgets it.
+
 ## Upgrading
 
 Change each version in all three places at once.
