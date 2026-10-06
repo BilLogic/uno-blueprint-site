@@ -442,7 +442,7 @@
   --blur-case: 7px;
   --blur-caption: 4px; /* a caption word sharpens out of this as it arrives, and its caption blurs to it as it leaves */
   /* A copy button's icon and its tick trade places: the one leaving blurs, fades and shrinks to these as the other sharpens out of them. */
-  --duration-copy-swap: 200ms;
+  --duration-t-copy-swap: 200ms;
   --ease-copy-swap: cubic-bezier(0.33, 0, 0.2, 1); /* gentler than --ease-out, which is nine tenths done in a third of the time and reads as a snap */
   --blur-copy-swap: 4px;
   --scale-copy-swap: 0.8;

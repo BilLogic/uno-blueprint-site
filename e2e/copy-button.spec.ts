@@ -102,11 +102,15 @@ test("the copy icon blurs into the tick, and the tick back into the copy icon wh
   await flushRenders(page);
   await expect(box.getByRole("status")).toHaveText("");
   expect(await holdAt(button, 60)).toBeGreaterThan(0);
-  const back = await look(copyIcon);
-  expect(back.opacity).toBeGreaterThan(0.25);
-  expect(back.opacity).toBeLessThan(0.75);
-  expect(back.blur).toBeGreaterThan(1);
-  expect(back.blur).toBeLessThan(3);
+  for (const icon of [copyIcon, tick]) {
+    const { opacity, blur, scale } = await look(icon);
+    expect(opacity).toBeGreaterThan(0.25);
+    expect(opacity).toBeLessThan(0.75);
+    expect(blur).toBeGreaterThan(1);
+    expect(blur).toBeLessThan(3);
+    expect(scale).toBeGreaterThan(0.85);
+    expect(scale).toBeLessThan(0.95);
+  }
   await finish(button);
   expect(await look(copyIcon)).toEqual(shown);
   expect(await look(tick)).toEqual(hidden);

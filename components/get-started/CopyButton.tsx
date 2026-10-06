@@ -21,10 +21,10 @@ type CopyButtonProps = {
  * and shrunk, so the copy icon and the tick trade places through a blur, each
  * way. With reduced motion they swap at once.
  */
-const icon =
-  "col-start-1 row-start-1 transition-[opacity,filter,scale] duration-(--duration-copy-swap) ease-copy-swap motion-reduce:transition-none";
-const showing = "opacity-100 [filter:blur(0)] [scale:1]";
-const hidden = "opacity-0 [filter:blur(var(--blur-copy-swap))] [scale:var(--scale-copy-swap)]";
+const iconSlot =
+  "col-start-1 row-start-1 transition-[opacity,filter,scale] duration-t-copy-swap ease-copy-swap motion-reduce:transition-none";
+const iconShown = "opacity-100 blur-none scale-100";
+const iconTucked = "opacity-0 blur-copy-swap scale-(--scale-copy-swap)";
 
 /** Copies `text` and shows a tick for a moment; the tick is announced as well as shown. */
 export function CopyButton({ text, tone, className }: CopyButtonProps) {
@@ -37,8 +37,8 @@ export function CopyButton({ text, tone, className }: CopyButtonProps) {
         onClick={() => copy(text)}
         className={`absolute grid size-7.5 cursor-pointer place-items-center rounded-8 border [&_svg]:size-3.75 ${tones[tone]} ${className}`}
       >
-        <Copy aria-hidden strokeWidth={1.75} className={`${icon} ${copied ? hidden : showing}`} />
-        <Check aria-hidden strokeWidth={1.75} className={`${icon} ${copied ? showing : hidden}`} />
+        <Copy aria-hidden strokeWidth={1.75} className={`${iconSlot} ${copied ? iconTucked : iconShown}`} />
+        <Check aria-hidden strokeWidth={1.75} className={`${iconSlot} ${copied ? iconShown : iconTucked}`} />
       </button>
       <span role="status" className="sr-only">
         {copied ? getStarted.copy.done : ""}
