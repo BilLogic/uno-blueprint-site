@@ -417,10 +417,13 @@ const steadyBoard = (page: Page) =>
       STEADY_MS,
     );
 
+/** The caption on screen, drawn for the eye (the live copy beside it is read out). */
+const shownCaption = (page: Page) => section(page).locator('[data-caption] [data-phase="in"]');
+
 /** How many lines the caption's text runs to. */
 const captionLines = (page: Page) =>
-  section(page)
-    .locator("[aria-live] p")
+  shownCaption(page)
+    .locator("p")
     .evaluate((p) => Math.round(p.getBoundingClientRect().height / parseFloat(getComputedStyle(p).lineHeight)));
 
 test.describe("structure walkthrough", () => {
@@ -636,6 +639,79 @@ test.describe("structure walkthrough", () => {
     expect(box!.height).toBeLessThan(2 * 900);
   });
 
+  test("once a step change settles, one caption shows, at rest, matching what is read out", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    await scrollToStep(section(page), titles.indexOf("Blueprint"));
+    await settlesOn(page, "Blueprint");
+    // Three steps on at once, then two back: each change interrupts the one before.
+    await scrollToStep(section(page), titles.indexOf("Frontstage"));
+    await settlesOn(page, "Frontstage");
+    await scrollToStep(section(page), titles.indexOf("User"));
+    await settlesOn(page, "User");
+    await expect(section(page).locator("[data-caption] > *")).toHaveCount(1);
+    const user = structure.steps[titles.indexOf("User")]!;
+    await expect(shownCaption(page)).toHaveText(`${user.title}${user.caption}`);
+    const leftOver = await shownCaption(page).evaluate(async (layer) => {
+      await Promise.all(layer.getAnimations({ subtree: true }).map((a) => a.finished));
+      return [layer, ...layer.querySelectorAll("*")]
+        .map((el) => getComputedStyle(el))
+        .filter((style) => style.opacity !== "1" || style.filter !== "none" || style.transform !== "none").length;
+    });
+    expect(leftOver).toBe(0);
+  });
+
+  test("with reduced motion the caption changes by a crossfade, with no blur, movement or stagger", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    await scrollToStep(section(page), titles.indexOf("User"));
+    await settlesOn(page, "User");
+    // Asking for less motion now moves the walkthrough to its last step: a step change under reduced motion.
+    // Watched from the moment reduced motion applies, once the User caption has come to rest.
+    await section(page)
+      .locator("[data-caption]")
+      .evaluate(async (cap) => {
+        await Promise.allSettled(cap.getAnimations({ subtree: true }).map((a) => a.finished));
+        const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+        const w = window as unknown as { crossfade: { layers: number; moved: number; fades: Set<string> } };
+        w.crossfade = { layers: 0, moved: 0, fades: new Set() };
+        const sample = () => {
+          requestAnimationFrame(sample);
+          if (!reduced.matches) return;
+          const layers = [...cap.children];
+          w.crossfade.layers = Math.max(w.crossfade.layers, layers.length);
+          for (const el of [...layers, ...cap.querySelectorAll("span")]) {
+            const style = getComputedStyle(el);
+            if (style.filter !== "none" || style.transform !== "none") w.crossfade.moved++;
+          }
+          for (const layer of layers) w.crossfade.fades.add(getComputedStyle(layer).transitionProperty);
+        };
+        requestAnimationFrame(sample);
+      });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await settlesOn(page, titles.at(-1)!);
+    await expect(section(page).locator("[data-caption] > *")).toHaveCount(1);
+    await nextFrame(page);
+    const seen = await page.evaluate(() => {
+      const { layers, moved, fades } = (window as unknown as { crossfade: { layers: number; moved: number; fades: Set<string> } })
+        .crossfade;
+      return { layers, moved, fades: [...fades] };
+    });
+    // Both captions were on screen at once, crossfading, and nothing was ever blurred or moved.
+    expect(seen.layers).toBe(2);
+    expect(seen.moved).toBe(0);
+    expect(seen.fades).toContain("opacity");
+    const words = await shownCaption(page)
+      .locator("span")
+      .evaluateAll((spans) =>
+        spans.filter((el) => {
+          const style = getComputedStyle(el);
+          return style.filter !== "none" || style.transform !== "none" || style.transitionDuration !== "0s";
+        }).length,
+      );
+    expect(words).toBe(0);
+  });
+
   for (const width of [1440, 390]) {
     test(`at ${width} px the flat board sits as far below the frame's top as above the caption`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
@@ -648,7 +724,7 @@ test.describe("structure walkthrough", () => {
       const gaps = await section(page).evaluate((el) => {
         const boards = [...el.querySelectorAll("[data-board], [data-ghost]")].map((b) => b.getBoundingClientRect());
         const stage = el.querySelector("[data-board]")!.closest("[aria-hidden]")!.getBoundingClientRect();
-        const captionText = el.querySelector("[aria-live] b")!.getBoundingClientRect();
+        const captionText = el.querySelector('[data-caption] [data-phase="in"] b')!.getBoundingClientRect();
         const top = Math.min(...boards.map((b) => b.top));
         const bottom = Math.max(...boards.map((b) => b.bottom));
         return { above: top - stage.top, below: captionText.top - bottom };

@@ -29,6 +29,8 @@ for (const width of widths) {
           .filter({ has: page.getByRole("heading", { level: 2, name: heading }) });
         await section.scrollIntoViewIfNeeded();
         await expect(section.locator("[aria-live] b")).toHaveText(structure.steps.at(-1)!.title);
+        // The caption has finished crossfading from the opening step's.
+        await expect(section.locator("[data-caption] > *")).toHaveCount(1);
         // The section is taller than the viewport, so the sticky nav would land on it mid-capture.
         await page.addStyleTag({ content: "header { visibility: hidden; }" });
         await showOnly(section);
