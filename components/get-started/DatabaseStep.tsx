@@ -10,13 +10,13 @@ const { database } = getStarted;
 
 /** A prompt per database host, for the reader to hand to their coding agent. */
 export function DatabaseStep() {
-  const { tab, tabListProps, panelProps } = useTabs("database", database.tabs);
+  const { tab, panelKey, tabListProps, panelProps } = useTabs("database", database.tabs);
   return (
     <div className="grid min-w-0 gap-3.5">
       <StepLabel>{database.label}</StepLabel>
       <StepSub>{database.sub}</StepSub>
       <TabList {...tabListProps} label={database.tabsLabel} className={tabListClassName} tabClassName={tabClassName} />
-      <PromptBox {...panelProps} prompt={tab.prompt} />
+      <PromptBox key={panelKey} {...panelProps} prompt={tab.prompt} />
     </div>
   );
 }

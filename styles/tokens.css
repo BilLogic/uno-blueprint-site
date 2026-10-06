@@ -29,6 +29,10 @@
  *   .sx clip-path foot       --spacing-stage-foot
  *   .sx .hv-dots mask        --spacing-dots-fade-in, --spacing-dots-fade-out
  *
+ * Get started tab panels (new; a quiet take on the caption's rise out of a blur):
+ *   a tab's new panel        --spacing-panel-swap-rise, --blur-panel-swap, --duration-panel-swap,
+ *                            --ease-panel-swap, --animate-panel-swap (keyframes panel-swap)
+ *
  * Switching between the human and agent views (not in the prototype, so the names are new):
  *   the view leaving         --duration-view-leave, --ease-view-leave, --spacing-view-sink, --blur-view-leave
  *   the view arriving        --duration-view-arrive, --ease-view-arrive, --spacing-view-rise, --blur-view-arrive
@@ -308,6 +312,35 @@
   --aspect-stage-window-phone: 3 / 2; /* a window's stage on a phone, snug round it */
   --aspect-stage-tall: 4 / 5; /* the phone recording's stage on a phone, tall enough for its screen to read */
   --spacing-phone-inset: clamp(16px, 3.5vw, 44px); /* the dots round the phone, at least */
+  /*
+   * Its motion. The entry is two beats: the first time the stage comes into
+   * view its frame rises out of a blur, then the layer inside (a recording,
+   * or the harness showcase's picture) rises in just after it, as the
+   * caption's words arrive with it. On a tab change the old layer sinks and
+   * blurs away while the new one rises out of a blur, and on a phone the stage
+   * glides to the new tab's height. The caption changes word by word
+   * (--duration-t-3, --spacing-caption-rise, --blur-caption). Things arriving
+   * ease out, the layer leaving eases in.
+   */
+  --ease-layer-leave: cubic-bezier(0.55, 0, 0.75, 0.2); /* the old layer sinks away, slow to start */
+  --duration-stage-entry: 900ms; /* the stage's frame rises into place */
+  --spacing-stage-rise: 48px; /* from this far below */
+  --blur-stage-entry: 16px; /* out of this blur */
+  --scale-stage-entry: 0.94; /* from this size */
+  --delay-layer-entry: 220ms; /* the layer follows the frame in, this long after it */
+  --duration-layer-entry: 640ms;
+  --spacing-layer-entry-rise: 24px;
+  --blur-layer-entry: 12px;
+  --duration-layer-leave: 300ms; /* on a tab change, the old layer sinks away */
+  --spacing-layer-sink: 20px;
+  --blur-layer-leave: 14px;
+  --scale-layer-leave: 0.97;
+  --delay-layer-arrive: 100ms; /* the new one starts rising this long after */
+  --duration-layer-arrive: 560ms;
+  --spacing-layer-rise: 28px;
+  --blur-layer-arrive: 14px;
+  --scale-layer-arrive: 0.97;
+  --duration-stage-glide: 560ms; /* on a phone, the stage to the new tab's height, easing out */
   /* The dots above a window and beside it, at least, the same both ways; it meets the stage's foot, so it reads large. */
   --spacing-window-margin: clamp(12px, 2vw, 28px);
   --aspect-window: 1620 / 1004; /* a desktop recording's own shape: the app window, edge to edge */
@@ -463,6 +496,30 @@
   --duration-t-grow: 450ms; /* a proof bar growing, on a wide screen */
   --blur-case: 7px;
   --blur-caption: 4px; /* a caption word sharpens out of this as it arrives, and its caption blurs to it as it leaves */
+  /* A copy button's icon and its tick trade places: the one leaving blurs, fades and shrinks to these as the other sharpens out of them. */
+  --duration-t-copy-swap: 200ms;
+  --ease-copy-swap: cubic-bezier(0.33, 0, 0.2, 1); /* gentler than --ease-out, which is nine tenths done in a third of the time and reads as a snap */
+  --blur-copy-swap: 4px;
+  --scale-copy-swap: 0.8;
+
+  /*
+   * Get started: a tab's new panel rises out of a slight blur, a quiet take on
+   * the walkthrough caption's arrival, and the panel it replaces goes at once.
+   * Nothing is left blurred at rest, so the code stays sharp to read and copy.
+   */
+  --spacing-panel-swap-rise: 8px;
+  --blur-panel-swap: 3px;
+  --duration-panel-swap: 350ms;
+  /* Gentler out of the start than --ease-out, so the arrival reads as motion rather than a cut. */
+  --ease-panel-swap: cubic-bezier(0.33, 0, 0.2, 1);
+  --animate-panel-swap: panel-swap var(--duration-panel-swap) var(--ease-panel-swap) backwards;
+  @keyframes panel-swap {
+    from {
+      opacity: 0;
+      filter: blur(var(--blur-panel-swap));
+      transform: translateY(var(--spacing-panel-swap-rise));
+    }
+  }
 
   --animate-menu-in: menu-in var(--duration-t-1) var(--ease-out);
   @keyframes menu-in {

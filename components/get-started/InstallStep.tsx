@@ -11,7 +11,7 @@ import { StepLabel, tabClassName, tabListClassName } from "./step-parts";
 const { install } = getStarted;
 
 export function InstallStep() {
-  const { tab, tabListProps, panelProps } = useTabs("install", install.tabs);
+  const { tab, panelKey, tabListProps, panelProps } = useTabs("install", install.tabs);
   return (
     <div className="grid min-w-0 gap-3.5">
       <div className="flex items-center justify-between">
@@ -30,7 +30,7 @@ export function InstallStep() {
         className={tabListClassName}
         tabClassName={tabClassName}
       />
-      <CodeBlock {...panelProps} code={tab.code} className="min-h-install" />
+      <CodeBlock key={panelKey} {...panelProps} code={tab.code} className="min-h-install" />
     </div>
   );
 }

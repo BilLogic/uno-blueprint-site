@@ -11,7 +11,7 @@ import { StepLabel, StepSub, tabClassName, tabListClassName } from "./step-parts
 const { skills } = getStarted;
 
 export function SkillsStep() {
-  const { tab, tabListProps, panelProps } = useTabs("skills", skills.tabs);
+  const { tab, panelKey, tabListProps, panelProps } = useTabs("skills", skills.tabs);
   return (
     <div className="grid min-w-0 gap-3.5">
       <StepLabel>{skills.label}</StepLabel>
@@ -23,7 +23,7 @@ export function SkillsStep() {
         tabClassName={tabClassName}
       />
       {/* The commands, the note and the way each skill is called all change with the agent. */}
-      <div {...panelProps} className="grid min-w-0 gap-3.5">
+      <div key={panelKey} {...panelProps} className="grid min-w-0 gap-3.5">
         <CodeBlock code={tab.code} />
         <p className="mt-2.5 mb-3.5 text-14 text-muted">{tab.note}</p>
         <ul className="grid gap-0.5 rounded-12 bg-term p-1.5 text-term-ink shadow-term">
