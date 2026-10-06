@@ -4,6 +4,7 @@ import { structure } from "@/content/structure";
 import { usePointerLight } from "@/hooks/use-pointer-light";
 import { useWalkthrough } from "@/hooks/use-walkthrough";
 import { sceneAt, stepEdges } from "@/lib/walkthrough";
+import { Caption } from "./Caption";
 import { StructureScene } from "./StructureScene";
 import s from "./Walkthrough.module.css";
 
@@ -62,9 +63,11 @@ export function Walkthrough() {
                 <StructureScene scene={scene} />
               </div>
             </div>
-            <div ref={caption} className={s.caption} aria-live="polite">
-              <b key={`title-${step}`}>{shown.title}</b>
-              <p key={`caption-${step}`}>{shown.caption}</p>
+            <div ref={caption} className={s.caption}>
+              <Caption steps={structure.steps} step={step} previous={previous} />
+              <div className="sr-only" aria-live="polite">
+                <b>{shown.title}</b> <p>{shown.caption}</p>
+              </div>
             </div>
           </div>
         </div>
