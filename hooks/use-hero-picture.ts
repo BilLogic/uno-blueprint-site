@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, 
 import { useInView } from "./use-in-view";
 import { BELOW_MD_QUERY, REDUCED_MOTION_QUERY } from "./use-media-query";
 import { cssMs } from "@/lib/css-time";
+import { widthChange } from "@/lib/viewport-resize";
 import { hero } from "@/content/hero";
 import {
   BEAM_EASING,
@@ -456,7 +457,10 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
   let live = true;
   let resizing: number | undefined;
   let resolo: number | undefined;
+  // The board is laid out by the page's width; a phone's toolbar hiding changes only the height.
+  const widthChanged = widthChange(innerWidth);
   const onResize = () => {
+    if (!widthChanged(innerWidth)) return;
     clearTimeout(resizing);
     clearTimeout(resolo);
     resizing = later(layout, TIMING.relayout);

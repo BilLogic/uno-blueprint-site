@@ -84,10 +84,9 @@ for (const row of rows) {
 }
 
 /**
- * Opens each tab of one showcase in turn and expects its stage to be the same
- * size as every other tab's, so a tab's picture never shifts the page; the two
- * showcases may differ. Clicking may scroll the tab into view, so only the
- * stage's size is compared. Returns that size.
+ * Opens each of the given tabs in turn and expects its stage to be the same
+ * size as every other's; the two showcases may differ. Clicking may scroll the
+ * tab into view, so only the stage's size is compared. Returns that size.
  */
 async function expectOneStageSize(page: Page, list: Locator, tabs: readonly { label: string }[]) {
   const sizes = [];
@@ -153,9 +152,12 @@ async function expectFlushWindow(stage: Locator) {
 }
 
 const phone = touchPoints.tabs.find((tab) => tab.value === "phone")!;
+const desktopTabs = touchPoints.tabs.filter((tab) => tab !== phone);
 
 for (const width of [1440, 390]) {
-  test(`at ${width} px the touch points end on the phone, every tab's stage is one size, and the phone stands centred in it`, async ({
+  const shapes =
+    width === 390 ? "the desktop tabs share a snug stage and the phone's stands taller" : "every tab's stage is one size";
+  test(`at ${width} px the touch points end on the phone, ${shapes}, and the phone stands centred in it`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
@@ -163,10 +165,8 @@ for (const width of [1440, 390]) {
     const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
     await expect(list.getByRole("tab")).toHaveCount(touchPoints.tabs.length);
     await expect(list.getByRole("tab").last()).toHaveText(phone.label);
-    const size = await expectOneStageSize(page, list, touchPoints.tabs);
-    // On a phone the stage stands taller than wide, so the phone's screen reads.
-    if (width === 390) expect(size.height / size.width).toBeCloseTo(5 / 4, 1);
-    for (const tab of touchPoints.tabs.filter((candidate) => candidate !== phone)) {
+    const size = await expectOneStageSize(page, list, desktopTabs);
+    for (const tab of desktopTabs) {
       await list.getByRole("tab", { name: tab.label }).click();
       await expectFlushWindow(page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage"));
     }
@@ -175,16 +175,106 @@ for (const width of [1440, 390]) {
     const panel = page.getByRole("tabpanel", { name: phone.label });
     await expect(panel.getByText(phone.caption)).toBeVisible();
     const stage = panel.getByTestId("showcase-stage");
+    const stageBox = (await stage.boundingBox())!;
+    if (width === 390) {
+      // On a phone a window gets the canvas's 3:2, snug round it, and the phone's
+      // stage stands taller than wide, so its screen reads.
+      expect(size.width / size.height).toBeCloseTo(3 / 2, 1);
+      expect(stageBox.height / stageBox.width).toBeCloseTo(5 / 4, 1);
+      expect(stageBox.width).toBeCloseTo(size.width, 0);
+      expect(stageBox.height).toBeGreaterThan(size.height);
+    } else {
+      expect([stageBox.width, stageBox.height]).toEqual([size.width, size.height]);
+    }
     const margin = await margins(stage, panel.getByTestId("phone"));
     // Whole, with dots above and below it, and centred both ways.
     expect(margin.top).toBeGreaterThanOrEqual(15);
     expect(margin.bottom).toBeGreaterThanOrEqual(15);
     expect(Math.abs(margin.top - margin.bottom)).toBeLessThan(1);
     expect(Math.abs(margin.left - margin.right)).toBeLessThan(1);
-    const [stageBox, phoneBox] = [(await stage.boundingBox())!, (await panel.getByTestId("phone").boundingBox())!];
+    const phoneBox = (await panel.getByTestId("phone").boundingBox())!;
     expect(phoneBox.height).toBeGreaterThan(stageBox.height * 0.75);
   });
 }
+
+/**
+ * Stands in for playback with a clock, which the test browser cannot decode:
+ * a video told to play announces it and its time runs on from then, so the
+ * phone's zoom follows it as it would a real recording.
+ */
+async function stubPlaybackClock(page: Page) {
+  await page.addInitScript(() => {
+    const started = new WeakMap<HTMLMediaElement, number>();
+    HTMLMediaElement.prototype.play = function () {
+      if (!started.has(this)) {
+        started.set(this, performance.now());
+        this.dispatchEvent(new Event("play"));
+      }
+      return Promise.resolve();
+    };
+    HTMLMediaElement.prototype.pause = function () {
+      if (started.delete(this)) this.dispatchEvent(new Event("pause"));
+    };
+    Object.defineProperty(HTMLMediaElement.prototype, "paused", {
+      get(this: HTMLMediaElement) {
+        return !started.has(this);
+      },
+    });
+    Object.defineProperty(HTMLMediaElement.prototype, "currentTime", {
+      get(this: HTMLMediaElement) {
+        const at = started.get(this);
+        return at === undefined ? 0 : (performance.now() - at) / 1000;
+      },
+      set() {},
+    });
+  });
+}
+
+/** The stage's height and the phone's transform, if there is a phone, every frame for `ms`. */
+const sampleStage = (stage: Locator, ms: number) =>
+  stage.evaluate(
+    (node, ms) =>
+      new Promise<{ heights: number[]; transforms: string[] }>((resolve) => {
+        const heights: number[] = [];
+        const transforms: string[] = [];
+        const end = performance.now() + ms;
+        const tick = () => {
+          heights.push(node.getBoundingClientRect().height);
+          const phone = node.querySelector<HTMLElement>('[data-testid="phone"]');
+          if (phone) transforms.push(phone.style.transform);
+          if (performance.now() < end) requestAnimationFrame(tick);
+          else resolve({ heights, transforms });
+        };
+        tick();
+      }),
+    ms,
+  );
+
+test("on a phone each touch-points stage keeps its size from before its poster loads through playback, the phone's zoom included", async ({
+  page,
+}) => {
+  await stubPlaybackClock(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
+  for (const tab of touchPoints.tabs) {
+    // Selected without scrolling, so the stage is measured far off screen, before its poster loads.
+    await list.getByRole("tab", { name: tab.label }).dispatchEvent("click");
+    const stage = page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage");
+    const video = stage.locator("video");
+    if (tab === touchPoints.tabs[0]) await expect(video).not.toHaveAttribute("poster", /./);
+    const before = (await stage.boundingBox())!.height;
+
+    await stage.scrollIntoViewIfNeeded();
+    await expect(video).toHaveAttribute("poster", /\.webp$/);
+    // The phone's first move in starts 1.2 s into its recording.
+    const { heights, transforms } = await sampleStage(stage, tab === phone ? 3000 : 1000);
+    expect(new Set(heights)).toEqual(new Set([before]));
+    if (tab === phone) {
+      expect(transforms.some((transform) => transform.includes("scale(1.6)"))).toBe(true);
+    }
+  }
+});
 
 for (const width of [1440, 390]) {
   test(`at ${width} px every canvas tab's stage is one size, and its recording is a window on the stage's foot`, async ({ page }) => {
