@@ -12,8 +12,8 @@ import { useStageGlide } from "@/hooks/use-stage-glide";
 import { useStageMotion } from "@/hooks/use-stage-motion";
 import { shouldPlay, wantsPlay, type ShowcaseTab } from "@/lib/recording";
 import { Recording, type RecordingHandle } from "./Recording";
-import s from "./Showcase.module.css";
-import { entryCaptionDelay } from "./stage-motion";
+import stageStyle from "@/components/ui/Stage.module.css";
+import { entryCaptionDelay } from "@/components/ui/stage-motion";
 
 export type ShowcaseItem<T extends string> = ShowcaseTab<T> & {
   icon: ReactNode;
@@ -148,7 +148,7 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
           ref={stageRef}
           data-testid="showcase-stage"
           data-entry={entry}
-          className={`${s.stage} group relative aspect-video max-w-full overflow-clip rounded-16 border border-line bg-card bg-dots ${item.phone ? "max-sm:aspect-stage-tall" : "max-sm:aspect-stage-window-phone"}`}
+          className={`${stageStyle.stage} group relative aspect-video max-w-full overflow-clip rounded-16 border border-line bg-card bg-dots ${item.phone ? "max-sm:aspect-stage-tall" : "max-sm:aspect-stage-window-phone"}`}
         >
           {leaving?.tab && (
             <Recording

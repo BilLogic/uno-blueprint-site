@@ -1,12 +1,12 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { harness, map } from "@/content/harness";
+import { harness } from "@/content/harness";
 import { HARNESS_HOLD } from "@/lib/harness-loop";
-import { mapSteps } from "@/lib/harness-map";
 import { FRAME, flushRenders, installClock, keepRealFrames, realFrames, runUntil, stopClockASecondOn } from "./clock";
+import { firstPlace } from "./map-picture";
 import {
   ARRIVE_DELAY,
   GLIDE_MS,
-  RECORDING_ENTRY_DELAY,
+  LAYER_ENTRY_DELAY,
   captionWords,
   countAnimations,
   expectWordByWord,
@@ -26,9 +26,7 @@ import {
 
 const [mapTab, sliceTab, auditTab, whatIfTab] = harness.skills;
 
-/** The map picture's first placed phrase, and when it lands after the picture starts, in ms. */
-const firstPlace = mapSteps(map.readOrder).find((step) => step.kind === "place")!;
-const firstPlaced = map.placements[firstPlace.kind === "end" ? 0 : firstPlace.phrase]!.text;
+const firstPlaced = firstPlace.text;
 
 const sectionOf = (page: Page) => page.locator("section", { has: page.getByRole("heading", { name: harness.headline }) });
 const stageIn = (section: Locator) => section.getByRole("tabpanel");
@@ -102,7 +100,7 @@ test("the harness stage enters once, in two beats, as its caption arrives word b
   expect((await look(current(stage))).opacity).toBeLessThan(0.95);
 
   // The caption arrives word by word, with the picture.
-  expectWordByWord(await captionWords(section), mapTab, RECORDING_ENTRY_DELAY);
+  expectWordByWord(await captionWords(section), mapTab, LAYER_ENTRY_DELAY);
 
   // The picture plays once it is in place: held mid-entry, it has not started, however long the page's clock runs.
   await page.clock.runFor(firstPlace.at + 500);

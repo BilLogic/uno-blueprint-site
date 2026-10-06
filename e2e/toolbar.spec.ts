@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { touchPoints } from "@/content/touch-points";
-import { RECORDING_ENTRY_DELAY, RECORDING_ENTRY_MS } from "./motion";
+import { firstPlace } from "./map-picture";
 
 /*
  * A phone's browser toolbar that hides as the page scrolls, and shows again,
@@ -13,8 +13,6 @@ const TALL = 812;
 const SHORT = 750;
 /** Longer than any handler waits for a resize to settle. */
 const SETTLE = 600;
-/** How long the Harness's entry takes to bring its picture into place. */
-const ENTRY_SETTLES = RECORDING_ENTRY_DELAY + RECORDING_ENTRY_MS;
 
 const harness = (page: Page) =>
   page.locator("section", { has: page.getByRole("heading", { name: "Harness for your agents." }) });
@@ -34,10 +32,20 @@ async function showHarnessFoot(page: Page) {
   await page.goto("/");
   const top = await touchPointsSection(page).evaluate((node) => node.getBoundingClientRect().top + scrollY);
   await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), top - SHORT / 2);
-  await expect(harness(page).locator("[data-shown]")).toBeVisible();
-  // Far enough in that a restart would show: the picture starts once the stage's entry has brought it into
-  // place, and the map's board grows a row a little after.
-  await page.waitForTimeout(ENTRY_SETTLES + 1500);
+  const stage = harness(page).getByRole("tabpanel");
+  await expect(stage).toHaveAttribute("data-shown", "true");
+  // The stage's entry has run: the picture starts once it is in place.
+  await expect(stage).toHaveAttribute("data-entry", "in");
+  await stage.evaluate((node) =>
+    Promise.allSettled(
+      node
+        .getAnimations({ subtree: true })
+        .filter((animation) => !(animation instanceof CSSTransition || animation instanceof CSSAnimation))
+        .map((animation) => animation.finished),
+    ),
+  );
+  // Far enough in that a restart would show, and past the row the map's board grows early on.
+  await expect(stage.getByText(firstPlace.text, { exact: true })).toHaveCount(1);
 }
 
 /** Makes the viewport taller, as the toolbar hiding does, then short again as it shows, and returns `measure` after each. */

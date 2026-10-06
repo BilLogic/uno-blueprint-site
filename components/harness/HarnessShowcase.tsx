@@ -3,8 +3,8 @@
 import { Presentation, SearchCheck } from "lucide-react";
 import { useCallback, useEffect, useReducer, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { harness, skill as skillOf, type SkillId } from "@/content/harness";
-import { entryCaptionDelay } from "@/components/showcase/stage-motion";
-import showcase from "@/components/showcase/Showcase.module.css";
+import { entryCaptionDelay } from "@/components/ui/stage-motion";
+import stageStyle from "@/components/ui/Stage.module.css";
 import { TabList, tabId, tabPanelId } from "@/components/ui/Tabs";
 import { WordCaption } from "@/components/ui/WordCaption";
 import { useInView } from "@/hooks/use-in-view";
@@ -181,7 +181,7 @@ export function HarnessShowcase() {
         data-shown={loop.shown || undefined}
         data-holding={loop.holding || undefined}
         data-entry={entry}
-        className={`${showcase.stage} relative aspect-video max-w-full overflow-clip rounded-16 border border-line bg-card bg-dots max-lg:aspect-auto`}
+        className={`${stageStyle.stage} relative aspect-video max-w-full overflow-clip rounded-16 border border-line bg-card bg-dots max-lg:aspect-auto`}
       >
         {leaving && Leaving && (
           <PictureLayer key={leaving.key} leaving onLeft={() => dropLeaving(leaving.key)}>

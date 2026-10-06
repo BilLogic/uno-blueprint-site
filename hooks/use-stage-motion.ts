@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { arriveRecording, enterStage } from "@/components/showcase/stage-motion";
+import { arriveLayer, enterStage } from "@/components/ui/stage-motion";
 import { useInView } from "./use-in-view";
 
 /** Whether any of `element` is on screen. */
@@ -29,7 +29,7 @@ type StageMotion = {
  * The first time the stage is well into view it enters in two beats: its
  * frame rises out of a blur, then the layer showing inside it. A stage
  * already in sight as the page goes live is simply there. The stage waits at
- * the entry's first frame by the `stage` class in Showcase.module.css, which
+ * the entry's first frame by the `stage` class in Stage.module.css, which
  * reads `data-entry`.
  *
  * The layer of a tab just picked rises in as it first shows: once for each
@@ -80,7 +80,7 @@ export function useStageMotion(layer: string, shown: unknown, reducedMotion: boo
     if (arrivedFor.current === shown) return;
     arrivedFor.current = shown;
     const showing = stage.current?.querySelector<HTMLElement>(layer);
-    if (showing && !reducedMotion) arriveRecording(showing);
+    if (showing && !reducedMotion) arriveLayer(showing);
   }, [shown, reducedMotion, layer]);
 
   // Asked for less motion mid-change, whatever is moving on the stage comes to rest at once; a layer

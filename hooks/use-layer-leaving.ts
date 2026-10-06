@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffectEvent, useLayoutEffect, type RefObject } from "react";
-import { leaveRecording } from "@/components/showcase/stage-motion";
+import { leaveLayer } from "@/components/ui/stage-motion";
 
 /**
  * The layer of the tab just left, on a showcase's stage: the demo stages'
@@ -14,6 +14,6 @@ export function useLayerLeaving(layer: RefObject<HTMLElement | null>, leaving: b
   const gone = useEffectEvent(() => onLeft?.());
   useLayoutEffect(() => {
     if (!leaving || !layer.current) return;
-    leaveRecording(layer.current).finished.then(gone, gone);
+    leaveLayer(layer.current).finished.then(gone, gone);
   }, [leaving, layer]);
 }

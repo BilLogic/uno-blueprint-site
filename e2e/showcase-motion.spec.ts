@@ -5,7 +5,7 @@ import { flushRenders, installClock, keepRealFrames, realFrames, stopClockASecon
 import {
   ARRIVE_DELAY,
   GLIDE_MS,
-  RECORDING_ENTRY_DELAY,
+  LAYER_ENTRY_DELAY,
   captionWords,
   countAnimations,
   expectWordByWord,
@@ -118,7 +118,7 @@ for (const section of sections) {
     expect((await look(current(stage))).opacity).toBeLessThan(0.95);
 
     // The caption arrives word by word, with the recording.
-    expectWordByWord(await captionWords(panelIn(sectionLocator)), section.tabs[0], RECORDING_ENTRY_DELAY);
+    expectWordByWord(await captionWords(panelIn(sectionLocator)), section.tabs[0], LAYER_ENTRY_DELAY);
 
     // The recording plays once its entry has brought it into place, on the entry's own time: held mid-flight,
     // it waits however long the page's clock runs on.

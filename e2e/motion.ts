@@ -6,9 +6,8 @@ import { expect, type Locator, type Page } from "@playwright/test";
  * Mid-flight checks are at fixed times, not fractions of a duration, so a
  * curve that reads as instant fails them however long it nominally lasts.
  */
-export const RECORDING_ENTRY_DELAY = 220; // --delay-recording-entry
-export const RECORDING_ENTRY_MS = 640; // --duration-recording-entry
-export const ARRIVE_DELAY = 100; // --delay-recording-arrive
+export const LAYER_ENTRY_DELAY = 220; // --delay-layer-entry
+export const ARRIVE_DELAY = 100; // --delay-layer-arrive
 export const GLIDE_MS = 560; // --duration-stage-glide
 export const STAGGER = 30; // lib/caption.ts
 
