@@ -1,5 +1,6 @@
 import type { SiteLink } from "@/content/links";
 import { anchorProps } from "./anchor-props";
+import { SoonLink } from "./SoonLink";
 
 type ButtonLinkProps = {
   link: SiteLink;
@@ -17,18 +18,27 @@ const variants = {
   ghost: "border-line-2 bg-panel text-ink hover:border-line-hot",
 } as const;
 
+/** A not-ready button's frame, whatever its variant: muted text on the primary colour does not read. */
+const disabledFrame = "border-line-2 bg-panel";
+
 /**
  * A link styled as a button. One whose target is not ready yet is disabled, as
- * every such link is, and keeps its own look; it says so in its label, which
- * is its `soonLabel` (the case card's "Case study coming soon").
- * Setting the real href and dropping `notReady` makes it live.
+ * every such link is, and says so in its label, which is its `soonLabel` (the
+ * case card's "Case study coming soon"). Whatever its variant, it takes the
+ * plain frame, faded, with muted text and no hover. Setting the real href and
+ * dropping `notReady` makes it live.
  */
 export function ButtonLink({ link, variant, children, soonLabel }: ButtonLinkProps) {
   if (link.notReady) {
     return (
-      <a {...anchorProps(link)} className={`${base} cursor-not-allowed ${variants[variant]}`}>
+      <SoonLink
+        link={link}
+        wrapClassName="inline-flex"
+        className={`${base} ${disabledFrame}`}
+        tipClassName="top-full mt-1.5"
+      >
         {soonLabel ?? children}
-      </a>
+      </SoonLink>
     );
   }
   return (
