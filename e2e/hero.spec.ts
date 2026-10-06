@@ -107,6 +107,8 @@ test.describe("the panel keeps the rows its width can hold", () => {
 });
 
 test("the logo is square at every width, in both themes", async ({ page }) => {
+  // A hundred and thirty-six widths, each a resize: slow on a shared CI runner.
+  test.setTimeout(90_000);
   await page.emulateMedia({ reducedMotion: "reduce" });
   for (const colorScheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme });
