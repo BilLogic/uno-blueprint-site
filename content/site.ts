@@ -1,3 +1,4 @@
+import { CLARITY_ID } from "../lib/clarity-tag.mjs";
 import { links } from "./links";
 
 /** How the page describes itself to search engines, link previews and answer engines. */
@@ -26,4 +27,6 @@ export const site = {
    * rule elsewhere never shuts them out. Every other crawler is welcome too.
    */
   crawlers: ["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-Web", "PerplexityBot", "Google-Extended"],
+  // Microsoft Clarity project, kept in lib/clarity-tag.mjs for the build scripts. Only production builds load it (lib/analytics.ts).
+  clarityId: CLARITY_ID,
 } as const;
