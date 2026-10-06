@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import { Maximize2, Pause, Play } from "lucide-react";
 import { showcase } from "@/content/showcase";
 import { revealOnHover } from "@/components/reveal";
@@ -9,10 +9,11 @@ import { WordCaption } from "@/components/ui/WordCaption";
 import { useInView } from "@/hooks/use-in-view";
 import { useReducedMotion } from "@/hooks/use-media-query";
 import { useStageGlide } from "@/hooks/use-stage-glide";
+import { useStageMotion } from "@/hooks/use-stage-motion";
 import { shouldPlay, wantsPlay, type ShowcaseTab } from "@/lib/recording";
 import { Recording, type RecordingHandle } from "./Recording";
-import s from "./Showcase.module.css";
-import { arriveRecording, enterStage, entryCaptionDelay } from "./stage-motion";
+import stageStyle from "@/components/ui/Stage.module.css";
+import { entryCaptionDelay } from "@/components/ui/stage-motion";
 
 export type ShowcaseItem<T extends string> = ShowcaseTab<T> & {
   icon: ReactNode;
@@ -30,12 +31,6 @@ type ShowcaseProps<T extends string> = {
 
 /** One recording on the stage. `key` is new at every tab change, so a recording always mounts afresh. */
 type Layer<T> = { value: T | undefined; key: number };
-
-/** Whether any of `element` is on screen. */
-const onScreenNow = (element: Element) => {
-  const { top, bottom } = element.getBoundingClientRect();
-  return bottom > 0 && top < innerHeight;
-};
 
 /**
  * A row of pill tabs over a framed stage with a caption under it. Selecting a
@@ -56,8 +51,9 @@ const onScreenNow = (element: Element) => {
  * rises in just after; the old one stays on the stage only while it goes.
  * Where the stage's height changes it glides there (`useStageGlide`). The
  * caption changes word by word, as the walkthrough's does (`WordCaption`).
- * The motion is in stage-motion.ts. A reader who asked for less motion sees
- * the stage already in place, and tabs that change at once.
+ * The motion is in stage-motion.ts, run by `useStageMotion`. A reader who
+ * asked for less motion sees the stage already in place, and tabs that change
+ * at once.
  */
 export function Showcase<T extends string>({ idBase, label, items }: ShowcaseProps<T>) {
   // The tab showing, the one just left while it sinks away under it, and which tab showed before (its
@@ -69,68 +65,29 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
   });
   const [choice, setChoice] = useState<boolean | null>(null);
   const reducedMotion = useReducedMotion();
-  // Whether the stage was on screen as the page went live, or null before then (in the server's HTML, and
-  // while hydrating). A stage already in sight is simply there; only one still to come waits for its entry.
-  const [inSightAtLoad, setInSightAtLoad] = useState<boolean | null>(null);
   // The recording plays while its stage is on screen.
   const [watchOnScreen, onScreen] = useInView<HTMLDivElement>();
   // The poster waits until the stage is near, so it never competes with the page's first paint.
   const [watchNear, near] = useInView<HTMLDivElement>({ rootMargin: "50% 0px", once: true });
-  // The entry waits until the stage is well into view, so it is seen.
-  const [watchEntry, entered] = useInView<HTMLDivElement>({ threshold: 0.25, once: true });
-  // The entry has run, or been cut short: the recording is in place.
-  const [entryDone, setEntryDone] = useState(false);
+  // The entry, the frame and then the recording, while the caption's words come in; the recording of a tab
+  // picked rising in. The recording plays once the entry has brought it into place.
+  const { watch: watchStage, entry, waiting, inPlace } = useStageMotion(
+    "[data-recording]:not([data-leaving])",
+    layers.current.key,
+    reducedMotion,
+  );
   const recording = useRef<RecordingHandle>(null);
   const stageNode = useRef<HTMLDivElement | null>(null);
   const stageRef = useCallback(
     (node: HTMLDivElement | null) => {
       stageNode.current = node;
-      if (node) setInSightAtLoad((was) => was ?? onScreenNow(node));
       watchOnScreen(node);
       watchNear(node);
-      watchEntry(node);
+      watchStage(node);
     },
-    [watchOnScreen, watchNear, watchEntry],
+    [watchOnScreen, watchNear, watchStage],
   );
   const measureGlide = useStageGlide(layers.current.key, stageNode, reducedMotion);
-
-  // Once the page is live, a stage then off screen waits for its entry, unless the reader asked for less motion.
-  const waiting = inSightAtLoad === false && !entered && !reducedMotion;
-  // The entry, as the waiting ends: the frame, then the recording, while the caption's words come in.
-  const wasWaiting = useRef(false);
-  useLayoutEffect(() => {
-    if (waiting) {
-      wasWaiting.current = true;
-      return;
-    }
-    if (!wasWaiting.current) return;
-    wasWaiting.current = false;
-    const stage = stageNode.current;
-    if (!stage || reducedMotion) return;
-    void enterStage(stage, stage.querySelector("[data-recording]:not([data-leaving])")).then(() => setEntryDone(true));
-  }, [waiting, reducedMotion]);
-
-  // The recording of a tab just picked rises in as it first shows: once for each pick, so turning the reader's
-  // motion setting off and on again never replays it.
-  const shownKey = layers.current.key;
-  const arrivedFor = useRef(shownKey);
-  useLayoutEffect(() => {
-    if (arrivedFor.current === shownKey) return;
-    arrivedFor.current = shownKey;
-    const layer = stageNode.current?.querySelector<HTMLElement>("[data-recording]:not([data-leaving])");
-    if (layer && !reducedMotion) arriveRecording(layer);
-  }, [shownKey, reducedMotion]);
-
-  // Asked for less motion mid-change, whatever is moving on the stage comes to rest at once; a recording
-  // leaving goes with it.
-  useLayoutEffect(() => {
-    if (!reducedMotion) return;
-    for (const animation of stageNode.current?.getAnimations({ subtree: true }) ?? []) animation.finish();
-  }, [reducedMotion]);
-
-  // The recording plays once the entry has brought it into place. With less motion, or a stage in sight from
-  // the start, there is no entry to wait for.
-  const inPlace = entryDone || reducedMotion || inSightAtLoad === true;
 
   const tabOf = (layer: Layer<T> | null) => layer && items.find((candidate) => candidate.value === layer.value);
   const item = tabOf(layers.current) ?? items[0];
@@ -190,8 +147,8 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
         <div
           ref={stageRef}
           data-testid="showcase-stage"
-          data-entry={inSightAtLoad === null ? undefined : waiting ? "waiting" : "in"}
-          className={`${s.stage} group relative aspect-video max-w-full overflow-clip rounded-16 border border-line bg-card bg-dots ${item.phone ? "max-sm:aspect-stage-tall" : "max-sm:aspect-stage-window-phone"}`}
+          data-entry={entry}
+          className={`${stageStyle.stage} group relative aspect-video max-w-full overflow-clip rounded-16 border border-line bg-card bg-dots ${item.phone ? "max-sm:aspect-stage-tall" : "max-sm:aspect-stage-window-phone"}`}
         >
           {leaving?.tab && (
             <Recording

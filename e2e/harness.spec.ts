@@ -17,17 +17,21 @@ test.describe("harness showcase", () => {
     const harness = section(page);
     await expect(harness.getByRole("tab", { name: "Map" })).toHaveAttribute("aria-selected", "true");
     await expect(harness.getByRole("tabpanel")).toContainText("/ub:map");
-    await expect(harness.getByText(/^Map\. Point it at your docs\./)).toBeVisible();
+    // The caption drawn under the stage (arrived, or waiting for the stage's entry); the sr-only copy beside it
+    // describes the picture.
+    const caption = harness.locator('[data-caption] > :not([data-phase="out"])');
+    await expect(caption).toContainText(/^Map\.Point it at your docs\./);
+    await expect(harness.getByText(/^Map\. Point it at your docs\./)).toHaveClass(/sr-only/);
 
     await harness.getByRole("tab", { name: "Audit" }).click();
     await expect(harness.getByRole("tabpanel")).toContainText("/ub:audit");
-    await expect(harness.getByText(/^Audit\. Check that the blueprint still holds\./)).toBeVisible();
+    await expect(caption).toContainText(/^Audit\.Check that the blueprint still holds\./);
 
     await page.keyboard.press("ArrowRight");
     const whatIf = harness.getByRole("tab", { name: "What-if" });
     await expect(whatIf).toBeFocused();
     await expect(whatIf).toHaveAttribute("aria-selected", "true");
-    await expect(harness.getByText(/Nothing is applied until you sign off\.$/)).toBeVisible();
+    await expect(caption).toContainText(/Nothing is applied until you sign off\.$/);
   });
 
   test("a finished picture holds its last frame, then plays again from the start", async ({ page }) => {
