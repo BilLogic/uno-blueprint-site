@@ -35,7 +35,7 @@ export function useStageGlide(shown: unknown, stage: RefObject<HTMLElement | nul
         { width: `${width}px`, height: `${start}px` },
         { width: `${width}px`, height: `${end}px` },
       ],
-      { duration: cssMs(rootToken("--duration-recording-swap")), easing: rootToken("--ease-io") },
+      { duration: cssMs(rootToken("--duration-stage-glide")), easing: rootToken("--ease-out") },
     );
   }, [shown, stage, reducedMotion]);
 

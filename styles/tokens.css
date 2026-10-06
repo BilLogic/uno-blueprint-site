@@ -287,15 +287,33 @@
   --aspect-stage-tall: 4 / 5; /* the phone recording's stage on a phone, tall enough for its screen to read */
   --spacing-phone-inset: clamp(16px, 3.5vw, 44px); /* the dots round the phone, at least */
   /*
-   * Its motion. The first time the stage comes into view it fades in, rises
-   * and sharpens, on a caption word's duration, curve and blur (--duration-t-3,
-   * --ease-out, --blur-caption). A tab change crossfades the recordings, the
-   * incoming one rising in with its caption, and on a phone the stage glides
-   * to the new tab's height.
+   * Its motion. The entry is two beats: the first time the stage comes into
+   * view its frame rises out of a blur, then the recording inside rises in
+   * just after it, as the caption's words arrive with it. On a tab change the
+   * old recording sinks and blurs away while the new one rises out of a blur,
+   * and on a phone the stage glides to the new tab's height. The caption
+   * changes word by word (--duration-t-3, --spacing-caption-rise,
+   * --blur-caption). Things arriving ease out, the recording leaving eases in.
    */
-  --spacing-stage-rise: 12px; /* the stage rises this far as it enters */
-  --spacing-recording-rise: 8px; /* the incoming recording, and its caption, rise this far as they arrive */
-  --duration-recording-swap: 300ms; /* a tab change: the crossfade, the caption's arrival and the stage's glide */
+  --ease-recording-leave: cubic-bezier(0.55, 0, 0.75, 0.2); /* the old recording sinks away, slow to start */
+  --duration-stage-entry: 900ms; /* the stage's frame rises into place */
+  --spacing-stage-rise: 48px; /* from this far below */
+  --blur-stage-entry: 16px; /* out of this blur */
+  --scale-stage-entry: 0.94; /* from this size */
+  --delay-recording-entry: 220ms; /* the recording follows the frame in, this long after it */
+  --duration-recording-entry: 640ms;
+  --spacing-recording-entry-rise: 24px;
+  --blur-recording-entry: 12px;
+  --duration-recording-leave: 300ms; /* on a tab change, the old recording sinks away */
+  --spacing-recording-sink: 20px;
+  --blur-recording-leave: 14px;
+  --scale-recording-leave: 0.97;
+  --delay-recording-arrive: 100ms; /* the new one starts rising this long after */
+  --duration-recording-arrive: 560ms;
+  --spacing-recording-rise: 28px;
+  --blur-recording-arrive: 14px;
+  --scale-recording-arrive: 0.97;
+  --duration-stage-glide: 560ms; /* on a phone, the stage to the new tab's height, easing out */
   /* The dots above a window and beside it, at least, the same both ways; it meets the stage's foot, so it reads large. */
   --spacing-window-margin: clamp(12px, 2vw, 28px);
   --aspect-window: 1620 / 1004; /* a desktop recording's own shape: the app window, edge to edge */

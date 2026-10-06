@@ -190,7 +190,8 @@ for (const width of [1440, 390]) {
     await pick(page, list, phone.label);
 
     const panel = page.getByRole("tabpanel", { name: phone.label });
-    await expect(panel.getByText(phone.caption)).toBeVisible();
+    // The caption under the stage; the sr-only copy beside it names the recording.
+    await expect(panel.getByText(phone.caption, { exact: true })).toBeVisible();
     const stage = panel.getByTestId("showcase-stage");
     const stageBox = (await stage.boundingBox())!;
     if (width === 390) {
@@ -256,7 +257,7 @@ async function stubPlaybackClock(page: Page) {
   });
 }
 
-/** The stage's height and the phone's transform, if there is a phone, every frame for `ms`. */
+/** The stage's laid-out height and the phone's transform, if there is a phone, every frame for `ms`. */
 const sampleStage = (stage: Locator, ms: number) =>
   stage.evaluate(
     (node, ms) =>
@@ -265,7 +266,8 @@ const sampleStage = (stage: Locator, ms: number) =>
         const transforms: string[] = [];
         const end = performance.now() + ms;
         const tick = () => {
-          heights.push(node.getBoundingClientRect().height);
+          // Its laid-out height: the entry's scale moves how it looks, not the room it takes.
+          heights.push((node as HTMLElement).offsetHeight);
           const phone = node.querySelector<HTMLElement>('[data-testid="phone"]');
           if (phone) transforms.push(phone.style.transform);
           if (performance.now() < end) requestAnimationFrame(tick);
@@ -289,7 +291,7 @@ test("on a phone each touch-points stage keeps its size from before its poster l
     const stage = page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage");
     const video = stage.locator("video");
     if (tab === touchPoints.tabs[0]) await expect(video).not.toHaveAttribute("poster", /./);
-    const before = (await stage.boundingBox())!.height;
+    const before = await stage.evaluate((node: HTMLElement) => node.offsetHeight);
 
     await stage.scrollIntoViewIfNeeded();
     await expect(video).toHaveAttribute("poster", /\.webp$/);

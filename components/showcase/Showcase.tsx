@@ -1,17 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Maximize2, Pause, Play } from "lucide-react";
 import { showcase } from "@/content/showcase";
 import { revealOnHover } from "@/components/reveal";
 import { TabList, tabId, tabPanelId } from "@/components/ui/Tabs";
+import { WordCaption } from "@/components/ui/WordCaption";
 import { useInView } from "@/hooks/use-in-view";
 import { useReducedMotion } from "@/hooks/use-media-query";
 import { useStageGlide } from "@/hooks/use-stage-glide";
-import { cssMs, rootToken } from "@/lib/css-time";
 import { shouldPlay, wantsPlay, type ShowcaseTab } from "@/lib/recording";
 import { Recording, type RecordingHandle } from "./Recording";
 import s from "./Showcase.module.css";
+import { enterStage, entryCaptionDelay, entrySettles } from "./stage-motion";
 
 export type ShowcaseItem<T extends string> = ShowcaseTab<T> & {
   icon: ReactNode;
@@ -49,19 +50,22 @@ const onScreenNow = (element: Element) => {
  * stage never changes size while it shows: the phone's zoom is a transform. A
  * second button there opens the recording fullscreen.
  *
- * The first time the stage comes into view it enters, and its recording
- * starts once it has settled. A tab change crossfades the recordings: the old
- * one, paused, stays on the stage only while it fades out under the new one
- * (Showcase.module.css), and the caption arrives with the new one. Where the
- * stage's height changes it glides there (`useStageGlide`). A reader who
- * asked for less motion sees the stage already in place, and tabs that
- * change at once.
+ * The first time the stage comes into view it enters in two beats, its frame
+ * and then its recording, and the recording plays once it is in place. On a
+ * tab change the old recording, paused, sinks away under the new one, which
+ * rises in just after; the old one stays on the stage only while it goes.
+ * Where the stage's height changes it glides there (`useStageGlide`). The
+ * caption changes word by word, as the walkthrough's does (`WordCaption`).
+ * The motion is in stage-motion.ts. A reader who asked for less motion sees
+ * the stage already in place, and tabs that change at once.
  */
 export function Showcase<T extends string>({ idBase, label, items }: ShowcaseProps<T>) {
-  // The tab showing, and the one just left while it fades out under it.
-  const [layers, setLayers] = useState<{ current: Layer<T>; leaving: Layer<T> | null }>({
+  // The tab showing, the one just left while it sinks away under it, and which tab showed before (its
+  // caption's words come in from that side).
+  const [layers, setLayers] = useState<{ current: Layer<T>; leaving: Layer<T> | null; previous: number }>({
     current: { value: items[0]?.value, key: 0 },
     leaving: null,
+    previous: 0,
   });
   const [choice, setChoice] = useState<boolean | null>(null);
   const reducedMotion = useReducedMotion();
@@ -89,12 +93,34 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
   );
   const measureGlide = useStageGlide(layers.current.key, stageNode, reducedMotion);
 
-  // The recording starts once the entry has run. With less motion, or a stage in sight from the start, there
-  // is no entry to wait for.
+  // Once the page is live, a stage then off screen waits for its entry, unless the reader asked for less motion.
+  const waiting = inSightAtLoad === false && !entered && !reducedMotion;
+  // The entry, as the waiting ends: the frame, then the recording, while the caption's words come in.
+  const wasWaiting = useRef(false);
+  useLayoutEffect(() => {
+    if (waiting) {
+      wasWaiting.current = true;
+      return;
+    }
+    if (!wasWaiting.current) return;
+    wasWaiting.current = false;
+    const stage = stageNode.current;
+    if (stage && !reducedMotion) enterStage(stage, stage.querySelector("[data-recording]:not([data-leaving])"));
+  }, [waiting, reducedMotion]);
+
+  // Asked for less motion mid-change, whatever is moving on the stage comes to rest at once; a recording
+  // leaving goes with it.
+  useLayoutEffect(() => {
+    if (!reducedMotion) return;
+    for (const animation of stageNode.current?.getAnimations({ subtree: true }) ?? []) animation.finish();
+  }, [reducedMotion]);
+
+  // The recording plays once the entry has brought it into place. With less motion, or a stage in sight from
+  // the start, there is no entry to wait for.
   const noEntry = reducedMotion || inSightAtLoad === true;
   useEffect(() => {
     if (settled || !(entered || noEntry)) return;
-    const timer = window.setTimeout(() => setSettled(true), noEntry ? 0 : cssMs(rootToken("--duration-t-3")));
+    const timer = window.setTimeout(() => setSettled(true), noEntry ? 0 : entrySettles());
     return () => clearTimeout(timer);
   }, [entered, settled, noEntry]);
 
@@ -107,12 +133,16 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
   const pick = (next: T) => {
     if (next === item.value) return;
     measureGlide();
-    setLayers(({ current }) => ({ current: { value: next, key: current.key + 1 }, leaving: reducedMotion ? null : current }));
+    setLayers(({ current }) => ({
+      current: { value: next, key: current.key + 1 },
+      leaving: reducedMotion ? null : current,
+      previous: items.indexOf(item),
+    }));
   };
   const dropLeaving = (key: number) =>
     setLayers((was) => (was.leaving?.key === key ? { ...was, leaving: null } : was));
   // Only a tab picked arrives; the first one is simply there.
-  const arriving = layers.current.key > 0;
+  const arriving = layers.current.key > 0 && !reducedMotion;
   const wanted = wantsPlay({ choice, reducedMotion });
   const captionId = `${tabPanelId(idBase, item.value)}-caption`;
   const Icon = wanted ? Pause : Play;
@@ -145,7 +175,7 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
         <div
           ref={stageRef}
           data-testid="showcase-stage"
-          data-entry={inSightAtLoad === null ? undefined : inSightAtLoad || entered ? "in" : "waiting"}
+          data-entry={inSightAtLoad === null ? undefined : waiting ? "waiting" : "in"}
           className={`${s.stage} group relative aspect-video max-w-full overflow-clip rounded-16 border border-line bg-card bg-dots ${item.phone ? "max-sm:aspect-stage-tall" : "max-sm:aspect-stage-window-phone"}`}
         >
           {leaving?.tab && (
@@ -201,9 +231,18 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
             </button>
           </div>
         </div>
-        <p key={layers.current.key} id={captionId} className={`mt-4 max-w-caption text-14 text-pretty text-muted ${arriving ? s.arrive : ""}`}>
-          <b className="font-medium text-ink">{item.label}.</b> {item.caption}
+        {/* What names the recording for assistive technology; the caption under the stage is drawn for the eye. */}
+        <p id={captionId} className="sr-only">
+          {item.label}. {item.caption}
         </p>
+        <WordCaption
+          steps={items.map((tab) => ({ title: `${tab.label}.`, caption: tab.caption }))}
+          step={items.indexOf(item)}
+          previous={layers.previous}
+          waiting={waiting}
+          entryDelay={entryCaptionDelay}
+          className="mt-4 max-w-caption text-14 text-pretty text-muted [&_b]:me-[0.3em] [&_b]:font-medium [&_b]:text-ink [&_p]:inline"
+        />
       </div>
     </>
   );

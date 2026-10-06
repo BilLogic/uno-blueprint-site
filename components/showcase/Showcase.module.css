@@ -1,47 +1,11 @@
 /*
- * The stage's entry: the first time it comes into view it fades in, rises and
- * sharpens, on a caption word's duration, curve and blur. It waits only once
- * the page is live, and only if it was off screen then (Showcase sets
- * `data-entry`), so without script, before it runs, or already in sight, the
- * stage is simply there. It takes up its waiting pose at once, out of sight;
- * only the entry itself is a transition.
- *
- * A tab change: the incoming recording and its caption fade and rise in, while
- * the outgoing recording, paused under it, fades out. The one arrives on a
- * curve that is quick to show it and the other leaves on one that is slow to
- * go, so the stage never thins to its dots between them.
+ * A stage waiting for its entry stands at the entry's first frame, unseen
+ * (Showcase sets `data-entry` only once the page is live, and only on a stage
+ * then off screen, so without script, before it runs, or already in sight,
+ * the stage is simply there). The entry itself is scripted (stage-motion.ts).
  */
-@media (prefers-reduced-motion: no-preference) {
-  .stage[data-entry="in"] {
-    transition-property: opacity, translate, filter;
-    transition-duration: var(--duration-t-3);
-    transition-timing-function: var(--ease-out);
-  }
-
-  .stage[data-entry="waiting"] {
-    opacity: 0;
-    translate: 0 var(--spacing-stage-rise);
-    filter: blur(var(--blur-caption));
-  }
-
-  .arrive {
-    animation: arrive var(--duration-recording-swap) var(--ease-out) both;
-  }
-
-  .leave {
-    animation: leave var(--duration-recording-swap) var(--ease-in) both;
-  }
-}
-
-@keyframes arrive {
-  from {
-    opacity: 0;
-    translate: 0 var(--spacing-recording-rise);
-  }
-}
-
-@keyframes leave {
-  to {
-    opacity: 0;
-  }
+.stage[data-entry="waiting"] {
+  opacity: 0;
+  filter: blur(var(--blur-stage-entry));
+  transform: translateY(var(--spacing-stage-rise)) scale(var(--scale-stage-entry));
 }

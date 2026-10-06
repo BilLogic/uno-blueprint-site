@@ -75,21 +75,12 @@ export async function runUntil(
   }
 }
 
-/**
- * Resolves once every animation in `root`, and in what it holds, has finished
- * or been cancelled: CSS transitions and animations, and those the page starts
- * from script. With `only`, just those of that kind.
- */
-export const animationsDone = (root: Locator, only?: "transitions") =>
-  root.evaluate(async (element, only) => {
-    const running = element
-      .getAnimations({ subtree: true })
-      .filter((animation) => only !== "transitions" || animation instanceof CSSTransition);
-    await Promise.allSettled(running.map((animation) => animation.finished));
-  }, only);
-
 /** Resolves once every CSS transition in `root`, and in what it holds, has finished or been cancelled. */
-export const transitionsDone = (root: Locator) => animationsDone(root, "transitions");
+export const transitionsDone = (root: Locator) =>
+  root.evaluate(async (element) => {
+    const running = element.getAnimations({ subtree: true }).filter((animation) => animation instanceof CSSTransition);
+    await Promise.allSettled(running.map((animation) => animation.finished));
+  });
 
 /**
  * Lets React finish rendering what the clock last set in motion: its renders

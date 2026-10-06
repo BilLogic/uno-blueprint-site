@@ -1,12 +1,17 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { canvas } from "@/content/canvas";
 import { touchPoints } from "@/content/touch-points";
-import { FRAME, animationsDone, flushRenders, installClock, realFrames, runUntil, stopClockASecondOn, tick } from "./clock";
+import { FRAME, flushRenders, installClock, keepRealFrames, realFrames, runUntil, stopClockASecondOn, tick } from "./clock";
 
-/** --duration-t-3, the entry's duration: a caption word's. */
-const ENTRY_MS = 460;
-/** --duration-recording-swap, a tab change's. */
-const SWAP_MS = 300;
+/** The motion's numbers, as styles/tokens.css has them. */
+const ENTRY_MS = 900; // --duration-stage-entry
+const RECORDING_ENTRY_DELAY = 220; // --delay-recording-entry
+const RECORDING_ENTRY_MS = 640; // --duration-recording-entry
+const LEAVE_MS = 300; // --duration-recording-leave
+const ARRIVE_DELAY = 100; // --delay-recording-arrive
+const ARRIVE_MS = 560; // --duration-recording-arrive
+const GLIDE_MS = 560; // --duration-stage-glide
+const STAGGER = 30; // lib/caption.ts
 
 /**
  * Stands in for playback, which the test browser cannot decode: each video
@@ -24,26 +29,22 @@ async function stubPlayback(page: Page) {
   });
 }
 
-/**
- * Notes, on each stage, every transition it starts (`data-ran`), from before
- * the page loads, however soon each one ends.
- */
-async function noteStageTransitions(page: Page) {
+/** Counts, on each stage, the animations the page starts on it (`data-animated`), from before the page loads. */
+async function countStageAnimations(page: Page) {
   await page.addInitScript(() => {
-    document.addEventListener("transitionrun", (event) => {
-      const node = event.target;
-      if (!(node instanceof HTMLElement) || node.dataset.testid !== "showcase-stage") return;
-      node.dataset.ran = `${node.dataset.ran ?? ""} ${event.propertyName}`.trim();
-    });
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (...args: Parameters<Element["animate"]>) {
+      if (this instanceof HTMLElement && this.dataset.testid === "showcase-stage") {
+        this.dataset.animated = String(Number(this.dataset.animated ?? 0) + 1);
+      }
+      return animate.apply(this, args);
+    };
   });
 }
 
-/** The transitions a stage has started, sorted. */
-const ran = async (stage: Locator) => ((await stage.getAttribute("data-ran")) ?? "").split(" ").filter(Boolean).sort();
-
 const sections = [
-  { name: "canvas", headline: canvas.headline },
-  { name: "touch points", headline: touchPoints.headline },
+  { name: "canvas", headline: canvas.headline, tabs: canvas.tabs },
+  { name: "touch points", headline: touchPoints.headline, tabs: touchPoints.tabs },
 ] as const;
 
 const sectionOf = (page: Page, headline: string) =>
@@ -56,35 +57,37 @@ const layers = (stage: Locator) => stage.locator("[data-recording]");
 const leaving = (stage: Locator) => stage.locator("[data-recording][data-leaving]");
 const current = (stage: Locator) => stage.locator("[data-recording]:not([data-leaving])");
 const playing = (stage: Locator) => stage.locator('video[data-state="playing"]');
+/** The caption under the stage, drawn word by word, and the layer of it showing. */
+const shownCaption = (section: Locator) => panelIn(section).locator('[data-caption] > [data-phase="in"]');
+
+/** What an element looks like now, mid-animation included: its opacity, how far down it is moved, its scale and its blur. */
+const look = (element: Locator) =>
+  element.evaluate((node) => {
+    const style = getComputedStyle(node);
+    const matrix = new DOMMatrix(style.transform === "none" ? undefined : style.transform);
+    return {
+      opacity: Number(style.opacity),
+      down: matrix.m42,
+      scale: matrix.a,
+      blur: Number(/blur\(([\d.]+)px\)/.exec(style.filter)?.[1] ?? 0),
+    };
+  });
 
 /**
- * Brings the stage into view on a stopped page clock and lets its entry run:
- * the clock to the recording's start, the browser's own time to the
- * transition's end.
+ * Pauses every animation in the panel holding `root`, at its first frame,
+ * the moment `root` next changes as `options` says, before a frame is drawn:
+ * so the change can be read mid-flight however fast the machine is. `seek`
+ * moves them on, and `finishAll` runs them to their end.
  */
-async function enter(page: Page, stage: Locator) {
-  await stage.scrollIntoViewIfNeeded();
-  await realFrames(page);
-  await flushRenders(page);
-  await runUntil(page, async () => (await playing(stage).count()) === 1, { step: FRAME, limit: ENTRY_MS + 8 * FRAME });
-  await animationsDone(stage);
-}
-
-/**
- * Pauses every animation in `root` at its first frame the moment the page
- * next adds or removes something in `root` (a picked tab mounts its recording
- * and caption afresh), before a frame is drawn, so the change can
- * be read mid-flight however fast the machine is. `seek` moves them on, and
- * `finishAll` runs them to their end.
- */
-const freezeNextChange = (root: Locator) =>
-  root.evaluate((node) => {
+const freezeNext = (root: Locator, options: MutationObserverInit) =>
+  root.evaluate((node, options) => {
+    const panel = node.closest('[role="tabpanel"]') ?? node;
     const observer = new MutationObserver(() => {
       observer.disconnect();
-      for (const animation of node.getAnimations({ subtree: true })) animation.pause();
+      for (const animation of panel.getAnimations({ subtree: true })) animation.pause();
     });
-    observer.observe(node, { childList: true, subtree: true });
-  });
+    observer.observe(node, options);
+  }, options);
 
 const seek = (root: Locator, ms: number) =>
   root.evaluate((node, ms) => {
@@ -96,57 +99,105 @@ const finishAll = (root: Locator) =>
     for (const animation of node.getAnimations({ subtree: true })) animation.finish();
   });
 
-/** Picks a tab with the animations it starts held at their first frame. */
+/** Picks a tab with the motion it starts held at its first frame. */
 async function pickFrozen(page: Page, section: Locator, label: string) {
-  await freezeNextChange(panelIn(section));
+  await freezeNext(panelIn(section), { childList: true, subtree: true });
   await section.getByRole("tab", { name: label }).dispatchEvent("click");
   await flushRenders(page);
   await flushRenders(page);
 }
 
-/** An element's own animations, as their duration and keyframes. */
-const motionOf = (element: Locator) =>
-  element.evaluate((node) =>
-    node.getAnimations().map((animation) => ({
-      duration: Number(animation.effect?.getTiming().duration),
-      keyframes: (animation.effect as KeyframeEffect).getKeyframes().map((frame) => ({ ...frame })),
+/** Each word of the caption showing: its text, and when it starts to arrive, in ms. */
+const captionWords = (section: Locator) =>
+  shownCaption(section).evaluate((layer) =>
+    [...layer.querySelectorAll<HTMLElement>("b > span, p > span")].map((word) => ({
+      text: word.textContent,
+      delay: parseFloat(getComputedStyle(word).transitionDelay) * 1000,
+      moving: word.getAnimations().length > 0,
     })),
   );
 
+/** Expects the caption's words to arrive one by one: the title at `start`, then each word `STAGGER` ms (or less, on a long line) after the one before. */
+function expectWordByWord(words: { text: string | null; delay: number; moving: boolean }[], tab: { label: string; caption: string }, start: number) {
+  expect(words.map((word) => word.text)).toEqual([`${tab.label}.`, ...tab.caption.split(" ")]);
+  expect(words.every((word) => word.moving)).toBe(true);
+  const [title, ...rest] = words.map((word) => Math.round(word.delay));
+  expect(title).toBe(start);
+  expect(rest[0]).toBe(start + STAGGER);
+  // Later words, line by line, never start before the line's first one, and wait at most a stagger each.
+  for (const delay of rest) {
+    expect(delay).toBeGreaterThanOrEqual(start + STAGGER);
+    expect(delay).toBeLessThanOrEqual(start + STAGGER + 120);
+  }
+  expect(new Set(rest).size).toBeGreaterThan(1);
+}
+
+/**
+ * Brings the stage into view on a stopped page clock and runs its entry to
+ * its end: the motion at once, the clock to the recording's start.
+ */
+async function enter(page: Page, section: Locator) {
+  const stage = stageIn(section);
+  await stage.scrollIntoViewIfNeeded();
+  await realFrames(page);
+  await flushRenders(page);
+  await expect(stage).toHaveAttribute("data-entry", "in");
+  await finishAll(panelIn(section));
+  await runUntil(page, async () => (await playing(stage).count()) === 1, {
+    step: FRAME,
+    limit: RECORDING_ENTRY_DELAY + RECORDING_ENTRY_MS + 8 * FRAME,
+  });
+}
+
 for (const section of sections) {
-  test(`the ${section.name} stage enters once, the first time it comes into view, and its recording plays as it settles`, async ({
+  test(`the ${section.name} stage enters once, in two beats, as its caption arrives word by word, and plays once in place`, async ({
     page,
   }) => {
     await stubPlayback(page);
-    await noteStageTransitions(page);
+    await countStageAnimations(page);
     await installClock(page);
     await page.goto("/");
     await stopClockASecondOn(page);
-    const stage = stageIn(sectionOf(page, section.headline));
+    const sectionLocator = sectionOf(page, section.headline);
+    const stage = stageIn(sectionLocator);
     const video = stage.locator("video");
 
-    // Out of view, once the page is live, it waits: faded, lowered and blurred, taken up at once.
+    // Out of view, once the page is live, it waits at the entry's first frame.
     await expect(stage).toHaveAttribute("data-entry", "waiting");
-    await expect(stage).toHaveCSS("opacity", "0");
-    await expect(stage).toHaveCSS("filter", /blur/);
-    await expect(stage).toHaveCSS("translate", "0px 12px");
-    expect(await ran(stage)).toEqual([]);
+    expect(await look(stage)).toMatchObject({ opacity: 0, down: 48, blur: 16 });
+    expect((await look(stage)).scale).toBeCloseTo(0.94, 2);
 
+    await freezeNext(stage, { attributes: true, attributeFilter: ["data-entry"] });
     await stage.scrollIntoViewIfNeeded();
     await realFrames(page);
     await flushRenders(page);
     await expect(stage).toHaveAttribute("data-entry", "in");
-    await expect.poll(() => ran(stage)).toEqual(["filter", "opacity", "translate"]);
 
-    // The recording waits for the entry to have run, by the page's clock.
-    await tick(page, ENTRY_MS - 4 * FRAME);
+    // A quarter of the way in, the frame is still on its way, and the recording has barely begun.
+    await seek(panelIn(sectionLocator), ENTRY_MS / 4);
+    const frame = await look(stage);
+    expect(frame.opacity).toBeLessThan(0.9);
+    expect(frame.down).toBeGreaterThan(10);
+    expect(frame.blur).toBeGreaterThan(3);
+    expect(frame.scale).toBeLessThan(1);
+    const inner = await look(current(stage));
+    expect(inner.opacity).toBeLessThan(0.5);
+    expect(inner.down).toBeGreaterThan(10);
+    expect(inner.blur).toBeGreaterThan(3);
+    // The recording's own beat: held back until the frame is under way.
+    await seek(panelIn(sectionLocator), RECORDING_ENTRY_DELAY / 2);
+    expect((await look(current(stage))).opacity).toBe(0);
+
+    // The caption arrives word by word, with the recording.
+    expectWordByWord(await captionWords(sectionLocator), section.tabs[0], RECORDING_ENTRY_DELAY);
+
+    // The recording plays once it is in place, by the page's clock.
+    await finishAll(panelIn(sectionLocator));
+    await tick(page, RECORDING_ENTRY_DELAY + RECORDING_ENTRY_MS - 4 * FRAME);
     await flushRenders(page);
     expect(await video.getAttribute("data-state")).not.toBe("playing");
     await runUntil(page, async () => (await video.getAttribute("data-state")) === "playing", { step: FRAME, limit: 8 * FRAME });
-
-    await animationsDone(stage);
-    await expect(stage).toHaveCSS("opacity", "1");
-    await expect(stage).toHaveCSS("filter", "none");
+    expect(await look(stage)).toMatchObject({ opacity: 1, down: 0, blur: 0, scale: 1 });
 
     // Scrolled away and back, it is simply there, and plays at once.
     await page.evaluate(() => window.scrollTo(0, 0));
@@ -157,15 +208,14 @@ for (const section of sections) {
     await realFrames(page);
     await flushRenders(page);
     await expect(stage).toHaveAttribute("data-entry", "in");
-    expect(await stage.evaluate((node) => node.getAnimations().length)).toBe(0);
-    expect(await ran(stage)).toEqual(["filter", "opacity", "translate"]);
-    await flushRenders(page);
+    await expect(stage).toHaveAttribute("data-animated", "1");
     await expect(video).toHaveAttribute("data-state", "playing");
   });
 }
 
 test("a stage partly in sight as the page goes live is simply there, with no entry", async ({ page }) => {
-  await noteStageTransitions(page);
+  await countStageAnimations(page);
+  await keepRealFrames(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   // The page's scripts are held, so it is scrolled before it goes live.
   const held: (() => Promise<void>)[] = [];
@@ -191,30 +241,31 @@ test("a stage partly in sight as the page goes live is simply there, with no ent
   holding = false;
   await Promise.all(held.map((go) => go()));
   await expect(stage).toHaveAttribute("data-entry", "in");
-  await expect(stage).toHaveCSS("opacity", "1");
-  expect(await ran(stage)).toEqual([]);
+  expect(await look(stage)).toMatchObject({ opacity: 1, down: 0, blur: 0 });
 
   // Brought fully into view, it stays as it was.
   await stage.scrollIntoViewIfNeeded();
-  await expect(stage).toHaveCSS("opacity", "1");
-  await expect(stage).toHaveCSS("filter", "none");
-  expect(await ran(stage)).toEqual([]);
+  await realFrames(page);
+  expect(await look(stage)).toMatchObject({ opacity: 1, down: 0, blur: 0 });
+  await expect(stage).not.toHaveAttribute("data-animated", /./);
 });
 
-test("without script the stages are simply there", async ({ browser }) => {
+test("without script the stages and their captions are simply there", async ({ browser }) => {
   const context = await browser.newContext({ javaScriptEnabled: false });
   const page = await context.newPage();
   await page.goto("/");
   for (const section of sections) {
-    const stage = stageIn(sectionOf(page, section.headline));
+    const sectionLocator = sectionOf(page, section.headline);
+    const stage = stageIn(sectionLocator);
     await expect(stage).not.toHaveAttribute("data-entry", /./);
     await expect(stage).toHaveCSS("opacity", "1");
     await expect(stage).toHaveCSS("filter", "none");
+    await expect(shownCaption(sectionLocator)).toContainText(section.tabs[0].caption);
   }
   await context.close();
 });
 
-test("a tab change crossfades the recordings, never thinning to the dots, and the caption arrives with the new one", async ({
+test("a tab change: the old recording sinks away, the new one rises in after it, and the caption changes word by word", async ({
   page,
 }) => {
   await stubPlayback(page);
@@ -224,7 +275,7 @@ test("a tab change crossfades the recordings, never thinning to the dots, and th
   await stopClockASecondOn(page);
   const section = sectionOf(page, canvas.headline);
   const stage = stageIn(section);
-  await enter(page, stage);
+  await enter(page, section);
   const [first, second] = canvas.tabs;
 
   await pickFrozen(page, section, second.label);
@@ -238,35 +289,45 @@ test("a tab change crossfades the recordings, never thinning to the dots, and th
   await expect(out.locator("video")).toHaveAttribute("data-state", "paused");
   await expect(current(stage).locator("video")).toHaveAttribute("src", `/videos/${second.recording}.mp4`);
   await expect(playing(stage)).toHaveCount(1);
-  await expect(current(stage).locator("video")).toHaveAttribute("data-state", "playing");
 
-  // Both over the same time; the caption too.
-  const caption = panelIn(section).locator("p").last();
-  await expect(caption).toContainText(second.caption);
-  for (const element of [out, current(stage), caption]) {
-    const motion = await motionOf(element);
-    expect(motion).toHaveLength(1);
-    expect(motion[0]!.duration).toBe(SWAP_MS);
-  }
-  expect((await motionOf(current(stage)))[0]!.keyframes[0]).toMatchObject({ opacity: "0", translate: "0px 8px" });
+  // Before its delay the new one waits, unseen, as the old one starts to go.
+  await seek(panelIn(section), ARRIVE_DELAY / 2);
+  expect((await look(current(stage))).opacity).toBe(0);
 
-  // Halfway, the two together all but cover the stage: no dip to the dots.
-  await seek(panelIn(section), SWAP_MS / 2);
-  const opacity = (element: Locator) => element.evaluate((node) => Number(getComputedStyle(node).opacity));
-  const [arriving, going] = [await opacity(current(stage)), await opacity(out)];
-  expect(arriving).toBeGreaterThan(0.5);
-  expect(going).toBeGreaterThan(0.5);
-  expect(1 - (1 - arriving) * (1 - going)).toBeGreaterThan(0.95);
+  // Halfway through the old one's exit: it is sinking, shrinking and blurring; the new one has only begun.
+  await seek(panelIn(section), LEAVE_MS / 2);
+  const going = await look(out);
+  expect(going.opacity).toBeLessThan(1);
+  expect(going.opacity).toBeGreaterThan(0);
+  expect(going.down).toBeGreaterThan(1);
+  expect(going.blur).toBeGreaterThan(0.5);
+  expect(going.scale).toBeLessThan(1);
+  const coming = await look(current(stage));
+  expect(coming.opacity).toBeLessThan(0.5);
+  expect(coming.down).toBeGreaterThan(10);
+  expect(coming.blur).toBeGreaterThan(3);
+  expect(coming.scale).toBeLessThan(1);
 
-  // Then the old one goes, and the new one is at rest.
+  // A quarter of the way into the new one's rise, after the old one has gone, it is still on its way.
+  await seek(panelIn(section), ARRIVE_DELAY + ARRIVE_MS / 4);
+  const rising = await look(current(stage));
+  expect(rising.opacity).toBeLessThan(0.95);
+  expect(rising.down).toBeGreaterThan(3);
+  expect(rising.blur).toBeGreaterThan(1);
+
+  // The caption: the old one leaves whole as the new one's words arrive one by one.
+  await expect(panelIn(section).locator('[data-caption] > [data-phase="out"]')).toContainText(first.caption.split(" ")[0]!);
+  expectWordByWord(await captionWords(section), second, 0);
+
+  // Then the old recording goes, and the new one is at rest.
   await finishAll(panelIn(section));
   await expect(leaving(stage)).toHaveCount(0);
   await expect(stage.locator("video")).toHaveCount(1);
-  await expect(current(stage)).toHaveCSS("opacity", "1");
+  expect(await look(current(stage))).toMatchObject({ opacity: 1, down: 0, blur: 0, scale: 1 });
   await expect(playing(stage)).toHaveCount(1);
 });
 
-test("a recording leaving goes even when its fade is cut short, as when the reader asks for less motion mid-change", async ({
+test("a recording leaving goes even when its exit is cut short, as when the reader asks for less motion mid-change", async ({
   page,
 }) => {
   await stubPlayback(page);
@@ -276,17 +337,16 @@ test("a recording leaving goes even when its fade is cut short, as when the read
   await stopClockASecondOn(page);
   const section = sectionOf(page, canvas.headline);
   const stage = stageIn(section);
-  await enter(page, stage);
+  await enter(page, section);
   const [first, second] = canvas.tabs;
 
   await pickFrozen(page, section, second.label);
   await expect(leaving(stage).locator("video")).toHaveAttribute("src", `/videos/${first.recording}.mp4`);
 
-  // Its fade no longer applies, so it never runs to its end; it goes all the same.
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(leaving(stage)).toHaveCount(0);
   await expect(stage.locator("video")).toHaveCount(1);
-  await expect(current(stage)).toHaveCSS("opacity", "1");
+  expect(await look(current(stage))).toMatchObject({ opacity: 1, down: 0, blur: 0 });
   await expect(stage.locator("video")).toHaveAttribute("src", `/videos/${second.recording}.mp4`);
 });
 
@@ -297,21 +357,34 @@ test("on a phone the touch-points stage glides between the window's shape and th
   const stage = stageIn(section);
   await stage.scrollIntoViewIfNeeded();
   await expect(stage).toHaveAttribute("data-entry", "in");
-  await animationsDone(stage);
+  await finishAll(panelIn(section));
   const phone = touchPoints.tabs.at(-1)!;
   const desktop = touchPoints.tabs[0];
 
+  /** The stage's height glide, if it is gliding: its duration, curve and first height. */
+  const heightGlide = () =>
+    stage.evaluate((node) =>
+      node
+        .getAnimations()
+        .map((animation) => ({
+          duration: Number(animation.effect?.getTiming().duration),
+          easing: animation.effect?.getTiming().easing,
+          from: (animation.effect as KeyframeEffect).getKeyframes()[0]?.height,
+        }))
+        .filter((glide) => glide.from),
+    );
+
   /** Starts the stage's glide, checks it goes from `from` to `to` through the heights between, and lets it end. */
   const glides = async (label: string, to: number) => {
-    const from = (await stage.boundingBox())!.height;
-    const width = (await stage.boundingBox())!.width;
+    const { height: from, width } = (await stage.boundingBox())!;
     await pickFrozen(page, section, label);
-    const [glide, ...others] = (await motionOf(stage)).filter((motion) => motion.keyframes[0]?.height);
+    const [glide, ...others] = await heightGlide();
     expect(others).toEqual([]);
-    expect(glide!.duration).toBe(SWAP_MS);
-    expect(parseFloat(String(glide!.keyframes[0]!.height))).toBeCloseTo(from, 0);
+    expect(glide!.duration).toBe(GLIDE_MS);
+    expect(glide!.easing).toBe("cubic-bezier(0.22, 1, 0.36, 1)");
+    expect(parseFloat(String(glide!.from))).toBeCloseTo(from, 0);
     // Halfway through, by the animation's own time, the stage stands between the two shapes, as wide as ever.
-    await seek(panelIn(section), SWAP_MS / 2);
+    await seek(panelIn(section), GLIDE_MS / 2);
     const half = (await stage.boundingBox())!;
     const end = width * to;
     expect(half.width).toBeCloseTo(width, 0);
@@ -329,6 +402,8 @@ test("on a phone the touch-points stage glides between the window's shape and th
 
 test("for a reader who asked for less motion the stage is simply there, and a tab change is instant", async ({ page }) => {
   await stubPlayback(page);
+  await countStageAnimations(page);
+  await keepRealFrames(page);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
@@ -336,16 +411,17 @@ test("for a reader who asked for less motion the stage is simply there, and a ta
   const stage = stageIn(section);
 
   // No entry: in place before it is ever scrolled to.
-  await expect(stage).toHaveCSS("opacity", "1");
-  await expect(stage).toHaveCSS("filter", "none");
-  await expect(stage).toHaveCSS("translate", "none");
+  expect(await look(stage)).toMatchObject({ opacity: 1, down: 0, blur: 0 });
   await stage.scrollIntoViewIfNeeded();
-  expect(await stage.evaluate((node) => node.getAnimations().length)).toBe(0);
+  await realFrames(page);
 
   // No crossfade, no glide: one recording, and the phone's shape at once.
   await section.getByRole("tab", { name: touchPoints.tabs.at(-1)!.label }).click();
   await expect(layers(stage)).toHaveCount(1);
   expect(await panelIn(section).evaluate((node) => node.getAnimations({ subtree: true }).filter((a) => !(a instanceof CSSTransition)).length)).toBe(0);
+  await expect(stage).not.toHaveAttribute("data-animated", /./);
+  expect(await look(current(stage))).toMatchObject({ opacity: 1, down: 0, blur: 0 });
+  await expect(shownCaption(section)).toContainText(touchPoints.tabs.at(-1)!.caption);
   const box = (await stage.boundingBox())!;
   expect(box.height / box.width).toBeCloseTo(5 / 4, 2);
 });
@@ -358,7 +434,7 @@ test("switching tabs quickly drops what is leaving, plays one recording, and end
   await stopClockASecondOn(page);
   const section = sectionOf(page, touchPoints.headline);
   const stage = stageIn(section);
-  await enter(page, stage);
+  await enter(page, section);
   const [first, second, third] = touchPoints.tabs;
   const last = touchPoints.tabs.at(-1)!;
 
@@ -375,9 +451,11 @@ test("switching tabs quickly drops what is leaving, plays one recording, and end
   await finishAll(panelIn(section));
   await expect(section.getByRole("tab", { name: last.label })).toHaveAttribute("aria-selected", "true");
   await expect(layers(stage)).toHaveCount(1);
-  await expect(current(stage)).toHaveCSS("opacity", "1");
+  expect(await look(current(stage))).toMatchObject({ opacity: 1, down: 0, blur: 0 });
   await expect(stage.locator("video")).toHaveAttribute("src", `/videos/${last.recording}.mp4`);
   await expect(playing(stage)).toHaveCount(1);
+  await expect(shownCaption(section)).toContainText(last.caption);
   const box = (await stage.boundingBox())!;
   expect(box.height / box.width).toBeCloseTo(5 / 4, 2);
 });
+
