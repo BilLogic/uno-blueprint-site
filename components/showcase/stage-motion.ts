@@ -2,7 +2,8 @@ import { cssMs, rootToken } from "@/lib/css-time";
 
 /**
  * A showcase stage's motion, as scripted animations, so its transforms and
- * blurs apply whatever else styles the element. Every number is a token in
+ * blurs apply whatever else styles the element. The demo stages move their
+ * recordings with it, and the harness showcase its pictures, the same way. Every number is a token in
  * styles/tokens.css. Each animation holds its first frame through its delay,
  * then lets the element's own style take over at its end.
  */
@@ -15,7 +16,7 @@ const pose = (blur: string, down: string, scale = "1") => ({
 });
 const atRest = { opacity: 1, filter: "blur(0px)", transform: "none" };
 
-/** The entry, in two beats: the stage's frame rises into place, then its recording inside it. */
+/** The entry, in two beats: the stage's frame rises into place, then its recording (or picture) inside it. */
 export function enterStage(stage: HTMLElement, recording: HTMLElement | null) {
   const ease = rootToken("--ease-out");
   stage.animate([pose(rootToken("--blur-stage-entry"), rootToken("--spacing-stage-rise"), rootToken("--scale-stage-entry")), atRest], {

@@ -2,17 +2,20 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { canvas } from "@/content/canvas";
 import { touchPoints } from "@/content/touch-points";
 import { FRAME, flushRenders, installClock, keepRealFrames, realFrames, runUntil, stopClockASecondOn, tick } from "./clock";
-
-/**
- * The motion's numbers, as styles/tokens.css has them. Mid-flight checks are
- * at fixed times, not fractions of a duration, so a curve that reads as
- * instant fails them however long it nominally lasts.
- */
-const RECORDING_ENTRY_DELAY = 220; // --delay-recording-entry
-const RECORDING_ENTRY_MS = 640; // --duration-recording-entry
-const ARRIVE_DELAY = 100; // --delay-recording-arrive
-const GLIDE_MS = 560; // --duration-stage-glide
-const STAGGER = 30; // lib/caption.ts
+import {
+  ARRIVE_DELAY,
+  GLIDE_MS,
+  RECORDING_ENTRY_DELAY,
+  RECORDING_ENTRY_MS,
+  captionWords,
+  countAnimations,
+  expectWordByWord,
+  finishAll,
+  freezeNext,
+  look,
+  seek,
+  shownCaptionIn,
+} from "./motion";
 
 /**
  * Stands in for playback, which the test browser cannot decode: each video
@@ -30,18 +33,8 @@ async function stubPlayback(page: Page) {
   });
 }
 
-/** Counts, on each stage, the animations the page starts on it (`data-animated`), from before the page loads. */
-async function countStageAnimations(page: Page) {
-  await page.addInitScript(() => {
-    const animate = Element.prototype.animate;
-    Element.prototype.animate = function (...args: Parameters<Element["animate"]>) {
-      if (this instanceof HTMLElement && this.dataset.testid === "showcase-stage") {
-        this.dataset.animated = String(Number(this.dataset.animated ?? 0) + 1);
-      }
-      return animate.apply(this, args);
-    };
-  });
-}
+/** Counts the animations the page starts on each stage (`data-animated`). */
+const countStageAnimations = (page: Page) => countAnimations(page, '[data-testid="showcase-stage"]');
 
 const sections = [
   { name: "canvas", headline: canvas.headline, tabs: canvas.tabs },
@@ -59,46 +52,7 @@ const leaving = (stage: Locator) => stage.locator("[data-recording][data-leaving
 const current = (stage: Locator) => stage.locator("[data-recording]:not([data-leaving])");
 const playing = (stage: Locator) => stage.locator('video[data-state="playing"]');
 /** The caption under the stage, drawn word by word, and the layer of it showing. */
-const shownCaption = (section: Locator) => panelIn(section).locator('[data-caption] > [data-phase="in"]');
-
-/** What an element looks like now, mid-animation included: its opacity, how far down it is moved, its scale and its blur. */
-const look = (element: Locator) =>
-  element.evaluate((node) => {
-    const style = getComputedStyle(node);
-    const matrix = new DOMMatrix(style.transform === "none" ? undefined : style.transform);
-    return {
-      opacity: Number(style.opacity),
-      down: matrix.m42,
-      scale: matrix.a,
-      blur: Number(/blur\(([\d.]+)px\)/.exec(style.filter)?.[1] ?? 0),
-    };
-  });
-
-/**
- * Pauses every animation in the panel holding `root`, at its first frame,
- * the moment `root` next changes as `options` says, before a frame is drawn:
- * so the change can be read mid-flight however fast the machine is. `seek`
- * moves them on, and `finishAll` runs them to their end.
- */
-const freezeNext = (root: Locator, options: MutationObserverInit) =>
-  root.evaluate((node, options) => {
-    const panel = node.closest('[role="tabpanel"]') ?? node;
-    const observer = new MutationObserver(() => {
-      observer.disconnect();
-      for (const animation of panel.getAnimations({ subtree: true })) animation.pause();
-    });
-    observer.observe(node, options);
-  }, options);
-
-const seek = (root: Locator, ms: number) =>
-  root.evaluate((node, ms) => {
-    for (const animation of node.getAnimations({ subtree: true })) if (animation.playState === "paused") animation.currentTime = ms;
-  }, ms);
-
-const finishAll = (root: Locator) =>
-  root.evaluate((node) => {
-    for (const animation of node.getAnimations({ subtree: true })) animation.finish();
-  });
+const shownCaption = (section: Locator) => shownCaptionIn(panelIn(section));
 
 /** Picks a tab with the motion it starts held at its first frame. */
 async function pickFrozen(page: Page, section: Locator, label: string) {
@@ -106,31 +60,6 @@ async function pickFrozen(page: Page, section: Locator, label: string) {
   await section.getByRole("tab", { name: label }).dispatchEvent("click");
   await flushRenders(page);
   await flushRenders(page);
-}
-
-/** Each word of the caption showing: its text, and when it starts to arrive, in ms. */
-const captionWords = (section: Locator) =>
-  shownCaption(section).evaluate((layer) =>
-    [...layer.querySelectorAll<HTMLElement>("b > span, p > span")].map((word) => ({
-      text: word.textContent,
-      delay: parseFloat(getComputedStyle(word).transitionDelay) * 1000,
-      moving: word.getAnimations().length > 0,
-    })),
-  );
-
-/** Expects the caption's words to arrive one by one: the title at `start`, then each word `STAGGER` ms (or less, on a long line) after the one before. */
-function expectWordByWord(words: { text: string | null; delay: number; moving: boolean }[], tab: { label: string; caption: string }, start: number) {
-  expect(words.map((word) => word.text)).toEqual([`${tab.label}.`, ...tab.caption.split(" ")]);
-  expect(words.every((word) => word.moving)).toBe(true);
-  const [title, ...rest] = words.map((word) => Math.round(word.delay));
-  expect(title).toBe(start);
-  expect(rest[0]).toBe(start + STAGGER);
-  // Later words, line by line, never start before the line's first one, and wait at most a stagger each.
-  for (const delay of rest) {
-    expect(delay).toBeGreaterThanOrEqual(start + STAGGER);
-    expect(delay).toBeLessThanOrEqual(start + STAGGER + 120);
-  }
-  expect(new Set(rest).size).toBeGreaterThan(1);
 }
 
 /**
@@ -193,7 +122,7 @@ for (const section of sections) {
     expect((await look(current(stage))).opacity).toBeLessThan(0.95);
 
     // The caption arrives word by word, with the recording.
-    expectWordByWord(await captionWords(sectionLocator), section.tabs[0], RECORDING_ENTRY_DELAY);
+    expectWordByWord(await captionWords(panelIn(sectionLocator)), section.tabs[0], RECORDING_ENTRY_DELAY);
 
     // The recording plays once it is in place, by the page's clock.
     await finishAll(panelIn(sectionLocator));
@@ -321,7 +250,7 @@ test("a tab change: the old recording sinks away, the new one rises in after it,
 
   // The caption: the old one leaves whole as the new one's words arrive one by one.
   await expect(panelIn(section).locator('[data-caption] > [data-phase="out"]')).toContainText(first.caption.split(" ")[0]!);
-  expectWordByWord(await captionWords(section), second, 0);
+  expectWordByWord(await captionWords(panelIn(section)), second, 0);
 
   // Then the old recording goes, and the new one is at rest.
   await finishAll(panelIn(section));

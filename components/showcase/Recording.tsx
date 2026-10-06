@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useEffectEvent, useImperativeHandle, useLayoutEffect, useRef, type Ref } from "react";
+import { useEffect, useImperativeHandle, useRef, type Ref } from "react";
 import { vars } from "@/components/ui/vars";
+import { useLayerMotion } from "@/hooks/use-layer-motion";
 import { openFullscreen, recordingFiles } from "@/lib/recording";
 import { zoomAt, zoomTransform, type ZoomKeyframe } from "@/lib/recording-zoom";
-import { arriveRecording, leaveRecording } from "./stage-motion";
 
 /** What a showcase may ask of its recording. */
 export type RecordingHandle = {
@@ -89,21 +89,9 @@ export function Recording({
     return () => element.removeEventListener("webkitendfullscreen", play);
   }, [playing]);
 
-  // A recording arriving rises in as it first shows; it is never arriving again once it is not.
-  useLayoutEffect(() => {
-    const layer = layerRef.current;
-    if (arriving && layer) arriveRecording(layer);
-  }, [arriving]);
-
-  // A recording leaving is already paused. It sinks away from wherever its arrival had got to, and goes once
-  // that is over: run to its end, or cut short (Showcase finishes it at once for a reader who asks for less
-  // motion mid-change). Once it is off the stage its download stops too.
-  const left = useEffectEvent(() => onLeft?.());
-  useLayoutEffect(() => {
-    const layer = layerRef.current;
-    if (!leaving || !layer) return;
-    leaveRecording(layer).finished.then(left, left);
-  }, [leaving]);
+  // A recording arriving rises in; one leaving, already paused, sinks away and then goes. Once it is off the
+  // stage its download stops too.
+  useLayerMotion(layerRef, { arriving, leaving, onLeft });
 
   useEffect(() => {
     const element = ref.current;

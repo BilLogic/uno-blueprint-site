@@ -1,8 +1,9 @@
 /*
  * A stage waiting for its entry stands at the entry's first frame, unseen
- * (Showcase sets `data-entry` only once the page is live, and only on a stage
- * then off screen, so without script, before it runs, or already in sight,
- * the stage is simply there). The entry itself is scripted (stage-motion.ts).
+ * (`useStageEntry` sets `data-entry` only once the page is live, and only on a
+ * stage then off screen, so without script, before it runs, or already in
+ * sight, the stage is simply there). The entry itself is scripted
+ * (stage-motion.ts). The demo stages and the harness showcase share it.
  */
 .stage[data-entry="waiting"] {
   opacity: 0;
