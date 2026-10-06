@@ -5,7 +5,7 @@ import { lanes, map, skill } from "@/content/harness";
 import { BELOW_LG_QUERY, useMediaQuery } from "@/hooks/use-media-query";
 import { useSteps } from "@/hooks/use-steps";
 import { mapColumns, mapFrame, mapLinks, mapSteps } from "@/lib/harness-map";
-import { widthChange } from "@/lib/viewport-resize";
+import { onResize } from "@/lib/viewport-resize";
 import { Card, Flow, Side, Skill } from "./Flow";
 import { laneColour } from "./MiniBoard";
 import { SourceLogo } from "./SourceLogo";
@@ -60,16 +60,14 @@ export function MapPicture({ running, onStale, onDone }: PictureProps) {
   useEffect(() => {
     if (!hasLines) return;
     let timer = 0;
-    const widthChanged = widthChange(window.innerWidth);
-    const onResize = () => {
-      if (!widthChanged(window.innerWidth)) return;
+    const stop = onResize((widthChanged) => {
+      if (!widthChanged) return;
       clearTimeout(timer);
       timer = window.setTimeout(onStale, 200);
-    };
-    window.addEventListener("resize", onResize);
+    });
     return () => {
       clearTimeout(timer);
-      window.removeEventListener("resize", onResize);
+      stop();
     };
   }, [hasLines, onStale]);
 

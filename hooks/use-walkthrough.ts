@@ -29,7 +29,7 @@ import {
   type CardRest,
   type LayerBox,
 } from "@/lib/walkthrough-morph";
-import { widthChange } from "@/lib/viewport-resize";
+import { onResize } from "@/lib/viewport-resize";
 
 /** The caption's height before it is measured, as the prototype assumes. */
 const CAPTION_FALLBACK = 110;
@@ -65,7 +65,8 @@ function setLine(line: Element | undefined, [x1, y1]: readonly number[], [x2, y2
  * section gets the scroll length its steps add up to (a little more on a
  * phone). The opening cards are drawn here, wherever their morph into the
  * stack has got to, and re-measured on a resize; on a touch screen only on one
- * that changes the width, so the browser's toolbar never moves the page.
+ * that changes the width or leaves the viewport shorter than the frame was
+ * fitted to, so the browser's toolbar never moves the page.
  * Arriving at the cell from above, it lights on the flat board and opens
  * `TIMING.cellBeat` later; `open` says whether it has, and until it has opened
  * the page may be held at the section's end (see `useExitHold`). With reduced
@@ -126,6 +127,8 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
 
     // Set when a measure was skipped because the section was hidden (the agent view is showing).
     let stale = false;
+    // The viewport height the frame was last fitted to.
+    let fittedHeight = 0;
     const refit = () => {
       const scrollerEl = scroller.current;
       const stickyEl = sticky.current;
@@ -137,6 +140,7 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
         return;
       }
       stale = false;
+      fittedHeight = innerHeight;
       const headEl = head.current;
       const headHeight = headEl ? headEl.offsetHeight + (parseFloat(getComputedStyle(headEl).marginBottom) || 0) : 0;
       const captionHeight = caption.current?.offsetHeight || CAPTION_FALLBACK;
@@ -272,14 +276,15 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
 
     // On a touch screen a resize that leaves the width alone is the browser's
     // toolbar hiding or showing as the page scrolls: fitted again, the frame and
-    // the section's length would change, and everything below would jump. The
-    // frame keeps the fit it was given, as a rule with the toolbar showing, so
-    // it still fits when the toolbar shows again.
-    const widthChanged = widthChange(innerWidth);
+    // the section's length would change, and everything below would jump. So
+    // the frame is fitted again only when the viewport gets shorter than the
+    // one it was fitted to, as when the toolbar comes back after a page loaded
+    // or restored with it hidden; it always fits the shortest viewport yet,
+    // and as a rule, fitted with the toolbar showing, it never moves.
     const touch = matchMedia(NO_HOVER_QUERY);
     let settle = 0;
-    const onResize = () => {
-      if (!widthChanged(innerWidth) && touch.matches) return;
+    const stopResize = onResize((widthChanged) => {
+      if (!widthChanged && touch.matches && innerHeight >= fittedHeight) return;
       clearTimeout(settle);
       settle = window.setTimeout(() => {
         remeasure();
@@ -290,8 +295,7 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
           beam.style.clipPath = beamClip(beamEnds.current[1] + 1);
         }
       }, TIMING.resizeSettle);
-    };
-    addEventListener("resize", onResize);
+    });
 
     // A measure skipped while the section was hidden is taken again as soon as it shows.
     const stickyEl = sticky.current;
@@ -309,7 +313,7 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
       alive = false;
       clearTimeout(settle);
       shown.disconnect();
-      removeEventListener("resize", onResize);
+      stopResize();
       worldEl?.removeEventListener("transitionend", onTransitionEnd);
     };
   }, [reduced, scrollLength]);

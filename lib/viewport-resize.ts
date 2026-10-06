@@ -18,3 +18,18 @@ export function widthChange(width: number): (now: number) => boolean {
     return changed;
   };
 }
+
+/** What `onResize` listens to: the window, or a stand-in for it. */
+export type ResizeTarget = Pick<Window, "innerWidth" | "addEventListener" | "removeEventListener">;
+
+/**
+ * Calls `listener` on each resize of the window, saying whether the width
+ * changed since the last one; a listener laid out by width alone returns
+ * early when it did not. Returns a function that stops listening.
+ */
+export function onResize(listener: (widthChanged: boolean) => void, target: ResizeTarget = window): () => void {
+  const changed = widthChange(target.innerWidth);
+  const handle = () => listener(changed(target.innerWidth));
+  target.addEventListener("resize", handle);
+  return () => target.removeEventListener("resize", handle);
+}

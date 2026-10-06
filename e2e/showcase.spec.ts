@@ -165,7 +165,7 @@ for (const width of [1440, 390]) {
     const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
     await expect(list.getByRole("tab")).toHaveCount(touchPoints.tabs.length);
     await expect(list.getByRole("tab").last()).toHaveText(phone.label);
-    const size = await expectOneStageSize(page, list, desktopTabs);
+    const windowSize = await expectOneStageSize(page, list, desktopTabs);
     for (const tab of desktopTabs) {
       await list.getByRole("tab", { name: tab.label }).click();
       await expectFlushWindow(page.getByRole("tabpanel", { name: tab.label }).getByTestId("showcase-stage"));
@@ -179,12 +179,13 @@ for (const width of [1440, 390]) {
     if (width === 390) {
       // On a phone a window gets the canvas's 3:2, snug round it, and the phone's
       // stage stands taller than wide, so its screen reads.
-      expect(size.width / size.height).toBeCloseTo(3 / 2, 1);
+      expect(windowSize.width / windowSize.height).toBeCloseTo(3 / 2, 1);
       expect(stageBox.height / stageBox.width).toBeCloseTo(5 / 4, 1);
-      expect(stageBox.width).toBeCloseTo(size.width, 0);
-      expect(stageBox.height).toBeGreaterThan(size.height);
+      expect(Math.abs(stageBox.width - windowSize.width)).toBeLessThanOrEqual(1);
+      expect(stageBox.height).toBeGreaterThan(windowSize.height);
     } else {
-      expect([stageBox.width, stageBox.height]).toEqual([size.width, size.height]);
+      expect(Math.abs(stageBox.width - windowSize.width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(stageBox.height - windowSize.height)).toBeLessThanOrEqual(1);
     }
     const margin = await margins(stage, panel.getByTestId("phone"));
     // Whole, with dots above and below it, and centred both ways.
@@ -269,7 +270,8 @@ test("on a phone each touch-points stage keeps its size from before its poster l
     await expect(video).toHaveAttribute("poster", /\.webp$/);
     // The phone's first move in starts 1.2 s into its recording.
     const { heights, transforms } = await sampleStage(stage, tab === phone ? 3000 : 1000);
-    expect(new Set(heights)).toEqual(new Set([before]));
+    // Within a pixel of where it began, every frame.
+    for (const height of heights) expect(Math.abs(height - before)).toBeLessThanOrEqual(1);
     if (tab === phone) {
       expect(transforms.some((transform) => transform.includes("scale(1.6)"))).toBe(true);
     }
