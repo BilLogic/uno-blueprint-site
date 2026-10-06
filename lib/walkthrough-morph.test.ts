@@ -3,7 +3,6 @@ import { structure } from "@/content/structure";
 import { TIMING } from "./walkthrough";
 import {
   CARD_PLACES,
-  cardPlace,
   LANDING_ORDER,
   CARD_STYLE_NAMES,
   advanceMorph,
@@ -117,15 +116,5 @@ describe("CARD_PLACES", () => {
     expect(CARD_PLACES.narrow).toHaveLength(count);
     expect(LANDING_ORDER).toHaveLength(count);
     expect(new Set(LANDING_ORDER)).toEqual(new Set(Array.from({ length: count }, (_, i) => i)));
-  });
-
-  it("still places, and morphs, a card past the last place", () => {
-    const extra = CARD_PLACES.wide.length;
-    expect(cardPlace(extra, false)).toEqual(CARD_PLACES.wide[0]);
-    expect(cardPlace(extra, true)).toEqual(CARD_PLACES.narrow[0]);
-    const seven = [...cards, { ...cards[0]! }];
-    const frames = morphFrame(0.5, seven, layers, false);
-    expect(frames).toHaveLength(7);
-    for (const frame of frames) expect(Number.isFinite(frame.left + frame.top + frame.tx + frame.ty)).toBe(true);
   });
 });

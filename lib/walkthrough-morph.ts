@@ -58,13 +58,12 @@ export const CARD_PLACES = {
 
 /**
  * Where card `i` rests on a wide frame or a phone's: its left, top and turn.
- * There is a place for each of the six cards the content lists (a test ties
- * the two together); a seventh would share the first's place rather than
- * break the page.
+ * There is a place for each of the six cards the content lists, and a test
+ * ties the two together. A seventh card has no place until it is given one, so
+ * it fails rather than lying over the first.
  */
 export function cardPlace(i: number, narrow: boolean): readonly [number, number, number] {
-  const places = narrow ? CARD_PLACES.narrow : CARD_PLACES.wide;
-  return places[i % places.length]!;
+  return (narrow ? CARD_PLACES.narrow : CARD_PLACES.wide)[i]!;
 }
 
 /** The layer each card lands on first; the shuffle then takes card i to layer i. */
@@ -115,10 +114,9 @@ export function morphFrame(
   const contentOpacity = 1 - clamp01(progress / CONTENT_FADE_END);
 
   return cards.map((card, i) => {
-    // The stack has six layers, one per card; any card past those lands on them again.
-    const landing = LANDING_ORDER[i % LANDING_ORDER.length]!;
-    const a = layers[landing % layers.length]!;
-    const b = layers[i % layers.length]!;
+    const landing = LANDING_ORDER[i]!;
+    const a = layers[landing]!;
+    const b = layers[i]!;
     // The layer the card is heading for, part way through the shuffle.
     const to = {
       x: lerp(a.x, b.x, qe),
