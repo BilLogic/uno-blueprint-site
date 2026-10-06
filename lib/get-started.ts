@@ -20,12 +20,12 @@ export const noteLine = (note: string) => `# ${note}`;
 /** What a copy button puts on the clipboard for a block of commands: one per line. */
 export const commandText = (lines: readonly string[]) => lines.join("\n");
 
-/** Commands as one sentence for an agent, however many there are: "a, then b and c". */
+/** Commands as one sentence for an agent, however many there are: "a, then b, and c". */
 export function runInOrder(lines: readonly string[]): string {
   const [first = "", ...rest] = lines;
   const last = rest.pop();
   if (last === undefined) return first;
-  return `${first}, then ${rest.length > 0 ? `${rest.join(", ")} and ${last}` : last}`;
+  return `${first}, then ${rest.length > 0 ? `${rest.join(", ")}, and ${last}` : last}`;
 }
 
 /** A prompt assembled from sentences; a part left out (`false` or `undefined`) is skipped. */

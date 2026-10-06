@@ -36,8 +36,8 @@ describe("runInOrder", () => {
   it("reads commands as one sentence: the first, then the rest as a list", () => {
     expect(runInOrder(["a"])).toBe("a");
     expect(runInOrder(["a", "b"])).toBe("a, then b");
-    expect(runInOrder(["a", "b", "c"])).toBe("a, then b and c");
-    expect(runInOrder(["a", "b", "c", "d"])).toBe("a, then b, c and d");
+    expect(runInOrder(["a", "b", "c"])).toBe("a, then b, and c");
+    expect(runInOrder(["a", "b", "c", "d"])).toBe("a, then b, c, and d");
   });
 });
 
