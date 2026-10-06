@@ -4,15 +4,18 @@ import {
   CATCH_UP,
   STEP,
   TIMING,
+  atExit,
   availableStageHeight,
   beamClip,
   cellArrival,
   cellOpensLate,
+  crossedExit,
   exitScroll,
   fitStage,
   flatLift,
   goalStep,
   holdCap,
+  holdOpen,
   holdsExit,
   introTriggered,
   keyScroll,
@@ -510,6 +513,70 @@ describe("shouldLock", () => {
   it("lets go once no hold is to come, or the hold has lasted its cap", () => {
     expect(shouldLock({ ...moving, pending: false })).toBe(false);
     expect(shouldLock({ ...moving, sinceHeld: cap })).toBe(false);
+  });
+});
+
+describe("crossedExit", () => {
+  const exit = 5000;
+  const cap = 2160;
+  // A busy page hears of a fast fling only once it is well past the exit.
+  const carried = { from: exit - 400, y: exit + 1200, exit, reach: 2700, pending: true, sinceHeld: null, cap, sinceGesture: 50 };
+
+  it("brings back a page carried past the exit while a hold is to come", () => {
+    expect(crossedExit(carried)).toBe(true);
+    expect(crossedExit({ ...carried, from: exit, y: exit + 30 })).toBe(true);
+    expect(crossedExit({ ...carried, from: exit - 2700 })).toBe(true);
+    expect(crossedExit({ ...carried, sinceHeld: cap - 1 })).toBe(true);
+  });
+
+  it("brings it back while a phone's momentum runs on after the finger lifts", () => {
+    expect(crossedExit({ ...carried, sinceGesture: 800 })).toBe(true);
+  });
+
+  it("leaves a page that no wheel or finger carried: a key, a link, find on the page, the scrollbar, a reload", () => {
+    expect(crossedExit({ ...carried, sinceGesture: null })).toBe(false);
+    expect(crossedExit({ ...carried, sinceGesture: 801 })).toBe(false);
+    expect(crossedExit({ ...carried, sinceGesture: 5000 })).toBe(false);
+  });
+
+  it("leaves a page that is at the exit, or a rounding past it", () => {
+    expect(crossedExit({ ...carried, y: exit })).toBe(false);
+    expect(crossedExit({ ...carried, y: exit + 1 })).toBe(false);
+  });
+
+  it("leaves a page that was already past the exit", () => {
+    expect(crossedExit({ ...carried, from: exit + 2 })).toBe(false);
+    expect(crossedExit({ ...carried, from: exit + 300, y: exit + 200 })).toBe(false);
+  });
+
+  it("leaves a page that came from far above the exit, as one put back where it was as the page loads", () => {
+    expect(crossedExit({ ...carried, from: 0 })).toBe(false);
+    expect(crossedExit({ ...carried, from: exit - 2701 })).toBe(false);
+  });
+
+  it("lets go once no hold is to come, or the hold has lasted its cap", () => {
+    expect(crossedExit({ ...carried, pending: false })).toBe(false);
+    expect(crossedExit({ ...carried, sinceHeld: cap })).toBe(false);
+  });
+});
+
+describe("holdOpen", () => {
+  it("is open until the hold has lasted its cap from the first move it stopped", () => {
+    expect(holdOpen(null, 2160)).toBe(true);
+    expect(holdOpen(0, 2160)).toBe(true);
+    expect(holdOpen(2159, 2160)).toBe(true);
+    expect(holdOpen(2160, 2160)).toBe(false);
+    expect(holdOpen(5000, 2160)).toBe(false);
+  });
+});
+
+describe("atExit", () => {
+  it("takes a rounding either side of the exit as at it", () => {
+    expect(atExit(5000, 5000)).toBe(true);
+    expect(atExit(5000.6, 5000)).toBe(true);
+    expect(atExit(4999, 5000)).toBe(true);
+    expect(atExit(4998, 5000)).toBe(false);
+    expect(atExit(5002, 5000)).toBe(false);
   });
 });
 
