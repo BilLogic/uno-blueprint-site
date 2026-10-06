@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useExitHold } from "@/hooks/use-exit-hold";
-import { useReducedMotion } from "@/hooks/use-media-query";
+import { NO_HOVER_QUERY, useReducedMotion } from "@/hooks/use-media-query";
 import { useScrollStep, type Morph, type StepChange } from "@/hooks/use-scroll-step";
 import {
   STAGE_WIDTH,
@@ -29,6 +29,7 @@ import {
   type CardRest,
   type LayerBox,
 } from "@/lib/walkthrough-morph";
+import { onResize } from "@/lib/viewport-resize";
 
 /** The caption's height before it is measured, as the prototype assumes. */
 const CAPTION_FALLBACK = 110;
@@ -63,11 +64,13 @@ function setLine(line: Element | undefined, [x1, y1]: readonly number[], [x2, y2
  * headline and frame are held together in the middle of the screen, and the
  * section gets the scroll length its steps add up to (a little more on a
  * phone). The opening cards are drawn here, wherever their morph into the
- * stack has got to, and re-measured on a resize. Arriving at the cell from
- * above, it lights on the flat board and opens `TIMING.cellBeat` later; `open`
- * says whether it has, and until it has opened the page may be held at the
- * section's end (see `useExitHold`). With reduced motion nothing is pinned and
- * the last step shows, open.
+ * stack has got to, and re-measured on a resize; on a touch screen only on one
+ * that changes the width or leaves the viewport shorter than the frame was
+ * fitted to, so the browser's toolbar never moves the page.
+ * Arriving at the cell from above, it lights on the flat board and opens
+ * `TIMING.cellBeat` later; `open` says whether it has, and until it has opened
+ * the page may be held at the section's end (see `useExitHold`). With reduced
+ * motion nothing is pinned and the last step shows, open.
  *
  * `edges` end each step (see `stepEdges`); `scrollLength` is their total in
  * viewport heights. Attach the returned refs to the matching elements.
@@ -124,6 +127,8 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
 
     // Set when a measure was skipped because the section was hidden (the agent view is showing).
     let stale = false;
+    // The viewport height the frame was last fitted to.
+    let fittedHeight = 0;
     const refit = () => {
       const scrollerEl = scroller.current;
       const stickyEl = sticky.current;
@@ -135,6 +140,7 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
         return;
       }
       stale = false;
+      fittedHeight = innerHeight;
       const headEl = head.current;
       const headHeight = headEl ? headEl.offsetHeight + (parseFloat(getComputedStyle(headEl).marginBottom) || 0) : 0;
       const captionHeight = caption.current?.offsetHeight || CAPTION_FALLBACK;
@@ -146,9 +152,9 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
       setLayout((was) => (was.narrow === fitted.narrow && was.lift === lift ? was : { narrow: fitted.narrow, lift }));
       placePose.current();
       stickyEl.style.top = `${stickyTopFor(innerHeight, stickyEl.offsetHeight)}px`;
-      scrollerEl.style.height = reduced
-        ? "auto"
-        : `calc(${scrollLengthFor(scrollLength, innerWidth)}vh + ${stickyEl.offsetHeight}px)`;
+      // In px of the viewport as it was fitted, not in vh, which would follow a phone's toolbar.
+      const length = (scrollLengthFor(scrollLength, innerWidth) * innerHeight) / 100;
+      scrollerEl.style.height = reduced ? "auto" : `${length + stickyEl.offsetHeight}px`;
     };
 
     // The lines between lanes sit halfway between one lane and the next.
@@ -268,8 +274,17 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
     };
     worldEl?.addEventListener("transitionend", onTransitionEnd);
 
+    // On a touch screen a resize that leaves the width alone is the browser's
+    // toolbar hiding or showing as the page scrolls: fitted again, the frame and
+    // the section's length would change, and everything below would jump. So
+    // the frame is fitted again only when the viewport gets shorter than the
+    // one it was fitted to, as when the toolbar comes back after a page loaded
+    // or restored with it hidden; it always fits the shortest viewport yet,
+    // and as a rule, fitted with the toolbar showing, it never moves.
+    const touch = matchMedia(NO_HOVER_QUERY);
     let settle = 0;
-    const onResize = () => {
+    const stopResize = onResize((widthChanged) => {
+      if (!widthChanged && touch.matches && innerHeight >= fittedHeight) return;
       clearTimeout(settle);
       settle = window.setTimeout(() => {
         remeasure();
@@ -280,8 +295,7 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
           beam.style.clipPath = beamClip(beamEnds.current[1] + 1);
         }
       }, TIMING.resizeSettle);
-    };
-    addEventListener("resize", onResize);
+    });
 
     // A measure skipped while the section was hidden is taken again as soon as it shows.
     const stickyEl = sticky.current;
@@ -299,7 +313,7 @@ export function useWalkthrough(edges: readonly number[], scrollLength: number) {
       alive = false;
       clearTimeout(settle);
       shown.disconnect();
-      removeEventListener("resize", onResize);
+      stopResize();
       worldEl?.removeEventListener("transitionend", onTransitionEnd);
     };
   }, [reduced, scrollLength]);

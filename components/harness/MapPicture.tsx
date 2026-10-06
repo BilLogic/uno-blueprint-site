@@ -5,6 +5,7 @@ import { lanes, map, skill } from "@/content/harness";
 import { BELOW_LG_QUERY, useMediaQuery } from "@/hooks/use-media-query";
 import { useSteps } from "@/hooks/use-steps";
 import { mapColumns, mapFrame, mapLinks, mapSteps } from "@/lib/harness-map";
+import { onResize } from "@/lib/viewport-resize";
 import { Card, Flow, Side, Skill } from "./Flow";
 import { laneColour } from "./MiniBoard";
 import { SourceLogo } from "./SourceLogo";
@@ -53,19 +54,20 @@ export function MapPicture({ running, onStale, onDone }: PictureProps) {
     setLines((drawn) => ({ size: `0 0 ${frame.width} ${frame.height}`, paths: [...drawn.paths, paths] }));
   }, onDone);
 
-  // A resize moves everything the lines join, so the picture starts again.
+  // A resize moves everything the lines join, so the picture starts again. Only
+  // a new width moves them: a phone's toolbar hiding changes only the height.
   const hasLines = lines.paths.length > 0;
   useEffect(() => {
     if (!hasLines) return;
     let timer = 0;
-    const onResize = () => {
+    const stop = onResize((widthChanged) => {
+      if (!widthChanged) return;
       clearTimeout(timer);
       timer = window.setTimeout(onStale, 200);
-    };
-    window.addEventListener("resize", onResize);
+    });
     return () => {
       clearTimeout(timer);
-      window.removeEventListener("resize", onResize);
+      stop();
     };
   }, [hasLines, onStale]);
 
