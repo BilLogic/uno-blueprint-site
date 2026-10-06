@@ -60,9 +60,18 @@ const nextFrame = (page: Page) =>
  * Notes every caption title the walkthrough shows from now on, in order, and
  * every frame where a context card jumps further than a frame of its morph
  * could take it.
+ *
+ * It starts once the walkthrough has laid itself out. Until it first measures,
+ * the stage is drawn as a wide frame; on a phone the cards then move to their
+ * phone places in one frame, which is the page loading, not a jump. On a slow
+ * machine that can come after the caption is on the page.
  */
 async function watch(page: Page) {
   await caption(page).waitFor();
+  await page.waitForFunction(() =>
+    Boolean(document.querySelector("[data-board]")?.closest<HTMLElement>("[aria-hidden]")?.style.height),
+  );
+  await stillCards(page);
   await page.evaluate(() => {
     const w = window as unknown as { seen: string[]; jumps: number };
     const live = document.querySelector("section [aria-live]")!;
@@ -85,6 +94,36 @@ async function watch(page: Page) {
     requestAnimationFrame(sample);
   });
 }
+
+/** How many frames in a row the context cards must hold still before the watch starts. */
+const STILL_FRAMES = 5;
+
+/** Resolves once no context card has moved for `STILL_FRAMES` frames in a row. */
+const stillCards = (page: Page) =>
+  page.evaluate(
+    (frames) =>
+      new Promise<void>((done) => {
+        const cards = [...document.querySelectorAll<HTMLElement>("[data-card]")];
+        const where = () =>
+          cards
+            .map((card) => {
+              const rect = card.getBoundingClientRect();
+              return `${rect.x},${rect.y}`;
+            })
+            .join(" ");
+        let last = where();
+        let still = 0;
+        const sample = () => {
+          const now = where();
+          still = now === last ? still + 1 : 0;
+          last = now;
+          if (still >= frames) done();
+          else requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
+      }),
+    STILL_FRAMES,
+  );
 
 const seen = (page: Page) => page.evaluate(() => (window as unknown as { seen: string[] }).seen);
 const jumps = (page: Page) => page.evaluate(() => (window as unknown as { jumps: number }).jumps);
