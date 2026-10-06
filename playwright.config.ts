@@ -13,7 +13,7 @@ export default defineConfig({
   updateSnapshots: "missing",
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   expect: {
-    toHaveScreenshot: { animations: "disabled", caret: "hide", maxDiffPixelRatio: 0.002 },
+    toHaveScreenshot: { animations: "disabled", caret: "hide", maxDiffPixelRatio: 0 },
   },
   use: {
     baseURL: `http://localhost:${port}`,
