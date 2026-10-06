@@ -344,6 +344,10 @@
   --duration-sheet: 900ms;
   --duration-tag: 950ms;
   --duration-board: 1000ms;
+  /* The walkthrough caption: each word rises this far out of this blur; with reduced motion it crossfades whole. */
+  --blur-caption: 4px;
+  --spacing-caption-rise: 5px;
+  --duration-caption-fade: 150ms;
   --duration-named-delay: 1050ms; /* the board's words arrive once it has turned to face the reader */
 
   /* Hero picture (it shares the lane accents above) */
