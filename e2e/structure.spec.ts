@@ -387,15 +387,15 @@ const cellState = (page: Page) =>
 const settlesOn = (page: Page, title: string) =>
   expect(caption(page)).toHaveText(title, { timeout: WALK_TIMEOUT });
 
-/** How many frames in a row the board must not move before it counts as settled. */
-const STEADY_FRAMES = 10;
+/** How long the board must not move before it counts as settled, in ms: longer than any pause in its choreography. */
+const STEADY_MS = 600;
 
 /** The board's box within the pinned frame, as text, once it has stopped moving. */
 const steadyBoard = (page: Page) =>
   section(page)
     .locator("[data-board]")
     .evaluate(
-      (board, frames) =>
+      (board, ms) =>
         new Promise<string>((done) => {
           const frame = board.closest("[data-pin-frame]")!;
           const read = () => {
@@ -404,17 +404,17 @@ const steadyBoard = (page: Page) =>
             return [b.x - f.x, b.y - f.y, b.width, b.height].map((v) => v.toFixed(1)).join(",");
           };
           let last = read();
-          let still = 0;
+          let since = performance.now();
           const check = () => {
             const now = read();
-            still = now === last ? still + 1 : 0;
+            if (now !== last) since = performance.now();
             last = now;
-            if (still >= frames) done(now);
+            if (performance.now() - since >= ms) done(now);
             else requestAnimationFrame(check);
           };
           requestAnimationFrame(check);
         }),
-      STEADY_FRAMES,
+      STEADY_MS,
     );
 
 /** How many lines the caption's text runs to. */
@@ -525,6 +525,10 @@ test.describe("structure walkthrough", () => {
       await page.goto("/");
       const boxes: string[] = [];
       const lines = new Set<number>();
+      // Start from the flat board, once it has finished turning to face the reader.
+      await scrollToStep(section(page), titles.indexOf("Blueprint"), 0.5);
+      await settlesOn(page, "Blueprint");
+      await steadyBoard(page);
       // The lanes, the lines between them and the steps: the board is flat throughout, and only the caption changes.
       for (let step = titles.indexOf("User"); step <= titles.indexOf("Steps"); step++) {
         await scrollToStep(section(page), step, 0.5);
