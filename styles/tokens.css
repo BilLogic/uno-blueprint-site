@@ -157,7 +157,12 @@
    * of a blur, taking its time.
    */
   --ease-view-leave: cubic-bezier(0.55, 0, 0.75, 0.2);
-  --ease-view-arrive: var(--ease-out);
+  /*
+   * Gentler than --ease-out, which is three quarters done in a quarter of its
+   * time: on a whole page that reads as a cut. This one is under a third of the
+   * way in at 120ms, and settles by 400ms.
+   */
+  --ease-view-arrive: cubic-bezier(0.33, 0, 0.2, 1);
   --duration-view-leave: 300ms;
   --duration-view-arrive: 500ms;
   --spacing-view-sink: 12px; /* how far the view leaving drops */

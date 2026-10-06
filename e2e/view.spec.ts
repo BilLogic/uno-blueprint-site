@@ -37,10 +37,10 @@ test.describe("page format", () => {
 /**
  * The switch, as designed: the view on screen sinks 12px into an 8px blur and
  * fades over 300ms, easing in; then the other rises 20px out of a 10px blur
- * over 500ms, easing out.
+ * over 500ms, easing out gently.
  */
 const LEAVE = { ms: 300, sink: 12, blur: 8, ease: [0.55, 0, 0.75, 0.2] } as const;
-const ARRIVE = { ms: 500, rise: 20, blur: 10, ease: [0.22, 1, 0.36, 1] } as const;
+const ARRIVE = { ms: 500, rise: 20, blur: 10, ease: [0.33, 0, 0.2, 1] } as const;
 
 /** A CSS cubic-bezier() timing function. */
 function cubicBezier([x1, y1, x2, y2]: readonly [number, number, number, number]) {
@@ -157,7 +157,12 @@ test.describe("switching views", () => {
       expect(start.blur).toBeGreaterThan(ARRIVE.blur * 0.6);
       expect(start.y).toBeGreaterThan(ARRIVE.rise * 0.6);
 
-      await page.clock.runFor(250 - FRAME);
+      // 120ms in, the view arriving is still well short of whole: any sooner and the switch reads as a cut.
+      await page.clock.runFor(120 - FRAME);
+      await expectMidway(page, to, arriving, 120);
+      expect((await look(page, to)).opacity).toBeLessThan(0.5);
+
+      await page.clock.runFor(250 - 120);
       await expectMidway(page, to, arriving, 250);
 
       await page.clock.runFor(ARRIVE.ms - 250 + FRAME);
