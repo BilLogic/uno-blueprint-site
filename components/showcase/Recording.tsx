@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useImperativeHandle, useRef, type AnimationEvent, type Ref } from "react";
+import { useEffect, useImperativeHandle, useRef, type Ref } from "react";
 import { vars } from "@/components/ui/vars";
 import { openFullscreen, recordingFiles } from "@/lib/recording";
 import { zoomAt, zoomTransform, type ZoomKeyframe } from "@/lib/recording-zoom";
+import s from "./Showcase.module.css";
 
 /** What a showcase may ask of its recording. */
 export type RecordingHandle = {
@@ -25,11 +26,11 @@ type RecordingProps = {
   playing: boolean;
   /** The id of the text that names the recording for assistive technology. */
   labelledBy: string;
-  /** Classes for the recording's layer on the stage: its arrival or its exit. */
-  className?: string | undefined;
+  /** The recording of a tab just picked: it fades and rises in. */
+  arriving?: boolean;
   /** The recording of the tab just left, fading out under the new one: hidden from everyone, and never played. */
   leaving?: boolean;
-  /** Its exit has run: take it off the stage. */
+  /** Its exit is over, run or cut short: take it off the stage. */
   onLeft?: () => void;
   ref?: Ref<RecordingHandle>;
 };
@@ -49,13 +50,14 @@ export function Recording({
   near,
   playing,
   labelledBy,
-  className = "",
+  arriving = false,
   leaving = false,
   onLeft,
   ref: handle,
 }: RecordingProps) {
   const ref = useRef<HTMLVideoElement>(null);
   const zoomRef = useRef<HTMLDivElement>(null);
+  const layerRef = useRef<HTMLDivElement>(null);
   const { video, poster, mask } = recordingFiles(name, masked);
 
   useImperativeHandle(handle, () => ({
@@ -87,7 +89,25 @@ export function Recording({
     return () => element.removeEventListener("webkitendfullscreen", play);
   }, [playing]);
 
-  // A recording leaving is already paused; once it is off the stage its download stops too.
+  // A recording leaving is already paused. It goes once its own exit is over, not an animation inside it:
+  // run to its end, or cut short, as when the reader asks for less motion mid-fade or the stage is hidden.
+  // An arrival cut short because the layer is now leaving is no such end: its exit is still running.
+  // Once it is off the stage its download stops too.
+  useEffect(() => {
+    const layer = layerRef.current;
+    if (!leaving || !layer) return;
+    const over = (event: AnimationEvent) => {
+      if (event.target !== layer) return;
+      if (layer.getAnimations().every((animation) => animation.playState === "finished")) onLeft?.();
+    };
+    layer.addEventListener("animationend", over);
+    layer.addEventListener("animationcancel", over);
+    return () => {
+      layer.removeEventListener("animationend", over);
+      layer.removeEventListener("animationcancel", over);
+    };
+  }, [leaving, onLeft]);
+
   useEffect(() => {
     const element = ref.current;
     if (!leaving || !element) return;
@@ -152,22 +172,21 @@ export function Recording({
     />
   );
 
-  // The layer on the stage. A leaving one goes once its own exit has run, not an animation inside it.
+  // The layer on the stage, with its arrival or its exit.
+  const motion = leaving ? s.leave : arriving ? s.arrive : "";
   const layer = {
+    ref: layerRef,
     "data-recording": true,
     "data-leaving": leaving || undefined,
     "aria-hidden": leaving || undefined,
     inert: leaving,
-    onAnimationEnd: (event: AnimationEvent<HTMLDivElement>) => {
-      if (leaving && event.target === event.currentTarget) onLeft?.();
-    },
   };
 
   if (phone) {
     return (
       // The stage, less a margin of dots; the handset is as large as fits
       // whole inside it, centred.
-      <div {...layer} className={`absolute inset-(--spacing-phone-inset) grid place-items-center [container-type:size] ${className}`}>
+      <div {...layer} className={`absolute inset-(--spacing-phone-inset) grid place-items-center [container-type:size] ${motion}`}>
         {/* Scaled from its centre and moved so the point in focus stays at the stage's centre; the shadow follows the mask. */}
         <div ref={zoomRef} data-testid="phone" className="fit-phone drop-shadow-phone">
           {player}
@@ -183,7 +202,7 @@ export function Recording({
     // edge and its square lower corners.
     <div
       {...layer}
-      className={`absolute inset-x-window-margin top-window-margin bottom-0 grid items-end justify-items-center [container-type:size] ${className}`}
+      className={`absolute inset-x-window-margin top-window-margin bottom-0 grid items-end justify-items-center [container-type:size] ${motion}`}
     >
       <div data-testid="recording-window" className="window-outline relative fit-window translate-y-(--spacing-window-sink) overflow-hidden rounded-t-window shadow-window">
         {player}

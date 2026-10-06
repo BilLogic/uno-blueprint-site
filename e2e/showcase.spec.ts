@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { canvas } from "@/content/canvas";
 import { showcase } from "@/content/showcase";
 import { touchPoints } from "@/content/touch-points";
+import { zoomAt, zoomTransform } from "@/lib/recording-zoom";
 
 /** A showcase's tab labels, in order: the first, the second, then the rest. */
 function labels(tabs: readonly { label: string }[]): readonly [string, string, string, ...string[]] {
@@ -176,8 +177,6 @@ for (const width of [1440, 390]) {
   test(`at ${width} px the touch points end on the phone, ${shapes}, and the phone stands centred in it`, async ({
     page,
   }) => {
-    // Held at its first frame: the phone's zoom moves in 1.2 s into its recording, and it is measured at rest.
-    await stubPlayback(page);
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/");
     const list = page.getByRole("tablist", { name: touchPoints.tabsLabel });
@@ -205,7 +204,15 @@ for (const width of [1440, 390]) {
       expect(Math.abs(stageBox.width - windowSize.width)).toBeLessThanOrEqual(1);
       expect(Math.abs(stageBox.height - windowSize.height)).toBeLessThanOrEqual(1);
     }
-    const margin = await margins(stage, panel.getByTestId("phone"));
+    // The phone's zoom moves in 1.2 s into its recording; it is measured at the recording's start, where the
+    // zoom stands as its first keyframe has it.
+    const handset = panel.getByTestId("phone");
+    await handset.locator("video").evaluate((video: HTMLVideoElement) => {
+      video.pause();
+      video.currentTime = 0;
+    });
+    await expect.poll(() => handset.evaluate((node: HTMLElement) => node.style.transform)).toBe(zoomTransform(zoomAt(phone.zoom!, 0)));
+    const margin = await margins(stage, handset);
     // Whole, with dots above and below it, and centred both ways.
     expect(margin.top).toBeGreaterThanOrEqual(15);
     expect(margin.bottom).toBeGreaterThanOrEqual(15);

@@ -1,8 +1,10 @@
 /*
  * The stage's entry: the first time it comes into view it fades in, rises and
  * sharpens, on a caption word's duration, curve and blur. It waits only once
- * the page is live (Showcase sets `data-entry` after hydrating), so without
- * script, or before it runs, the stage is simply there.
+ * the page is live, and only if it was off screen then (Showcase sets
+ * `data-entry`), so without script, before it runs, or already in sight, the
+ * stage is simply there. It takes up its waiting pose at once, out of sight;
+ * only the entry itself is a transition.
  *
  * A tab change: the incoming recording and its caption fade and rise in, while
  * the outgoing recording, paused under it, fades out. The one arrives on a
@@ -10,7 +12,7 @@
  * go, so the stage never thins to its dots between them.
  */
 @media (prefers-reduced-motion: no-preference) {
-  .stage {
+  .stage[data-entry="in"] {
     transition-property: opacity, translate, filter;
     transition-duration: var(--duration-t-3);
     transition-timing-function: var(--ease-out);

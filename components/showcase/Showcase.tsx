@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Maximize2, Pause, Play } from "lucide-react";
 import { showcase } from "@/content/showcase";
 import { revealOnHover } from "@/components/reveal";
@@ -30,8 +30,11 @@ type ShowcaseProps<T extends string> = {
 /** One recording on the stage. `key` is new at every tab change, so a recording always mounts afresh. */
 type Layer<T> = { value: T | undefined; key: number };
 
-// No subscription: the value only tells the server's HTML, and hydration, from the live page.
-const noSubscription = () => () => {};
+/** Whether any of `element` is on screen. */
+const onScreenNow = (element: Element) => {
+  const { top, bottom } = element.getBoundingClientRect();
+  return bottom > 0 && top < innerHeight;
+};
 
 /**
  * A row of pill tabs over a framed stage with a caption under it. Selecting a
@@ -62,7 +65,9 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
   });
   const [choice, setChoice] = useState<boolean | null>(null);
   const reducedMotion = useReducedMotion();
-  const live = useSyncExternalStore(noSubscription, () => true, () => false);
+  // Whether the stage was on screen as the page went live, or null before then (in the server's HTML, and
+  // while hydrating). A stage already in sight is simply there; only one still to come waits for its entry.
+  const [inSightAtLoad, setInSightAtLoad] = useState<boolean | null>(null);
   // The recording plays while its stage is on screen.
   const [watchOnScreen, onScreen] = useInView<HTMLDivElement>();
   // The poster waits until the stage is near, so it never competes with the page's first paint.
@@ -75,6 +80,7 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
   const stageRef = useCallback(
     (node: HTMLDivElement | null) => {
       stageNode.current = node;
+      if (node) setInSightAtLoad((was) => was ?? onScreenNow(node));
       watchOnScreen(node);
       watchNear(node);
       watchEntry(node);
@@ -83,18 +89,19 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
   );
   const measureGlide = useStageGlide(layers.current.key, stageNode, reducedMotion);
 
-  // The recording starts once the entry has run; with less motion there is none to wait for.
+  // The recording starts once the entry has run. With less motion, or a stage in sight from the start, there
+  // is no entry to wait for.
+  const noEntry = reducedMotion || inSightAtLoad === true;
   useEffect(() => {
-    if (settled || !(entered || reducedMotion)) return;
-    const timer = window.setTimeout(() => setSettled(true), reducedMotion ? 0 : cssMs(rootToken("--duration-t-3")));
+    if (settled || !(entered || noEntry)) return;
+    const timer = window.setTimeout(() => setSettled(true), noEntry ? 0 : cssMs(rootToken("--duration-t-3")));
     return () => clearTimeout(timer);
-  }, [entered, settled, reducedMotion]);
+  }, [entered, settled, noEntry]);
 
   const find = (layer: Layer<T> | null) => layer && items.find((candidate) => candidate.value === layer.value);
   const item = find(layers.current) ?? items[0];
   if (!item) return null;
-  const left = find(layers.leaving);
-  const leavingKey = layers.leaving?.key;
+  const leaving = layers.leaving && { key: layers.leaving.key, tab: find(layers.leaving) };
 
   // A tab picked mid-change drops the recording still leaving at once, so there are never more than two.
   const pick = (next: T) => {
@@ -105,7 +112,7 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
   const dropLeaving = (key: number) =>
     setLayers((was) => (was.leaving?.key === key ? { ...was, leaving: null } : was));
   // Only a tab picked arrives; the first one is simply there.
-  const arrive = layers.current.key > 0 ? s.arrive : undefined;
+  const arriving = layers.current.key > 0;
   const wanted = wantsPlay({ choice, reducedMotion });
   const captionId = `${tabPanelId(idBase, item.value)}-caption`;
   const Icon = wanted ? Pause : Play;
@@ -138,28 +145,27 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
         <div
           ref={stageRef}
           data-testid="showcase-stage"
-          data-entry={live ? (entered ? "in" : "waiting") : undefined}
+          data-entry={inSightAtLoad === null ? undefined : inSightAtLoad || entered ? "in" : "waiting"}
           className={`${s.stage} group relative aspect-video max-w-full overflow-clip rounded-16 border border-line bg-card bg-dots ${item.phone ? "max-sm:aspect-stage-tall" : "max-sm:aspect-stage-window-phone"}`}
         >
-          {left && leavingKey !== undefined && (
+          {leaving?.tab && (
             <Recording
-              key={leavingKey}
-              name={left.recording}
-              phone={left.phone}
-              masked={left.masked ?? false}
-              zoom={reducedMotion ? undefined : left.zoom}
+              key={leaving.key}
+              name={leaving.tab.recording}
+              phone={leaving.tab.phone}
+              masked={leaving.tab.masked ?? false}
+              zoom={reducedMotion ? undefined : leaving.tab.zoom}
               near={near}
               playing={false}
               labelledBy={captionId}
-              className={s.leave}
               leaving
-              onLeft={() => dropLeaving(leavingKey)}
+              onLeft={() => dropLeaving(leaving.key)}
             />
           )}
           <Recording
             key={layers.current.key}
             ref={recording}
-            className={arrive}
+            arriving={arriving}
             name={item.recording}
             phone={item.phone}
             masked={item.masked ?? false}
@@ -195,7 +201,7 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
             </button>
           </div>
         </div>
-        <p key={layers.current.key} id={captionId} className={`mt-4 max-w-caption text-14 text-pretty text-muted ${arrive ?? ""}`}>
+        <p key={layers.current.key} id={captionId} className={`mt-4 max-w-caption text-14 text-pretty text-muted ${arriving ? s.arrive : ""}`}>
           <b className="font-medium text-ink">{item.label}.</b> {item.caption}
         </p>
       </div>

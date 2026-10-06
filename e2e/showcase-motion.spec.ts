@@ -24,6 +24,23 @@ async function stubPlayback(page: Page) {
   });
 }
 
+/**
+ * Notes, on each stage, every transition it starts (`data-ran`), from before
+ * the page loads, however soon each one ends.
+ */
+async function noteStageTransitions(page: Page) {
+  await page.addInitScript(() => {
+    document.addEventListener("transitionrun", (event) => {
+      const node = event.target;
+      if (!(node instanceof HTMLElement) || node.dataset.testid !== "showcase-stage") return;
+      node.dataset.ran = `${node.dataset.ran ?? ""} ${event.propertyName}`.trim();
+    });
+  });
+}
+
+/** The transitions a stage has started, sorted. */
+const ran = async (stage: Locator) => ((await stage.getAttribute("data-ran")) ?? "").split(" ").filter(Boolean).sort();
+
 const sections = [
   { name: "canvas", headline: canvas.headline },
   { name: "touch points", headline: touchPoints.headline },
@@ -101,31 +118,25 @@ for (const section of sections) {
     page,
   }) => {
     await stubPlayback(page);
+    await noteStageTransitions(page);
     await installClock(page);
     await page.goto("/");
     await stopClockASecondOn(page);
     const stage = stageIn(sectionOf(page, section.headline));
     const video = stage.locator("video");
 
-    // Out of view, once the page is live, it waits: faded, lowered and blurred.
+    // Out of view, once the page is live, it waits: faded, lowered and blurred, taken up at once.
     await expect(stage).toHaveAttribute("data-entry", "waiting");
     await expect(stage).toHaveCSS("opacity", "0");
     await expect(stage).toHaveCSS("filter", /blur/);
     await expect(stage).toHaveCSS("translate", "0px 12px");
+    expect(await ran(stage)).toEqual([]);
 
-    // The transitions it runs are noted as they start, however soon they end.
-    await stage.evaluate((node) => {
-      node.addEventListener("transitionrun", (event) => {
-        if (!(event instanceof TransitionEvent) || event.target !== node) return;
-        node.dataset.ran = `${node.dataset.ran ?? ""} ${event.propertyName}`.trim();
-      });
-    });
-    const ran = async () => ((await stage.getAttribute("data-ran")) ?? "").split(" ").sort();
     await stage.scrollIntoViewIfNeeded();
     await realFrames(page);
     await flushRenders(page);
     await expect(stage).toHaveAttribute("data-entry", "in");
-    await expect.poll(ran).toEqual(["filter", "opacity", "translate"]);
+    await expect.poll(() => ran(stage)).toEqual(["filter", "opacity", "translate"]);
 
     // The recording waits for the entry to have run, by the page's clock.
     await tick(page, ENTRY_MS - 4 * FRAME);
@@ -147,11 +158,48 @@ for (const section of sections) {
     await flushRenders(page);
     await expect(stage).toHaveAttribute("data-entry", "in");
     expect(await stage.evaluate((node) => node.getAnimations().length)).toBe(0);
-    expect(await ran()).toEqual(["filter", "opacity", "translate"]);
+    expect(await ran(stage)).toEqual(["filter", "opacity", "translate"]);
     await flushRenders(page);
     await expect(video).toHaveAttribute("data-state", "playing");
   });
 }
+
+test("a stage partly in sight as the page goes live is simply there, with no entry", async ({ page }) => {
+  await noteStageTransitions(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  // The page's scripts are held, so it is scrolled before it goes live.
+  const held: (() => Promise<void>)[] = [];
+  let holding = true;
+  await page.route(/\/_next\/static\/.*\.js$/, (route) => {
+    if (holding) held.push(() => route.continue());
+    else return route.continue();
+  });
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  const stage = stageIn(sectionOf(page, canvas.headline));
+  // A tenth of the stage shows at the foot of the screen: in sight, short of the entry's quarter.
+  await stage.evaluate((node) => {
+    const { top, height } = node.getBoundingClientRect();
+    scrollBy(0, top - innerHeight + height / 10);
+  });
+  const shows = await stage.evaluate((node) => {
+    const { top, height } = node.getBoundingClientRect();
+    return (innerHeight - top) / height;
+  });
+  expect(shows).toBeGreaterThan(0);
+  expect(shows).toBeLessThan(0.25);
+
+  holding = false;
+  await Promise.all(held.map((go) => go()));
+  await expect(stage).toHaveAttribute("data-entry", "in");
+  await expect(stage).toHaveCSS("opacity", "1");
+  expect(await ran(stage)).toEqual([]);
+
+  // Brought fully into view, it stays as it was.
+  await stage.scrollIntoViewIfNeeded();
+  await expect(stage).toHaveCSS("opacity", "1");
+  await expect(stage).toHaveCSS("filter", "none");
+  expect(await ran(stage)).toEqual([]);
+});
 
 test("without script the stages are simply there", async ({ browser }) => {
   const context = await browser.newContext({ javaScriptEnabled: false });
@@ -216,6 +264,30 @@ test("a tab change crossfades the recordings, never thinning to the dots, and th
   await expect(stage.locator("video")).toHaveCount(1);
   await expect(current(stage)).toHaveCSS("opacity", "1");
   await expect(playing(stage)).toHaveCount(1);
+});
+
+test("a recording leaving goes even when its fade is cut short, as when the reader asks for less motion mid-change", async ({
+  page,
+}) => {
+  await stubPlayback(page);
+  await installClock(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await stopClockASecondOn(page);
+  const section = sectionOf(page, canvas.headline);
+  const stage = stageIn(section);
+  await enter(page, stage);
+  const [first, second] = canvas.tabs;
+
+  await pickFrozen(page, section, second.label);
+  await expect(leaving(stage).locator("video")).toHaveAttribute("src", `/videos/${first.recording}.mp4`);
+
+  // Its fade no longer applies, so it never runs to its end; it goes all the same.
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(leaving(stage)).toHaveCount(0);
+  await expect(stage.locator("video")).toHaveCount(1);
+  await expect(current(stage)).toHaveCSS("opacity", "1");
+  await expect(stage.locator("video")).toHaveAttribute("src", `/videos/${second.recording}.mp4`);
 });
 
 test("on a phone the touch-points stage glides between the window's shape and the phone's", async ({ page }) => {
