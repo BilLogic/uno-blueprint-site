@@ -667,12 +667,17 @@ test.describe("structure walkthrough", () => {
     await scrollToStep(section(page), titles.indexOf("User"));
     await settlesOn(page, "User");
     // Asking for less motion now moves the walkthrough to its last step: a step change under reduced motion.
+    // Watched from the moment reduced motion applies, once the User caption has come to rest.
     await section(page)
       .locator("[data-caption]")
-      .evaluate((cap) => {
+      .evaluate(async (cap) => {
+        await Promise.allSettled(cap.getAnimations({ subtree: true }).map((a) => a.finished));
+        const reduced = matchMedia("(prefers-reduced-motion: reduce)");
         const w = window as unknown as { crossfade: { layers: number; moved: number; fades: Set<string> } };
         w.crossfade = { layers: 0, moved: 0, fades: new Set() };
         const sample = () => {
+          requestAnimationFrame(sample);
+          if (!reduced.matches) return;
           const layers = [...cap.children];
           w.crossfade.layers = Math.max(w.crossfade.layers, layers.length);
           for (const el of [...layers, ...cap.querySelectorAll("span")]) {
@@ -680,7 +685,6 @@ test.describe("structure walkthrough", () => {
             if (style.filter !== "none" || style.transform !== "none") w.crossfade.moved++;
           }
           for (const layer of layers) w.crossfade.fades.add(getComputedStyle(layer).transitionProperty);
-          requestAnimationFrame(sample);
         };
         requestAnimationFrame(sample);
       });
