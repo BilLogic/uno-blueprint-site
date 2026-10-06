@@ -8,7 +8,9 @@ import { cssMs, rootToken } from "@/lib/css-time";
  * the tabs' stages differ in height. Call the returned function as the tab is
  * picked, before the new tab renders; `shown` names the tab now showing. The
  * height is measured either side and animated in px, so it needs no browser
- * to interpolate `aspect-ratio`. A tab picked mid-glide glides on from the
+ * to interpolate `aspect-ratio`. It is the laid-out size that is measured, so
+ * a tab picked during the entry, while the stage is still scaled, glides from
+ * and to its true size. A tab picked mid-glide glides on from the
  * height the stage had got to. A reader who asked for less motion gets the
  * new height at once.
  */
@@ -27,7 +29,7 @@ export function useStageGlide(shown: unknown, stage: RefObject<HTMLElement | nul
     glide.current?.cancel();
     glide.current = null;
     if (!node || start === null || reducedMotion) return;
-    const { width, height: end } = node.getBoundingClientRect();
+    const { offsetWidth: width, offsetHeight: end } = node;
     if (Math.abs(start - end) < 1) return;
     // The width is held, or the stage's aspect ratio would take it from the height.
     glide.current = node.animate(
@@ -40,6 +42,6 @@ export function useStageGlide(shown: unknown, stage: RefObject<HTMLElement | nul
   }, [shown, stage, reducedMotion]);
 
   return () => {
-    if (stage.current) from.current = stage.current.getBoundingClientRect().height;
+    if (stage.current) from.current = stage.current.offsetHeight;
   };
 }

@@ -4,7 +4,7 @@ import { useEffect, useEffectEvent, useImperativeHandle, useLayoutEffect, useRef
 import { vars } from "@/components/ui/vars";
 import { openFullscreen, recordingFiles } from "@/lib/recording";
 import { zoomAt, zoomTransform, type ZoomKeyframe } from "@/lib/recording-zoom";
-import { arriveRecording, leaveRecording } from "./stage-motion";
+import { leaveRecording } from "./stage-motion";
 
 /** What a showcase may ask of its recording. */
 export type RecordingHandle = {
@@ -26,8 +26,6 @@ type RecordingProps = {
   playing: boolean;
   /** The id of the text that names the recording for assistive technology. */
   labelledBy: string;
-  /** The recording of a tab just picked: it rises in out of a blur. */
-  arriving?: boolean;
   /** The recording of the tab just left, fading out under the new one: hidden from everyone, and never played. */
   leaving?: boolean;
   /** Its exit is over, run or cut short: take it off the stage. */
@@ -50,7 +48,6 @@ export function Recording({
   near,
   playing,
   labelledBy,
-  arriving = false,
   leaving = false,
   onLeft,
   ref: handle,
@@ -89,20 +86,14 @@ export function Recording({
     return () => element.removeEventListener("webkitendfullscreen", play);
   }, [playing]);
 
-  // A recording arriving rises in as it first shows; it is never arriving again once it is not.
-  useLayoutEffect(() => {
-    const layer = layerRef.current;
-    if (arriving && layer) arriveRecording(layer);
-  }, [arriving]);
-
   // A recording leaving is already paused. It sinks away from wherever its arrival had got to, and goes once
   // that is over: run to its end, or cut short (Showcase finishes it at once for a reader who asks for less
   // motion mid-change). Once it is off the stage its download stops too.
-  const left = useEffectEvent(() => onLeft?.());
+  const gone = useEffectEvent(() => onLeft?.());
   useLayoutEffect(() => {
     const layer = layerRef.current;
     if (!leaving || !layer) return;
-    leaveRecording(layer).finished.then(left, left);
+    leaveRecording(layer).finished.then(gone, gone);
   }, [leaving]);
 
   useEffect(() => {

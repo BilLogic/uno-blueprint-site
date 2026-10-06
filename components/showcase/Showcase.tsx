@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Maximize2, Pause, Play } from "lucide-react";
 import { showcase } from "@/content/showcase";
 import { revealOnHover } from "@/components/reveal";
@@ -12,7 +12,7 @@ import { useStageGlide } from "@/hooks/use-stage-glide";
 import { shouldPlay, wantsPlay, type ShowcaseTab } from "@/lib/recording";
 import { Recording, type RecordingHandle } from "./Recording";
 import s from "./Showcase.module.css";
-import { enterStage, entryCaptionDelay, entrySettles } from "./stage-motion";
+import { arriveRecording, enterStage, entryCaptionDelay } from "./stage-motion";
 
 export type ShowcaseItem<T extends string> = ShowcaseTab<T> & {
   icon: ReactNode;
@@ -78,7 +78,8 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
   const [watchNear, near] = useInView<HTMLDivElement>({ rootMargin: "50% 0px", once: true });
   // The entry waits until the stage is well into view, so it is seen.
   const [watchEntry, entered] = useInView<HTMLDivElement>({ threshold: 0.25, once: true });
-  const [settled, setSettled] = useState(false);
+  // The entry has run, or been cut short: the recording is in place.
+  const [entryDone, setEntryDone] = useState(false);
   const recording = useRef<RecordingHandle>(null);
   const stageNode = useRef<HTMLDivElement | null>(null);
   const stageRef = useCallback(
@@ -105,8 +106,20 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
     if (!wasWaiting.current) return;
     wasWaiting.current = false;
     const stage = stageNode.current;
-    if (stage && !reducedMotion) enterStage(stage, stage.querySelector("[data-recording]:not([data-leaving])"));
+    if (!stage || reducedMotion) return;
+    void enterStage(stage, stage.querySelector("[data-recording]:not([data-leaving])")).then(() => setEntryDone(true));
   }, [waiting, reducedMotion]);
+
+  // The recording of a tab just picked rises in as it first shows: once for each pick, so turning the reader's
+  // motion setting off and on again never replays it.
+  const shownKey = layers.current.key;
+  const arrivedFor = useRef(shownKey);
+  useLayoutEffect(() => {
+    if (arrivedFor.current === shownKey) return;
+    arrivedFor.current = shownKey;
+    const layer = stageNode.current?.querySelector<HTMLElement>("[data-recording]:not([data-leaving])");
+    if (layer && !reducedMotion) arriveRecording(layer);
+  }, [shownKey, reducedMotion]);
 
   // Asked for less motion mid-change, whatever is moving on the stage comes to rest at once; a recording
   // leaving goes with it.
@@ -117,17 +130,12 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
 
   // The recording plays once the entry has brought it into place. With less motion, or a stage in sight from
   // the start, there is no entry to wait for.
-  const noEntry = reducedMotion || inSightAtLoad === true;
-  useEffect(() => {
-    if (settled || !(entered || noEntry)) return;
-    const timer = window.setTimeout(() => setSettled(true), noEntry ? 0 : entrySettles());
-    return () => clearTimeout(timer);
-  }, [entered, settled, noEntry]);
+  const inPlace = entryDone || reducedMotion || inSightAtLoad === true;
 
-  const find = (layer: Layer<T> | null) => layer && items.find((candidate) => candidate.value === layer.value);
-  const item = find(layers.current) ?? items[0];
+  const tabOf = (layer: Layer<T> | null) => layer && items.find((candidate) => candidate.value === layer.value);
+  const item = tabOf(layers.current) ?? items[0];
   if (!item) return null;
-  const leaving = layers.leaving && { key: layers.leaving.key, tab: find(layers.leaving) };
+  const leaving = layers.leaving && { key: layers.leaving.key, tab: tabOf(layers.leaving) };
 
   // A tab picked mid-change drops the recording still leaving at once, so there are never more than two.
   const pick = (next: T) => {
@@ -141,10 +149,17 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
   };
   const dropLeaving = (key: number) =>
     setLayers((was) => (was.leaving?.key === key ? { ...was, leaving: null } : was));
-  // Only a tab picked arrives; the first one is simply there.
-  const arriving = layers.current.key > 0 && !reducedMotion;
   const wanted = wantsPlay({ choice, reducedMotion });
   const captionId = `${tabPanelId(idBase, item.value)}-caption`;
+  // What a tab's recording is, whether it is showing or leaving.
+  const recordingOf = (tab: ShowcaseItem<T>) => ({
+    name: tab.recording,
+    phone: tab.phone,
+    masked: tab.masked ?? false,
+    zoom: reducedMotion ? undefined : tab.zoom,
+    near,
+    labelledBy: captionId,
+  });
   const Icon = wanted ? Pause : Play;
   const buttonClass =
     "grid size-8 cursor-pointer place-items-center rounded-8 border border-line-2 bg-panel text-muted transition-[color,border-color] duration-t-1 motion-reduce:transition-none hover:border-line-hot hover:text-ink";
@@ -181,13 +196,8 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
           {leaving?.tab && (
             <Recording
               key={leaving.key}
-              name={leaving.tab.recording}
-              phone={leaving.tab.phone}
-              masked={leaving.tab.masked ?? false}
-              zoom={reducedMotion ? undefined : leaving.tab.zoom}
-              near={near}
+              {...recordingOf(leaving.tab)}
               playing={false}
-              labelledBy={captionId}
               leaving
               onLeft={() => dropLeaving(leaving.key)}
             />
@@ -195,14 +205,8 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
           <Recording
             key={layers.current.key}
             ref={recording}
-            arriving={arriving}
-            name={item.recording}
-            phone={item.phone}
-            masked={item.masked ?? false}
-            zoom={reducedMotion ? undefined : item.zoom}
-            near={near}
-            playing={shouldPlay({ choice, reducedMotion, inView: onScreen }) && settled}
-            labelledBy={captionId}
+            {...recordingOf(item)}
+            playing={shouldPlay({ choice, reducedMotion, inView: onScreen }) && inPlace}
           />
           {/*
             Pause/Play shows while the stage is pointed at or focused, and always

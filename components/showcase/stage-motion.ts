@@ -15,24 +15,26 @@ const pose = (blur: string, down: string, scale = "1") => ({
 });
 const atRest = { opacity: 1, filter: "blur(0px)", transform: "none" };
 
-/** The entry, in two beats: the stage's frame rises into place, then its recording inside it. */
-export function enterStage(stage: HTMLElement, recording: HTMLElement | null) {
+/**
+ * The entry, in two beats: the stage's frame rises into place, then its
+ * recording inside it. Resolves once both are in place, run to their end or
+ * cut short.
+ */
+export function enterStage(stage: HTMLElement, recording: HTMLElement | null): Promise<unknown> {
   const ease = rootToken("--ease-out");
-  stage.animate([pose(rootToken("--blur-stage-entry"), rootToken("--spacing-stage-rise"), rootToken("--scale-stage-entry")), atRest], {
+  const frame = stage.animate([pose(rootToken("--blur-stage-entry"), rootToken("--spacing-stage-rise"), rootToken("--scale-stage-entry")), atRest], {
     duration: cssMs(rootToken("--duration-stage-entry")),
     easing: ease,
     fill: "backwards",
   });
-  recording?.animate([pose(rootToken("--blur-recording-entry"), rootToken("--spacing-recording-entry-rise")), atRest], {
+  const inner = recording?.animate([pose(rootToken("--blur-recording-entry"), rootToken("--spacing-recording-entry-rise")), atRest], {
     duration: cssMs(rootToken("--duration-recording-entry")),
     delay: cssMs(rootToken("--delay-recording-entry")),
     easing: ease,
     fill: "backwards",
   });
+  return Promise.allSettled([frame.finished, inner?.finished]);
 }
-
-/** How long after the entry starts its recording is in place, in ms: it plays from then. */
-export const entrySettles = () => cssMs(rootToken("--delay-recording-entry")) + cssMs(rootToken("--duration-recording-entry"));
 
 /** How long after the entry starts the caption's words begin to arrive, in ms: with the recording. */
 export const entryCaptionDelay = () => cssMs(rootToken("--delay-recording-entry"));
