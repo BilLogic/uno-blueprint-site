@@ -1,9 +1,10 @@
 import { ImageIcon, X } from "lucide-react";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
+import { vars } from "@/components/ui/vars";
 import { ToolLogo, type Tool } from "@/components/icons/ToolLogo";
 import { structure } from "@/content/structure";
 import type { RowState, Scene } from "@/lib/walkthrough";
-import { CARDS_LAYER, CARD_PLACES } from "@/lib/walkthrough-morph";
+import { CARDS_LAYER, cardPlace } from "@/lib/walkthrough-morph";
 import { EvidenceLogo, type EvidenceSource } from "./EvidenceLogo";
 import s from "./Walkthrough.module.css";
 
@@ -111,7 +112,7 @@ function Board({ scene }: { scene: Scene }) {
         ))}
         <div className={s.columns}>
           {Array.from({ length: 6 }, (_, i) => (
-            <i key={i} style={{ "--i": i } as CSSProperties} />
+            <i key={i} style={vars({ "--i": i })} />
           ))}
         </div>
         {board.lines.map((line, a) => (
@@ -134,7 +135,7 @@ function LaneRow({ lane, r, state }: { lane: string; r: number; state: RowState 
     <div
       className={cx(s.row, state.current && s.current, state.dim && s.dim, state.named && s.named)}
       data-row
-      style={{ "--lane": LANE_COLOURS[r] } as CSSProperties}
+      style={vars({ "--lane": LANE_COLOURS[r]! })}
     >
       <em>
         <Word>{lane}</Word>
@@ -278,7 +279,7 @@ const CARD_BODIES: Record<Tool, CardBody> = {
     body: () => (
       <div className={s.funnel}>
         {[90, 64, 41, 28].map((height) => (
-          <i key={height} style={{ "--h": pct(height) } as CSSProperties} />
+          <i key={height} style={vars({ "--h": pct(height) })} />
         ))}
       </div>
     ),
@@ -313,15 +314,15 @@ function ContextCards({ done }: { done: boolean }) {
   return (
     <div className={cx(s.context, done && s.done)} style={{ zIndex: CARDS_LAYER }}>
       {structure.context.cards.map((card, i) => {
-        const [x, y, r] = CARD_PLACES.wide[i]!;
-        const [nx, ny, nr] = CARD_PLACES.narrow[i]!;
-        const place = { "--x": `${x}px`, "--y": `${y}px`, "--r": `${r}deg`, "--nx": `${nx}px`, "--ny": `${ny}px`, "--nr": `${nr}deg` };
+        const [x, y, r] = cardPlace(i, false);
+        const [nx, ny, nr] = cardPlace(i, true);
+        const place = vars({ "--x": `${x}px`, "--y": `${y}px`, "--r": `${r}deg`, "--nx": `${nx}px`, "--ny": `${ny}px`, "--nr": `${nr}deg` });
         return (
           <div
             key={card.tool}
             className={cx(s.card, CARD_BODIES[card.tool].cardClass)}
             data-card
-            style={place as CSSProperties}
+            style={place}
           >
             <div className={s.cardTitle}>
               <span className={s.cardMark}>
@@ -405,14 +406,7 @@ function SheetWithLinks({
       <div
         className={cx(s.sheet, sheet.gone && s.gone, sheet.out && s.out)}
         data-sheet
-        style={
-          {
-            zIndex: 12 - 2 * i,
-            "--i": i,
-            transform: sheet.transform,
-            transitionDelay: `${sheet.delay}ms`,
-          } as CSSProperties
-        }
+        style={vars({ "--i": i }, { zIndex: 12 - 2 * i, transform: sheet.transform, transitionDelay: `${sheet.delay}ms` })}
       >
         {tiles.map((tile, t) => (
           <div

@@ -3,7 +3,7 @@
 import { useEffect, useRef, type RefObject } from "react";
 import { isGliding } from "@/hooks/glide-signal";
 import type { StepChange } from "@/hooks/use-scroll-step";
-import { cssMs } from "@/lib/hero-picture";
+import { cssMs } from "@/lib/css-time";
 import { STEP, TIMING, cellArrival, cellOpensLate, exitScroll, holdCap, holdsExit, keyScroll, shouldLock, wheelPixels } from "@/lib/walkthrough";
 
 /** Elements that take a scrolling key for themselves, so a key pressed in one is left alone. */

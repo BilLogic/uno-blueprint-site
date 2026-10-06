@@ -62,17 +62,15 @@ const PHONE_MAX_WIDTH = 760;
 const PHONE_SCROLL_STRETCH = 1.1;
 
 /** The fixed nav's height, and the margin kept above and below the pinned frame, in px. */
-const NAV_HEIGHT = 64;
+export const NAV_HEIGHT = 64;
 const FRAME_MARGIN = 32;
 const MIN_STICKY_TOP = 76;
-/** A frame taller than the screen less this is pinned higher, with its foot this far above the bottom. */
-const TALL_FRAME_SLACK = 72;
+/** A frame too tall to stick at 76 px is pinned higher, with its foot this far above the bottom. */
 const TALL_FRAME_FOOT = 12;
-/** On a wide frame the stage never scales below this share of what its width allows. */
-const MIN_WIDE_SHARE = 0.85;
-/** A phone frame is this share of its width tall, and never less than this share of that. */
+/** The least a wide stage is scaled to, however short the screen. */
+const MIN_WIDE_SCALE = 0.25;
+/** A phone frame is this share of its width tall, and never less than this many px. */
 const NARROW_HEIGHT = 0.95;
-const MIN_NARROW_SHARE = 0.85;
 const MIN_NARROW_HEIGHT = 220;
 /** On a phone the pose is centred this far above the caption's first line, in px. */
 export const CAPTION_GAP = 12;
@@ -115,7 +113,8 @@ const HOLD_SLACK = 500;
 
 /**
  * The longest the hold at the end lasts, in ms: the cell's arrival (see
- * `cellArrival`) and a little room, counted from when the last step shows.
+ * `cellArrival`) and a little room, counted from the first move the hold
+ * stops (see `holdsExit` and `shouldLock`), not from when the last step shows.
  */
 export const holdCap = (arrival: number) => arrival + HOLD_SLACK;
 
@@ -345,13 +344,14 @@ export function scrollProgress({ stickyTop, sectionTop, sectionHeight, stickyHei
 
 /**
  * Where the frame sticks: in the middle of the screen under the nav, never
- * above 76 px. A frame too tall for that sits higher, its foot just above the
- * bottom of the screen; the top may then be negative, tucking the headline up
- * under the nav, which is intended and is what the prototype does.
+ * above 76 px. A frame too tall for that sits higher, its foot 12 px above
+ * the bottom of the screen, but never above the nav's bottom edge: the nav is
+ * see-through, and the headline would read through it. `fitStage` scales the
+ * stage so the frame fits; only one already at its smallest runs off the foot.
  */
 export function stickyTopFor(viewportHeight: number, stickyHeight: number): number {
-  if (stickyHeight > viewportHeight - TALL_FRAME_SLACK) {
-    return Math.min(MIN_STICKY_TOP, viewportHeight - stickyHeight - TALL_FRAME_FOOT);
+  if (MIN_STICKY_TOP + stickyHeight + TALL_FRAME_FOOT > viewportHeight) {
+    return Math.max(NAV_HEIGHT, viewportHeight - stickyHeight - TALL_FRAME_FOOT);
   }
   return Math.max(MIN_STICKY_TOP, NAV_HEIGHT + (viewportHeight - NAV_HEIGHT - stickyHeight) / 2);
 }
@@ -370,16 +370,16 @@ export type StageFit = {
 };
 
 /**
- * Scales the stage to the frame. On a wide frame the three poses share one
- * scale, which may use the headline's height too (`headHeight`), so a short
- * screen does not shrink the picture below 85% of what the width allows; on a
- * phone each pose gets the scale that fills the frame.
+ * Scales the stage to the frame, so the headline, the stage and the caption
+ * fit between the nav and the foot of the screen (`availableHeight`, see
+ * `availableStageHeight`). On a wide frame the three poses share one scale,
+ * as large as both the width and that height allow; on a phone each pose gets
+ * the scale that fills the frame.
  */
-export function fitStage(frameWidth: number, availableHeight: number, headHeight: number): StageFit {
+export function fitStage(frameWidth: number, availableHeight: number): StageFit {
   const width = frameWidth || STAGE_WIDTH;
   if (width < 700) {
-    const full = width * NARROW_HEIGHT;
-    const height = Math.max(MIN_NARROW_HEIGHT, Math.min(full, Math.max(availableHeight, full * MIN_NARROW_SHARE)));
+    const height = Math.max(MIN_NARROW_HEIGHT, Math.min(width * NARROW_HEIGHT, availableHeight));
     return {
       narrow: true,
       height,
@@ -391,8 +391,8 @@ export function fitStage(frameWidth: number, availableHeight: number, headHeight
     };
   }
   const byWidth = Math.min(1, width / STAGE_WIDTH);
-  const byHeight = (availableHeight + headHeight) / STAGE_HEIGHT;
-  const k = Math.max(0.25, byWidth * MIN_WIDE_SHARE, Math.min(byWidth, byHeight));
+  const byHeight = availableHeight / STAGE_HEIGHT;
+  const k = Math.max(MIN_WIDE_SCALE, Math.min(byWidth, byHeight));
   return { narrow: false, height: STAGE_HEIGHT * k, scales: [k, k, k] };
 }
 

@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, type ActionDispatch } from "react";
 import { useInView } from "./use-in-view";
+import { BELOW_MD_QUERY, REDUCED_MOTION_QUERY } from "./use-media-query";
+import { cssMs } from "@/lib/css-time";
 import { hero } from "@/content/hero";
 import {
   BEAM_EASING,
   FIELDS,
   WALKERS,
   arrivesOnField,
-  cssMs,
   motionTimes,
   statusOf,
   FIELD_PING_EASING,
@@ -43,9 +44,6 @@ import {
   type Place,
 } from "@/lib/hero-picture";
 
-const REDUCED = "(prefers-reduced-motion: reduce)";
-/** The picture stacks into one column at the prototype's (max-width:760px). */
-const STACKED = "(max-width: 760px)";
 
 /** The elements the picture measures and animates, filled in as they mount. */
 type Elements = {
@@ -220,11 +218,12 @@ const STATUSES = hero.picture.panel.statuses;
  * loop. Returns a function that stops everything it started.
  */
 function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRound }: Timeline) {
-  const reduced = matchMedia(REDUCED).matches;
+  const reduced = matchMedia(REDUCED_MOTION_QUERY).matches;
   // The timings that follow a CSS transition come from its token, so the two never drift.
   const token = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name);
   const motion = motionTimes({ walk: cssMs(token("--duration-walk")), soloMove: cssMs(token("--duration-solo-move")) });
-  const stacked = () => matchMedia(STACKED).matches;
+  // The picture stacks into one column below the md breakpoint.
+  const stacked = () => matchMedia(BELOW_MD_QUERY).matches;
   const timers = new Set<number>();
   const animations = new Set<Animation>();
   const busy = new Set<number>();

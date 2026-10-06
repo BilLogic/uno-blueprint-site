@@ -78,7 +78,7 @@ type CellProps = {
   cellRef: (element: HTMLSpanElement | null) => void;
 };
 
-const sketch = "block h-1 rounded-2 transition-[width] duration-500 ease-sketch max-md:h-0.5";
+const sketch = "block h-1 rounded-2 transition-[width] duration-500 ease-settle max-md:h-0.5";
 
 /** A cell: two sketched lines once filled, and a badge for each source that fed it. Memoised, so a change to one cell re-renders only that cell. */
 const Cell = memo(function Cell({ sources, focused, cellRef }: CellProps) {

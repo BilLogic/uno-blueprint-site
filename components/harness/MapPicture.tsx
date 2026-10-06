@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { lanes, map, skill } from "@/content/harness";
-import { useMediaQuery } from "@/hooks/use-media-query";
+import { BELOW_LG_QUERY, useMediaQuery } from "@/hooks/use-media-query";
 import { useSteps } from "@/hooks/use-steps";
 import { mapColumns, mapFrame, mapLinks, mapSteps } from "@/lib/harness-map";
 import { Card, Flow, Side, Skill } from "./Flow";
@@ -25,7 +25,7 @@ const bar = "block h-1 flex-none rounded-2 bg-line-2";
  */
 export function MapPicture({ running, onStale, onDone }: PictureProps) {
   // Stacked below the lg breakpoint, as the flow's max-lg: classes are.
-  const stacked = useMediaQuery("(max-width: 900px)");
+  const stacked = useMediaQuery(BELOW_LG_QUERY);
   const flow = useRef<HTMLDivElement>(null);
   const skill = useRef<HTMLSpanElement>(null);
   const phrases = useRef<(HTMLElement | null)[]>([]);
@@ -148,7 +148,7 @@ export function MapPicture({ running, onStale, onDone }: PictureProps) {
                 style={{ ...laneColour(lane.id), ...columns }}
                 className={`${row} items-stretch ${frame.lanes[l] ? "opacity-100" : "opacity-0"}`}
               >
-                <em className="flex items-center gap-[.5em] text-[max(11px,.86em)] font-medium whitespace-nowrap text-muted not-italic before:size-[.62em] before:flex-none before:rounded-[.2em] before:bg-(--la) before:content-['']">
+                <em className="flex items-center gap-[.5em] text-lane font-medium whitespace-nowrap text-muted not-italic before:size-[.62em] before:flex-none before:rounded-[.2em] before:bg-(--la) before:content-['']">
                   {lane.name}
                 </em>
                 {frame.steps.map((open, s) => {
@@ -163,7 +163,7 @@ export function MapPicture({ running, onStale, onDone }: PictureProps) {
                   return (
                     <span key={s} className={opens(open)}>
                       <span
-                        className={`ml-1.5 grid min-h-[3.6em] content-center rounded-8 border px-[.55em] py-[.45em] text-[max(11px,.86em)] leading-[1.2] hyphens-auto transition-[background-color,border-color] duration-t-2 motion-reduce:transition-none ${look}`}
+                        className={`ml-1.5 grid min-h-[3.6em] content-center rounded-8 border px-[.55em] py-[.45em] text-lane leading-[1.2] hyphens-auto transition-[background-color,border-color] duration-t-2 motion-reduce:transition-none ${look}`}
                       >
                         {placed ? map.placements[phrase]?.text : null}
                       </span>

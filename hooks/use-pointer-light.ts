@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useNoHover } from "@/hooks/use-media-query";
 
 const lit = new Set<HTMLElement>();
 let pointer: PointerEvent | null = null;
@@ -28,20 +29,22 @@ function onPointerMove(event: PointerEvent) {
 /**
  * Lights a panel's rim where the pointer is, even from outside the panel:
  * the element gets `--mx` and `--my`, the pointer's position over it, for a
- * radial gradient to follow. One listener serves every lit element.
+ * radial gradient to follow. One listener serves every lit element, and a
+ * touch screen, with no pointer to follow, gets none.
  */
 export function usePointerLight<T extends HTMLElement>(): (node: T | null) => void {
   const [element, setElement] = useState<T | null>(null);
+  const noHover = useNoHover();
 
   useEffect(() => {
-    if (!element) return;
+    if (!element || noHover) return;
     if (lit.size === 0) addEventListener("pointermove", onPointerMove, { passive: true });
     lit.add(element);
     return () => {
       lit.delete(element);
       if (lit.size === 0) removeEventListener("pointermove", onPointerMove);
     };
-  }, [element]);
+  }, [element, noHover]);
 
   return useCallback((node: T | null) => setElement(node), []);
 }

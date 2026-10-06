@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useImperativeHandle, useRef, type CSSProperties, type Ref } from "react";
+import { useEffect, useImperativeHandle, useRef, type Ref } from "react";
+import { vars } from "@/components/ui/vars";
 import { openFullscreen, recordingFiles } from "@/lib/recording";
 import { zoomAt, zoomTransform, type ZoomKeyframe } from "@/lib/recording-zoom";
 
@@ -54,10 +55,12 @@ export function Recording({ name, phone, masked, zoom, near, playing, labelledBy
     }
     // React sets `muted` as a property after hydration, if at all; a muted video may always play.
     element.muted = true;
-    // A pause before the play settles rejects it with an AbortError, which is no error; anything else surfaces.
+    // A pause before the play settles rejects it with an AbortError, which is no error. A browser that will
+    // not autoplay (Low Power Mode, a data saver) rejects it with a NotAllowedError: the poster stays, which
+    // is no error either. Anything else surfaces.
     const play = () =>
       element.play().catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
+        if (error instanceof DOMException && (error.name === "AbortError" || error.name === "NotAllowedError")) return;
         throw error;
       });
     play();
@@ -117,7 +120,7 @@ export function Recording({ name, phone, masked, zoom, near, playing, labelledBy
       disablePictureInPicture
       aria-labelledby={labelledBy}
       className={`block size-full object-cover [&:fullscreen]:object-contain ${mask ? "recording-mask" : ""}`}
-      style={mask ? ({ "--recording-mask": `url(${mask})` } as CSSProperties) : undefined}
+      style={mask ? vars({ "--recording-mask": `url(${mask})` }) : undefined}
     />
   );
 
@@ -139,7 +142,7 @@ export function Recording({ name, phone, masked, zoom, near, playing, labelledBy
     // large as fits whole inside it, standing on the stage's foot. It sinks
     // past the foot by its frame's width, so the stage clips the frame's lower
     // edge and its square lower corners.
-    <div className="absolute inset-x-(--spacing-window-x) top-(--spacing-window-top) bottom-0 grid items-end justify-items-center [container-type:size]">
+    <div className="absolute inset-x-window-margin top-window-margin bottom-0 grid items-end justify-items-center [container-type:size]">
       <div data-testid="recording-window" className="window-outline relative fit-window translate-y-(--spacing-window-sink) overflow-hidden rounded-t-window shadow-window">
         {player}
       </div>

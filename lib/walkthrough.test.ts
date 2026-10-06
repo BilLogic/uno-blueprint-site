@@ -29,6 +29,7 @@ import {
   stepEdges,
   stepHold,
   stickyTopFor,
+  NAV_HEIGHT,
   wheelPixels,
 } from "./walkthrough";
 
@@ -74,12 +75,36 @@ describe("scrollProgress", () => {
 describe("stickyTopFor", () => {
   it("centres the frame under the nav, and never higher than 76 px", () => {
     expect(stickyTopFor(900, 700)).toBe(132);
-    expect(stickyTopFor(700, 620)).toBe(76);
+    expect(stickyTopFor(700, 612)).toBe(76);
   });
 
-  it("lets a frame taller than the screen sit higher, so its foot stays 12 px above the bottom", () => {
-    expect(stickyTopFor(700, 800)).toBe(-112);
-    expect(stickyTopFor(700, 640)).toBe(48);
+  it("lets a frame too tall for that sit higher, so its foot stays 12 px above the bottom", () => {
+    expect(stickyTopFor(700, 620)).toBe(68);
+    expect(stickyTopFor(720, 640)).toBe(68);
+  });
+
+  it("never pins the frame above the nav's bottom edge", () => {
+    expect(stickyTopFor(700, 800)).toBe(NAV_HEIGHT);
+    expect(stickyTopFor(700, 640)).toBe(NAV_HEIGHT);
+    for (let height = 300; height <= 1400; height += 10) {
+      expect(stickyTopFor(height, height * 2)).toBeGreaterThanOrEqual(NAV_HEIGHT);
+    }
+  });
+
+  it("keeps a fitted frame under the nav on any screen, the stage scaling to fit", () => {
+    // The headline and caption as a wide screen and a phone lay them out.
+    const frames = [
+      { width: 1086, head: 140, caption: 148 },
+      { width: 808, head: 122, caption: 148 },
+      { width: 356, head: 146, caption: 140 },
+    ];
+    for (const { width, head, caption } of frames) {
+      for (let viewport = 560; viewport <= 1200; viewport += 20) {
+        const fit = fitStage(width, availableStageHeight(viewport, head, caption));
+        const top = stickyTopFor(viewport, head + fit.height + caption);
+        expect(top, `${width} wide, ${viewport} tall`).toBeGreaterThanOrEqual(NAV_HEIGHT);
+      }
+    }
   });
 });
 
@@ -100,20 +125,23 @@ describe("availableStageHeight", () => {
 
 describe("fitStage", () => {
   it("gives every pose one scale on a wide frame, as large as fits and never above 1", () => {
-    expect(fitStage(1086, 700, 150)).toEqual({ narrow: false, height: 530, scales: [1, 1, 1] });
-    const fit = fitStage(808, 700, 150);
+    expect(fitStage(1086, 700)).toEqual({ narrow: false, height: 530, scales: [1, 1, 1] });
+    const fit = fitStage(808, 700);
     expect(fit.scales).toEqual([0.8, 0.8, 0.8]);
     expect(fit.height).toBeCloseTo(424);
   });
 
-  it("lets a short screen take the headline's height too, and never shrinks below 85% of the width's scale", () => {
-    expect(fitStage(808, 300, 100).scales[0]).toBeCloseTo(400 / 530);
-    expect(fitStage(1010, 10, 0).scales[0]).toBe(0.85);
-    expect(fitStage(808, 10, 0).scales[0]).toBeCloseTo(0.68);
+  it("scales a wide stage down to the height a short screen leaves it", () => {
+    expect(fitStage(1086, 416).height).toBeCloseTo(416);
+    expect(fitStage(808, 300).scales[0]).toBeCloseTo(300 / 530);
+  });
+
+  it("never scales a wide stage below a quarter", () => {
+    expect(fitStage(1010, 10).scales[0]).toBe(0.25);
   });
 
   it("fills a phone frame with each pose at its own scale", () => {
-    const fit = fitStage(356, 600, 150);
+    const fit = fitStage(356, 600);
     expect(fit.narrow).toBe(true);
     expect(fit.height).toBeCloseTo(338.2);
     expect(fit.scales[0]).toBeCloseTo(338.2 / 580);
@@ -121,19 +149,19 @@ describe("fitStage", () => {
     expect(fit.scales[2]).toBeCloseTo(356 / 800);
   });
 
-  it("keeps a phone frame at least 85% of its full height, and never under 220 px", () => {
-    expect(fitStage(356, 100, 150).height).toBeCloseTo(356 * 0.95 * 0.85);
-    expect(fitStage(200, 100, 150).height).toBe(220);
+  it("fits a phone frame to the height the screen leaves it, and never under 220 px", () => {
+    expect(fitStage(356, 280).height).toBe(280);
+    expect(fitStage(356, 100).height).toBe(220);
   });
 
   it("treats an unmeasured frame as the full stage", () => {
-    expect(fitStage(0, 900, 0).scales).toEqual([1, 1, 1]);
+    expect(fitStage(0, 900).scales).toEqual([1, 1, 1]);
   });
 });
 
 describe("poseTransform", () => {
   it("only scales on a wide frame", () => {
-    expect(poseTransform(fitStage(1086, 900, 0), 2, 400)).toBe("scale(1)");
+    expect(poseTransform(fitStage(1086, 900), 2, 400)).toBe("scale(1)");
   });
 
   it("centres each pose in the room above the caption on a phone", () => {

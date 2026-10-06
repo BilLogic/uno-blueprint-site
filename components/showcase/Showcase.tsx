@@ -59,7 +59,7 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
   const Icon = wanted ? Pause : Play;
   const tall = items.some((candidate) => candidate.phone);
   const buttonClass =
-    "grid size-8 cursor-pointer place-items-center rounded-8 border border-line-2 bg-panel text-muted transition-[color,border-color] duration-t-1 motion-reduce:transition-none hover:border-line-hot hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
+    "grid size-8 cursor-pointer place-items-center rounded-8 border border-line-2 bg-panel text-muted transition-[color,border-color] duration-t-1 motion-reduce:transition-none hover:border-line-hot hover:text-ink";
 
   const expand = () => {
     // A reader who opens the recording wants it moving, as the pause button's Play would.
@@ -127,7 +127,7 @@ export function Showcase<T extends string>({ idBase, label, items }: ShowcasePro
             </button>
           </div>
         </div>
-        <p id={captionId} className="mt-4 max-w-caption text-14 text-muted">
+        <p id={captionId} className="mt-4 max-w-caption text-14 text-pretty text-muted">
           <b className="font-medium text-ink">{item.label}.</b> {item.caption}
         </p>
       </div>

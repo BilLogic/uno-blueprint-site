@@ -74,8 +74,8 @@ export function SlicePicture({ running }: PictureProps) {
                 onMouseEnter={() => hold(i)}
                 onFocus={() => hold(i)}
                 onClick={() => hold(i)}
-                className={`flex cursor-pointer items-baseline justify-start gap-2.5 rounded-8 border bg-panel px-[.9em] py-[.7em] text-left transition-[opacity,border-color,box-shadow] duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none ${
-                  on ? "border-brand opacity-100 shadow-[0_0_0_3px_var(--color-brand-soft)]" : "border-line-2 opacity-50"
+                className={`flex cursor-pointer items-baseline justify-start gap-2.5 rounded-8 border bg-panel px-[.9em] py-[.7em] text-left transition-[opacity,border-color,box-shadow] duration-300 motion-reduce:transition-none ${
+                  on ? "border-brand opacity-100 shadow-focus" : "border-line-2 opacity-50"
                 }`}
               >
                 <b>{k.label}</b>

@@ -57,15 +57,10 @@
   --color-primary-hover: light-dark(#00685a, #068f7a);
   --color-on-primary: #fff;
   --color-link: light-dark(#007a66, #5fdcc3);
-  --color-accent: #85ecd5;
-  --color-tint: light-dark(#e3f6f1, #11302b);
-  --color-hi: light-dark(#dff5ef, #123a33);
-  --color-hi-line: light-dark(#39b89c, #3fc3a5);
+  /* Every focus ring: the link colour, one width, one offset (app/globals.css draws it). */
+  --color-focus: var(--color-link);
   --color-amber: light-dark(#b45309, #fbbf6a);
   --color-amber-bg: light-dark(#fff4e0, #33260f);
-  --color-note: light-dark(#fff7e3, #2a2414);
-  --color-note-ink: light-dark(#6f5410, #f0d48c);
-  --color-note-line: light-dark(#ecd9a6, #4a3d1c);
   /* Bento: the text bars drawn in its pictures, at the prototype's 24%, 26% and, once played, 30% of ink. */
   --color-bento-bar-dim: color-mix(in oklab, var(--color-ink) 24%, transparent);
   --color-bento-bar: color-mix(in oklab, var(--color-ink) 26%, transparent);
@@ -117,8 +112,10 @@
 
   --radius-*: initial;
   --radius-2: 2px;
+  --radius-3: 3px; /* the small bars and tiles drawn on the walkthrough's cards */
   --radius-4: 4px;
   --radius-6: 6px;
+  --radius-7: 7px; /* a message bar on a card, the RAG card's send button */
   --radius-8: 8px;
   --radius-10: 10px;
   --radius-12: 12px;
@@ -289,9 +286,8 @@
   --aspect-stage-canvas-phone: 3 / 2; /* the canvas stage on a phone */
   --aspect-stage-tall: 4 / 5; /* the touch-points stage on a phone, tall enough for the phone's screen to read */
   --spacing-phone-inset: clamp(16px, 3.5vw, 44px); /* the dots round the phone, at least */
-  /* The dots above a window and beside it, at least; it meets the stage's foot, so it reads large. */
-  --spacing-window-top: clamp(12px, 2vw, 28px);
-  --spacing-window-x: clamp(12px, 2vw, 28px);
+  /* The dots above a window and beside it, at least, the same both ways; it meets the stage's foot, so it reads large. */
+  --spacing-window-margin: clamp(12px, 2vw, 28px);
   --aspect-window: 1620 / 1004; /* a desktop recording's own shape: the app window, edge to edge */
   --radius-window: var(--radius-10); /* its upper corners; the lower ones meet the stage's foot square */
   --shadow-window: var(--shadow-ring), 0 16px 40px -16px rgba(0, 0, 0, 0.3);
@@ -329,10 +325,11 @@
   --spacing-dots-fade-in: 56px; /* the dotted field fades in over its top */
   --spacing-dots-fade-out: 72px; /* and out over its bottom */
   --spacing-caption-rise: 5px; /* a caption word rises this far as it arrives, and its caption lifts as much as it leaves */
-  --ease-settle: cubic-bezier(0.2, 0.8, 0.2, 1); /* a label sliding to its sheet */
+  --ease-settle: cubic-bezier(0.2, 0.8, 0.2, 1); /* a label sliding to its sheet; a cell's sketched text filling in */
   --text-10: 10px; /* the status on a context card's ticket */
   --text-11-5: 11.5px;
   --text-14-5: 14.5px;
+  --text-lane: max(11px, 0.86em); /* a lane's name on the harness pictures' boards, in step with the board's own size */
   --duration-stagger: 70ms; /* between one sheet, or one column, and the next */
   --duration-word-delay: 100ms; /* a word follows its bar out */
   --duration-caption-fade: 150ms; /* with reduced motion, the caption crossfades whole */
@@ -350,7 +347,7 @@
   --duration-named-delay: 1050ms; /* the board's words arrive once it has turned to face the reader */
 
   /* Hero picture (it shares the lane accents above) */
-  --color-cell: color-mix(in oklab, var(--color-card) 60%, var(--color-panel)); /* a filled cell */
+  --color-cell: color-mix(in oklab, var(--color-card) 60%, var(--color-panel)); /* a filled cell; the case card under the pointer */
   --color-sketch: color-mix(in oklab, var(--color-ink) 32%, transparent); /* the first line of sketched text */
   --spacing-hero-stage-x: clamp(16px, 2vw, 28px);
   --spacing-hero-stage-y: clamp(44px, 6vw, 88px);
@@ -372,15 +369,14 @@
   --container-hero-tabs-2: 131px;
   --shadow-hero-panel: var(--shadow-card), 0 24px 50px -24px rgba(0, 0, 0, 0.35);
   --shadow-walker: 0 0 0 2px var(--color-panel), 0 4px 10px -2px rgba(0, 0, 0, 0.35);
-  --shadow-lit: 0 0 0 4px var(--color-brand-soft); /* a tool sending a document */
-  --shadow-focus: 0 0 0 3px var(--color-brand-soft); /* the cell in the panel */
+  --shadow-lit: 0 0 0 4px var(--color-brand-soft); /* a tool sending a document, a timeline node reached, the audit's first finding */
+  --shadow-focus: 0 0 0 3px var(--color-brand-soft); /* the cell in the panel, the slice's chosen option */
   --shadow-tab: 0 1.5px 0 var(--color-ink); /* the selected tab's underline */
   --ease-walk: cubic-bezier(0.5, 0, 0.25, 1.12); /* a walker settles with a small overshoot */
   --duration-walk: 700ms;
   --duration-hero-sweep: 500ms; /* the light sweeps from the cell to the panel */
   --duration-solo-move: 650ms; /* the board grows or shrinks, the panel slides */
   --duration-solo-fade: 450ms;
-  --ease-sketch: cubic-bezier(0.2, 0.8, 0.2, 1);
   --animate-cap-in: cap-in 0.4s both;
   --animate-source-pop: source-pop 0.35s both;
   @keyframes cap-in {
@@ -436,11 +432,9 @@
   --spacing-frame-dot: 10px;
   --container-timeline: 1040px;
   --container-case-text: 34ch;
-  --color-case-hover: color-mix(in oklab, var(--color-card) 60%, var(--color-panel));
   --color-case-scrim: color-mix(in oklab, var(--color-bg) 46%, transparent);
   --color-screenshot: #fff; /* behind the screenshot, which is a light-theme capture in both themes */
   --shadow-screenshot: 0 24px 60px -24px rgba(0, 0, 0, 0.28);
-  --shadow-node: 0 0 0 4px var(--color-brand-soft);
   --ease-linear: linear; /* Tailwind's own, cleared with the other curves above; a line drawn at the reader's scroll speed */
   --duration-t-tip: 150ms;
   --duration-t-rail: 200ms; /* the line catching up with the scroll; a card's hover */

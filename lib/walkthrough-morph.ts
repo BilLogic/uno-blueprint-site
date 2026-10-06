@@ -56,6 +56,16 @@ export const CARD_PLACES = {
   ],
 } as const satisfies Record<"wide" | "narrow", readonly (readonly [number, number, number])[]>;
 
+/**
+ * Where card `i` rests on a wide frame or a phone's: its left, top and turn.
+ * There is a place for each of the six cards the content lists, and a test
+ * ties the two together. A seventh card has no place until it is given one, so
+ * it fails rather than lying over the first.
+ */
+export function cardPlace(i: number, narrow: boolean): readonly [number, number, number] {
+  return (narrow ? CARD_PLACES.narrow : CARD_PLACES.wide)[i]!;
+}
+
 /** The layer each card lands on first; the shuffle then takes card i to layer i. */
 export const LANDING_ORDER = [3, 5, 0, 4, 1, 2] as const;
 
@@ -141,15 +151,17 @@ export function morphFrame(
   });
 }
 
-/** A frame's transform, in the order the layers of the stack are drawn. */
+/**
+ * A frame's transform, in the order the layers of the stack are drawn. The
+ * card is moved to its place by the first translate rather than by left and
+ * top, so its motion never lays the page out again.
+ */
 export const cardTransform = (f: CardFrame) =>
-  `translate(${f.tx}px,${f.ty}px) rotateX(${f.tilt}deg) rotateZ(${f.turn}deg) translate(${f.swingX}px,${f.swingY}px) scale(${f.scale})`;
+  `translate(${f.left}px,${f.top}px) translate(${f.tx}px,${f.ty}px) rotateX(${f.tilt}deg) rotateZ(${f.turn}deg) translate(${f.swingX}px,${f.swingY}px) scale(${f.scale})`;
 
 /** The inline styles that draw a card at a frame; clearing these same names puts it back at rest. */
 export function cardStyles(f: CardFrame) {
   return {
-    left: `${f.left}px`,
-    top: `${f.top}px`,
     width: `${f.width}px`,
     height: `${f.height}px`,
     transform: cardTransform(f),
@@ -162,8 +174,6 @@ export function cardStyles(f: CardFrame) {
 /** Every style name `cardStyles` writes. */
 export type CardStyleName = keyof ReturnType<typeof cardStyles>;
 export const CARD_STYLE_NAMES = [
-  "left",
-  "top",
   "width",
   "height",
   "transform",

@@ -7,7 +7,7 @@ import { useTimeline } from "@/hooks/use-timeline";
 import { VoiceCard } from "./VoiceCard";
 
 const nodeClass =
-  "absolute block size-timeline-node -translate-1/2 scale-0 rounded-full border-(length:--spacing-chart-stroke) border-line-hot bg-bg [transition:scale_var(--duration-t-2)_var(--ease-spring),border-color_var(--duration-t-2),background-color_var(--duration-t-2),box-shadow_var(--duration-t-2)] data-on:scale-100 data-on:border-brand data-on:bg-brand data-on:shadow-node motion-reduce:scale-100 motion-reduce:transition-none";
+  "absolute block size-timeline-node -translate-1/2 scale-0 rounded-full border-(length:--spacing-chart-stroke) border-line-hot bg-bg [transition:scale_var(--duration-t-2)_var(--ease-spring),border-color_var(--duration-t-2),background-color_var(--duration-t-2),box-shadow_var(--duration-t-2)] data-on:scale-100 data-on:border-brand data-on:bg-brand data-on:shadow-lit motion-reduce:scale-100 motion-reduce:transition-none";
 const railClass =
   "fill-none [stroke-width:var(--spacing-timeline-stroke)] transition-[stroke-dashoffset] duration-t-rail ease-linear motion-reduce:transition-none";
 

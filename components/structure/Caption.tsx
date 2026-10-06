@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { vars } from "@/components/ui/vars";
 import { captionDelays } from "@/lib/caption";
 import s from "./Walkthrough.module.css";
 
@@ -97,7 +98,7 @@ export function Caption({ steps, step, previous }: { steps: readonly Step[]; ste
             data-id={layer.id}
             data-phase={layer.phase}
             className={s.capLayer}
-            style={{ "--cap-dir": layer.direction } as CSSProperties}
+            style={vars({ "--cap-dir": layer.direction })}
           >
             <b>
               <span className={s.piece}>{title}</span>

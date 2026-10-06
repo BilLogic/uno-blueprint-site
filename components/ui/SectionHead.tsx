@@ -24,10 +24,11 @@ export function SectionHead({ lead, headline, subheadline, more, className = "" 
         </h2>
         <p className="max-w-lead text-pretty text-muted">{subheadline}</p>
       </div>
+      {/* Padded to a 24 px tap target, and pulled back by as much, so it sits where its text would. */}
       {more && (
         <a
           {...anchorProps(more.link)}
-          className="text-14 whitespace-nowrap text-ink underline underline-offset-3"
+          className="-my-0.5 py-0.5 text-14 whitespace-nowrap text-ink underline underline-offset-3"
         >
           {more.label}
         </a>

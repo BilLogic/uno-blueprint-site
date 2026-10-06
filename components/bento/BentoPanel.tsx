@@ -5,12 +5,9 @@ import { useInView } from "@/hooks/use-in-view";
 import { useNoHover, useReducedMotion } from "@/hooks/use-media-query";
 import { usePlayCycle } from "@/hooks/use-play-cycle";
 import { usePointerLight } from "@/hooks/use-pointer-light";
+import { PLAY_MS, REST_MS } from "@/lib/bento";
 import { useArrived } from "./BentoGrid";
 import styles from "./bento.module.css";
-
-/** On a touch screen a picture plays this long, rests, and plays again. */
-const PLAY_MS = 4400;
-const REST_MS = 1200;
 
 type BentoPanelProps = {
   /** The panel's place in the grid, which sets its turn to arrive. */
@@ -58,7 +55,7 @@ export function BentoPanel({ index, size, icon, title, body, children, labelled 
       tabIndex={0}
       className={`${styles.panel} ${size ? styles[size] : ""}`}
       data-arrived={arrived || undefined}
-      data-hot={playing || undefined}
+      data-playing={playing || undefined}
     >
       <div className={styles.inner}>
         <h3 id={titleId} className={styles.title}>

@@ -22,7 +22,7 @@ Every word and link the page shows lives in `content/`, one file per section; co
 
 | Path | What |
 | --- | --- |
-| `content/links.ts` | Every link. One not ready yet carries `notReady: true` and renders disabled in every build, `npm run dev` included (no `href`, `aria-disabled`); a button or nav item also takes focus and shows "Coming soon" as a tooltip on hover or focus. List them with `grep -rn "notReady: true" content` |
+| `content/links.ts` | Every link. One not ready yet carries `notReady: true` and renders disabled in every build, `npm run dev` included (no `href`, `aria-disabled`); a button with a `soonLabel` says so in its own label ("Case study coming soon"), a nav item takes focus and shows "Coming soon" as a tooltip on hover or focus, and any other link is simply disabled. List them with `grep -rn "notReady: true" content` |
 | `public/uno-blueprint.md`, `public/llms.txt` | The page as markdown for agents, and the index they read first |
 | `app/` | The page, its metadata, icons and preview image |
 | `components/`, `hooks/`, `lib/` | One folder per part of the page; small typed hooks and the pure logic they use |
@@ -31,7 +31,7 @@ Every word and link the page shows lives in `content/`, one file per section; co
 
 ## Test it
 
-CI (`.github/workflows/ci.yml`) runs all of these on every pull request:
+CI (`.github/workflows/ci.yml`) runs all of these on every pull request; a push to `main` runs only the build, as the rest ran on its pull request. A pull request that changes `netlify.toml` or `scripts/check-demo-forward.mjs` also checks the demo through its deploy preview (`.github/workflows/demo-forward.yml`):
 
 ```bash
 npm run typecheck

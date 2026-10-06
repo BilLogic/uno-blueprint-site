@@ -1,3 +1,7 @@
+/** On a touch screen a picture plays this long, rests, and plays again, in milliseconds. */
+export const PLAY_MS = 4400;
+export const REST_MS = 1200;
+
 /** A beat between one bento panel arriving and the next, in milliseconds. */
 export const ARRIVAL_STEP_MS = 140;
 

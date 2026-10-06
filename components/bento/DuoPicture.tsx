@@ -6,7 +6,7 @@ import { bento } from "@/content/bento";
 import { tokenTravel } from "@/lib/bento";
 import { BOARD, SHARED_CELL } from "./geometry";
 import styles from "./bento.module.css";
-import { vars } from "./vars";
+import { vars } from "@/components/ui/vars";
 
 type Travel = Record<"person" | "agent", { x: number; y: number }>;
 

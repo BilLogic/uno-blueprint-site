@@ -1,7 +1,8 @@
 "use client";
 
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { useId, type CSSProperties, type KeyboardEvent } from "react";
+import { useId, type KeyboardEvent } from "react";
+import { vars } from "@/components/ui/vars";
 import { proof, type ProofMetric } from "@/content/proof";
 import { dataFlag } from "@/components/ui/data-flag";
 import { useBarReveal } from "@/hooks/use-bar-reveal";
@@ -31,7 +32,7 @@ function Bar({ metric, index }: { metric: ProofMetric; index: 0 | 1 }) {
   return (
     <div
       className={`${barClass} ${series[index].bar}`}
-      style={{ "--v": value / metric.scale } as CSSProperties}
+      style={vars({ "--v": value / metric.scale })}
     >
       <span className={`${valueClass} ${series[index].value}`}>
         {value}
@@ -88,7 +89,7 @@ export function ProofChart() {
                       type="button"
                       aria-describedby={definitionId}
                       onKeyDown={closeOnEscape}
-                      className="cursor-help border-b border-dotted border-faint px-0.5 py-1.5 text-14 leading-caption font-medium text-ink focus-visible:outline-brand focus-visible:outline-offset-3"
+                      className="cursor-help border-b border-dotted border-faint px-0.5 py-1.5 text-14 leading-caption font-medium text-ink"
                     >
                       {metric.name}
                     </button>

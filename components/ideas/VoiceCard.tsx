@@ -63,7 +63,7 @@ export function VoiceCard({ voice, side, row, on }: VoiceCardProps) {
           <small className="block text-12-5 leading-4.5 font-normal text-muted">{voice.role}</small>
         </span>
       </span>
-      <p className="mt-3 text-14 text-muted">
+      <p className="mt-3 text-14 text-pretty text-muted">
         {voice.quote.map((run, i) =>
           typeof run === "string" ? (
             run

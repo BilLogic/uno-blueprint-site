@@ -1,8 +1,7 @@
 "use client";
 
-import { useRef } from "react";
 import { structure } from "@/content/structure";
-import { usePointerGlow } from "@/hooks/use-pointer-glow";
+import { usePointerLight } from "@/hooks/use-pointer-light";
 import { useWalkthrough } from "@/hooks/use-walkthrough";
 import { sceneAt, stepEdges } from "@/lib/walkthrough";
 import { Caption } from "./Caption";
@@ -26,8 +25,7 @@ export function Walkthrough() {
   const { refs, step, previous, open, layout } = useWalkthrough(EDGES, SCROLL_LENGTH);
   const { scroller, sticky, head, stage, world, caption } = refs;
   const scene = sceneAt(step, previous, layout.lift, open);
-  const frame = useRef<HTMLDivElement>(null);
-  usePointerGlow(frame);
+  const frame = usePointerLight<HTMLDivElement>();
 
   const shown = structure.steps[step]!;
   const stageClass = [
