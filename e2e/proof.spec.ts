@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { keepRealFrames, realFrames, transitionsDone } from "./clock";
 
 const chart = (page: Page) => page.locator("#proof");
 const value = (page: Page, text: string) => chart(page).getByText(text, { exact: true });
@@ -11,8 +12,11 @@ async function scrollPlotTo(page: Page, fromTop: number) {
   }, fromTop);
 }
 
-/** Long enough for any reveal a scroll might set off to have played. */
-const REVEAL_SETTLE_MS = 1000;
+/** Lets any reveal a scroll might set off begin, then play to its end. */
+async function revealsPlayed(page: Page) {
+  await realFrames(page);
+  await transitionsDone(chart(page));
+}
 
 /** The height of the bar a value label sits on. */
 const barHeight = (page: Page, text: string) =>
@@ -22,6 +26,7 @@ test.describe("on a wide screen", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
   test("the chart is revealed whole, once", async ({ page }) => {
+    await keepRealFrames(page);
     await page.goto("/");
     await scrollPlotTo(page, 900);
     await expect.poll(() => barHeight(page, "71%")).toBeLessThan(2);
@@ -36,7 +41,7 @@ test.describe("on a wide screen", () => {
 
     // Scrolling back does not hide it again.
     await scrollPlotTo(page, 900);
-    await page.waitForTimeout(REVEAL_SETTLE_MS);
+    await revealsPlayed(page);
     expect(await barHeight(page, "71%")).toBeCloseTo(0.71 * 230, 0);
   });
 
@@ -62,6 +67,7 @@ test.describe("on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test("the chart is revealed whole, once", async ({ page }) => {
+    await keepRealFrames(page);
     await page.goto("/");
     await scrollPlotTo(page, 844);
     await expect.poll(() => barHeight(page, "71%")).toBeLessThan(2);
@@ -74,7 +80,7 @@ test.describe("on a phone", () => {
 
     // Scrolling back does not hide it again.
     await scrollPlotTo(page, 844);
-    await page.waitForTimeout(REVEAL_SETTLE_MS);
+    await revealsPlayed(page);
     expect(await barHeight(page, "71%")).toBeCloseTo(0.71 * 160, 0);
   });
 });

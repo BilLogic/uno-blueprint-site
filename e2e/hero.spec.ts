@@ -1,4 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
+import { TIMING } from "../lib/hero-picture";
+import { flushRenders, installClock, realFrames, runUntil, stopClockASecondOn, tick, transitionsDone } from "./clock";
 
 const pictureName = /^Documents from Notion, Slack, Figma, GitHub, Google Drive, Zoom, email, and spreadsheets/;
 const picture = (page: Page) => page.getByRole("img", { name: pictureName });
@@ -22,6 +24,7 @@ test("the picture is one image with a description", async ({ page }) => {
 });
 
 test("with reduced motion the picture shows the finished board and holds still", async ({ page }) => {
+  await installClock(page);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   const image = picture(page);
@@ -29,19 +32,32 @@ test("with reduced motion the picture shows the finished board and holds still",
   await page.evaluate(() => document.fonts.ready);
   // Settled once the projection into the panel is drawn.
   await expect(image.locator("polygon")).toHaveAttribute("points", /\d/);
+  await stopClockASecondOn(page);
   const before = await image.screenshot({ animations: "disabled" });
-  await page.waitForTimeout(2500);
+  // Longer than a round takes to start, by the page's clock.
+  await page.clock.runFor(2500);
+  await realFrames(page);
   const after = await image.screenshot({ animations: "disabled" });
   expect(after.equals(before), "the picture changed").toBe(true);
 });
 
 test("without reduced motion the picture plays", async ({ page }) => {
+  await installClock(page);
   await page.goto("/");
   const image = picture(page);
   await image.scrollIntoViewIfNeeded();
+  await stopClockASecondOn(page);
   const first = await image.screenshot();
-  await expect.poll(async () => (await image.screenshot()).equals(first), { timeout: 6000 }).toBe(false);
+  await runUntil(page, async () => !(await image.screenshot()).equals(first), { limit: 6000 });
 });
+
+/** Runs the page's stopped clock on until the board stands alone, as each round opens. */
+const untilAlone = (page: Page) =>
+  runUntil(page, async () =>
+    picture(page)
+      .getByTestId("hero-stage")
+      .evaluate((stage) => (stage as HTMLElement).style.getPropertyValue("--solo-ty") !== ""),
+  );
 
 test.describe("the panel keeps the rows its width can hold", () => {
   test.beforeEach(async ({ page }) => {
@@ -99,23 +115,27 @@ test("the logo is square at every width, in both themes", async ({ page }) => {
     const mark = picture(page).locator("img:visible");
     for (let width = 360; width <= 1700; width += 20) {
       await page.setViewportSize({ width, height: 900 });
-      const box = (await mark.boundingBox())!;
-      expect(Math.abs(box.width - box.height), `${colorScheme} at ${width} px`).toBeLessThan(0.5);
+      // The mark shown can change with the width, and has no box while it does: wait for the one shown now.
+      let box: { width: number; height: number } | null = null;
+      await expect.poll(async () => (box = await mark.boundingBox())).not.toBeNull();
+      expect(Math.abs(box!.width - box!.height), `${colorScheme} at ${width} px`).toBeLessThan(0.5);
     }
   }
 });
 
 test("each loop opens on the board alone, grown into the panel's room", async ({ page }) => {
+  await installClock(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
   const image = picture(page);
   await image.scrollIntoViewIfNeeded();
+  await stopClockASecondOn(page);
+  await untilAlone(page);
+  await transitionsDone(image);
   const panel = image.getByTestId("hero-panel");
-  await expect.poll(() => panel.evaluate((element) => getComputedStyle(element).opacity), { timeout: 8000 }).toBe("0");
+  expect(await panel.evaluate((element) => getComputedStyle(element).opacity)).toBe("0");
   const board = image.getByTestId("hero-board");
-  await expect
-    .poll(() => board.evaluate((element) => Number(getComputedStyle(element).scale)), { timeout: 2000 })
-    .toBeGreaterThan(1.2);
+  expect(await board.evaluate((element) => Number(getComputedStyle(element).scale))).toBeGreaterThan(1.2);
 });
 
 test("standing alone, the board keeps the same padding on both sides, on load and after a resize", async ({ page }) => {
@@ -132,26 +152,28 @@ test("standing alone, the board keeps the same padding on both sides, on load an
         bottom: frame.bottom - Math.max(...sheets.map((sheet) => sheet.bottom)),
       };
     });
-  const panelAway = () =>
-    expect
-      .poll(() => picture(page).getByTestId("hero-panel").evaluate((panel) => getComputedStyle(panel).opacity), { timeout: 8000 })
-      .toBe("0");
   const even = async (label: string) => {
-    // The board grows over the solo transition; it settles well within a second.
-    await page.waitForTimeout(900);
+    // The board grows over the solo transition.
+    await transitionsDone(picture(page));
     const { left, right, top, bottom } = await margins();
     expect(Math.abs(left - right), `${label}: left ${left}, right ${right}`).toBeLessThan(2);
     expect(Math.abs(top - bottom), `${label}: top ${top}, bottom ${bottom}`).toBeLessThan(2);
   };
+  await installClock(page);
   for (const width of [960, 1280, 1600]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/");
     await picture(page).scrollIntoViewIfNeeded();
-    await panelAway();
+    await stopClockASecondOn(page);
+    await untilAlone(page);
     await even(`${width} px on load`);
     const resized = width === 1600 ? 1100 : width + 240;
     await page.setViewportSize({ width: resized, height: 900 });
+    // The board is sized again once the window has stopped resizing.
+    await tick(page, Math.max(TIMING.relayout, TIMING.soloResize));
+    await flushRenders(page);
     await even(`${width} px resized to ${resized} px`);
+    await page.clock.resume();
   }
 });
 
@@ -179,21 +201,25 @@ test("with the panel showing, the row keeps the same margins on both sides", asy
 });
 
 test("resized from wide to a phone while standing alone, the board goes back to rest", async ({ page }) => {
+  await installClock(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
   const image = picture(page);
   await image.scrollIntoViewIfNeeded();
   const solo = (name: string) => image.getByTestId("hero-stage").evaluate((stage, name) => (stage as HTMLElement).style.getPropertyValue(name), name);
-  await expect.poll(() => solo("--solo-ty"), { timeout: 8000 }).not.toBe("");
+  await stopClockASecondOn(page);
+  await untilAlone(page);
   expect(parseFloat(await solo("--solo-ty"))).toBeGreaterThan(0);
   await page.setViewportSize({ width: 390, height: 844 });
+  // The board is sized again once the window has stopped resizing.
+  await tick(page, TIMING.soloResize);
+  await flushRenders(page);
   await expect.poll(() => solo("--solo-ty")).toBe("0.0px");
   expect(await solo("--solo-s")).toBe("1.000");
   const board = image.getByTestId("hero-board");
   // At rest once the transition ends: no scale, no drop.
-  await expect
-    .poll(() => board.evaluate((element) => element.getBoundingClientRect().width / (element as HTMLElement).offsetWidth))
-    .toBeCloseTo(1, 3);
+  await transitionsDone(image);
+  expect(await board.evaluate((element) => element.getBoundingClientRect().width / (element as HTMLElement).offsetWidth)).toBeCloseTo(1, 3);
   // No drop either; a transform can settle a hair off zero, so each offset counts as at rest below half a pixel.
   const translate = await board.evaluate((element) => getComputedStyle(element).translate);
   const offsets = translate === "none" ? [] : translate.split(" ").map((value) => parseFloat(value));

@@ -5,8 +5,17 @@ import { exitScroll as exitAt } from "../lib/walkthrough";
 const lengths = structure.steps.map((step) => step.scroll);
 const total = lengths.reduce((sum, length) => sum + length, 0);
 
-/** Scrolls to `progress` (0 to 1) through the pinned scroll of the walkthrough in `section`. */
+/**
+ * Scrolls to `progress` (0 to 1) through the pinned scroll of the walkthrough
+ * in `section`, once the walkthrough has laid itself out with the page's fonts:
+ * measured before that, on a slow machine, the scroll lands short of where it
+ * was asked to go.
+ */
 export async function scrollToProgress(section: Locator, progress: number): Promise<void> {
+  await section.page().evaluate(() => document.fonts.ready.then(() => undefined));
+  await section.page().waitForFunction(() =>
+    Boolean(document.querySelector("[data-board]")?.closest<HTMLElement>("[aria-hidden]")?.style.height),
+  );
   await section.evaluate((el, t) => {
     const pinned = [...el.querySelectorAll<HTMLElement>("*")].find((n) => getComputedStyle(n).position === "sticky");
     const scroller = pinned?.parentElement;

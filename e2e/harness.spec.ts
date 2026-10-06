@@ -1,10 +1,12 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { map } from "@/content/harness";
 import { HARNESS_HOLD } from "@/lib/harness-loop";
+import { installClock, runUntil, stopClockASecondOn } from "./clock";
 
-/** How early a timer may fire against its delay as the page reads it, in ms: a frame or so. */
-const FRAME_SLACK = 50;
+/** Whether `locator` is on the page, and whether it is not, as conditions for `runUntil`. */
+const has = (locator: Locator) => async () => (await locator.count()) === 1;
+const lacks = (locator: Locator) => async () => (await locator.count()) === 0;
 
 const section = (page: Page) =>
   page.locator("section", { has: page.getByRole("heading", { name: "Harness for your agents." }) });
@@ -29,14 +31,16 @@ test.describe("harness showcase", () => {
   });
 
   test("a finished picture holds its last frame, then plays again from the start", async ({ page }) => {
-    test.setTimeout(40_000);
+    // The pictures run on timers, so the page's clock stands still and the test steps it.
+    await installClock(page);
     await page.goto("/");
+    await stopClockASecondOn(page);
     const harness = section(page);
     const stage = harness.getByRole("tabpanel");
     await harness.scrollIntoViewIfNeeded();
     const first = harness.getByText("Drops off the device", { exact: true });
     const last = harness.getByText(map.placements.at(-1)!.text, { exact: true });
-    // Note, in the page, when the picture starts holding and when it next plays again.
+    // Note, by the page's clock, when the picture starts holding and when it next plays again.
     await stage.evaluate((el) => {
       const w = window as unknown as { heldAt?: number; replayedAt?: number };
       new MutationObserver(() => {
@@ -47,47 +51,48 @@ test.describe("harness showcase", () => {
       }).observe(el, { attributes: true, attributeFilter: ["data-holding"] });
     });
     // The first phrase lands about a second and a half in, the last about seven.
-    await expect(first).toHaveCount(1, { timeout: 5000 });
-    await expect(last).toHaveCount(1, { timeout: 10_000 });
+    await runUntil(page, has(first), { limit: 5000 });
+    await runUntil(page, has(last), { limit: 10_000 });
     // The finished board holds, its phrases still placed...
-    await expect(stage).toHaveAttribute("data-holding", "true", { timeout: 5000 });
+    await runUntil(page, async () => (await stage.getAttribute("data-holding")) === "true", { limit: 5000 });
     const run = Number(await stage.getAttribute("data-run"));
     await expect(first).toHaveCount(1);
     // ...then plays again from the start, a new run, once the hold is over.
-    await expect(stage).toHaveAttribute("data-run", String(run + 1), { timeout: HARNESS_HOLD + 2000 });
+    await runUntil(page, async () => (await stage.getAttribute("data-run")) === String(run + 1), { limit: HARNESS_HOLD + 1000 });
     const { heldAt, replayedAt } = await page.evaluate(() => {
       const w = window as unknown as { heldAt: number; replayedAt: number };
       return { heldAt: w.heldAt, replayedAt: w.replayedAt };
     });
-    expect(replayedAt - heldAt).toBeGreaterThanOrEqual(HARNESS_HOLD - FRAME_SLACK);
-    await expect(first).toHaveCount(0, { timeout: 5000 });
-    await expect(first).toHaveCount(1, { timeout: 5000 });
+    expect(replayedAt - heldAt).toBeGreaterThanOrEqual(HARNESS_HOLD);
+    await runUntil(page, lacks(first), { limit: 5000 });
+    await runUntil(page, has(first), { limit: 5000 });
   });
 
   test("off screen a picture stops looping, and starts over when back", async ({ page }) => {
-    test.setTimeout(40_000);
+    await installClock(page);
     await page.goto("/");
+    await stopClockASecondOn(page);
     const harness = section(page);
     const stage = harness.getByRole("tabpanel");
     await harness.scrollIntoViewIfNeeded();
     const first = harness.getByText("Drops off the device", { exact: true });
     const last = harness.getByText(map.placements.at(-1)!.text, { exact: true });
-    await expect(last).toHaveCount(1, { timeout: 12_000 });
+    await runUntil(page, has(last), { limit: 12_000 });
 
     await page.evaluate(() => window.scrollTo(0, 0));
     await expect(stage).not.toHaveAttribute("data-shown");
     await expect(stage).not.toHaveAttribute("data-holding");
     const run = await stage.getAttribute("data-run");
-    // Longer than the hold: on screen it would have started again by now.
-    await page.waitForTimeout(HARNESS_HOLD + 1000);
+    // Longer than the hold, by the page's clock: on screen it would have started again by now.
+    await page.clock.runFor(HARNESS_HOLD + 1000);
     await expect(stage).toHaveAttribute("data-run", run!);
     await expect(first).toHaveCount(1);
 
     await harness.scrollIntoViewIfNeeded();
     await expect(stage).toHaveAttribute("data-shown", "true");
     await expect(stage).toHaveAttribute("data-run", String(Number(run) + 1));
-    await expect(first).toHaveCount(0, { timeout: 2000 });
-    await expect(first).toHaveCount(1, { timeout: 5000 });
+    await runUntil(page, lacks(first), { limit: 2000 });
+    await runUntil(page, has(first), { limit: 5000 });
   });
 
   test("no picture has a replay button", async ({ page }) => {
@@ -131,6 +136,7 @@ test.describe("harness showcase", () => {
   });
 
   test("slice loops by itself and holds the kind the pointer is on", async ({ page }) => {
+    await installClock(page);
     await page.goto("/");
     const harness = section(page);
     await harness.getByRole("tab", { name: "Slice" }).click();
@@ -144,8 +150,9 @@ test.describe("harness showcase", () => {
     const cell = harness.getByRole("button", { name: "Cell" });
     await cell.hover();
     await expect(cell).toHaveAttribute("aria-pressed", "true");
-    // Longer than a kind normally holds before the loop moves on.
-    await page.waitForTimeout(2000);
+    // Longer than a kind normally holds before the loop moves on, by the page's clock.
+    await stopClockASecondOn(page);
+    await page.clock.runFor(2000);
     await expect(cell).toHaveAttribute("aria-pressed", "true");
   });
 

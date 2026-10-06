@@ -1,9 +1,8 @@
 import { devices, expect, test, type Page } from "@playwright/test";
 import { bento } from "@/content/bento";
 import { ARRIVAL_STEP_MS, PLAY_MS, REST_MS } from "@/lib/bento";
+import { FRAME, flushRenders, installClock, runUntil, stopClockASecondOn } from "./clock";
 
-/** Room past a play or a rest for the timer to fire and the page to show it, in ms. */
-const CYCLE_SLACK = 1500;
 
 const titles = [
   bento.duo.title,
@@ -42,23 +41,10 @@ test.describe("bento", () => {
       panel(page, title).evaluate((p, y) => {
         window.scrollTo({ top: p.getBoundingClientRect().top + window.scrollY - y, behavior: "instant" });
       }, y);
-    /**
-     * Let React finish rendering what the clock last set in motion: its
-     * renders are queued as messages, which the stopped clock does not hold.
-     */
-    const settle = () =>
-      page.evaluate(
-        () =>
-          new Promise<void>((done) => {
-            const { port1, port2 } = new MessageChannel();
-            port1.onmessage = () => done();
-            port2.postMessage(null);
-          }),
-      );
     const arrived = (title: (typeof titles)[number]) =>
       expect(panel(page, title)).toHaveAttribute("data-arrived");
     const waiting = async (title: (typeof titles)[number]) => {
-      await settle();
+      await flushRenders(page);
       await expect(panel(page, title)).not.toHaveAttribute("data-arrived");
     };
 
@@ -207,13 +193,28 @@ test.describe("bento on a touch screen", () => {
   test.use({ viewport, userAgent, deviceScaleFactor, isMobile, hasTouch });
 
   test("a picture plays in the middle of the screen, rests, and plays again", async ({ page }) => {
+    // The page's clock stands still and is stepped by hand, so the play and the rest are timed exactly.
+    await installClock(page);
     await page.goto("/");
+    await stopClockASecondOn(page);
     const context = panel(page, bento.context.title);
     await context.evaluate((p) => p.scrollIntoView({ block: "center" }));
 
-    await expect(context).toHaveAttribute("data-playing", "true");
-    await expect(context).not.toHaveAttribute("data-playing", { timeout: PLAY_MS + CYCLE_SLACK });
-    await expect(context).toHaveAttribute("data-playing", "true", { timeout: REST_MS + CYCLE_SLACK });
+    // It starts playing on the next frame; from then on, each step lands within that frame of its time.
+    const playing = () => context.evaluate((p) => p.getAttribute("data-playing") === "true");
+    await runUntil(page, playing, { step: FRAME, limit: 1000 });
+    const still = async (on: boolean) => {
+      await flushRenders(page);
+      expect(await playing()).toBe(on);
+    };
+    await page.clock.runFor(PLAY_MS - FRAME - 1);
+    await still(true);
+    await page.clock.runFor(FRAME + 1);
+    await still(false);
+    await page.clock.runFor(REST_MS - FRAME - 1);
+    await still(false);
+    await page.clock.runFor(FRAME + 1);
+    await still(true);
 
     // Scrolled away, it stops.
     await page.evaluate(() => window.scrollTo(0, 0));
