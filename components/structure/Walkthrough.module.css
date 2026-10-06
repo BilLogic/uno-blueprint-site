@@ -702,7 +702,7 @@
   z-index: 1;
   padding: 3px 7px;
   border-radius: var(--radius-6);
-  background: color-mix(in oklab, var(--color-brand) 14%, var(--color-panel));
+  background: var(--color-brand-badge);
   color: var(--color-brand);
   font: 500 var(--text-11) / 1 var(--font-sans);
   opacity: 0;
@@ -730,7 +730,7 @@
 }
 
 .line.current span {
-  color: var(--color-brand);
+  color: var(--color-brand-badge-ink);
   transform: none;
 }
 
@@ -785,8 +785,8 @@
 }
 
 .tag.current b {
-  background: color-mix(in oklab, var(--color-brand) 14%, var(--color-panel));
-  color: var(--color-brand);
+  background: var(--color-brand-badge);
+  color: var(--color-brand-badge-ink);
 }
 
 .stage.flat .tag {

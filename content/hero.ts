@@ -14,7 +14,7 @@ export const hero = {
   secondary: { label: "Try the demo", link: links.demo },
   picture: {
     label:
-      "Documents from Notion, Slack, Figma, GitHub, Google Drive, Zoom, email and spreadsheets pass through Uno Blueprint into the cells of a blueprint. People and agents move from cell to cell, and the cell a person stops on opens in a panel beside it",
+      "Documents from Notion, Slack, Figma, GitHub, Google Drive, Zoom, email, and spreadsheets pass through Uno Blueprint into the cells of a blueprint. People and agents move from cell to cell, and the cell a person stops on opens in a panel beside it",
     node: "Uno Blueprint",
     /** Two to a row on wide screens, in this order. */
     tools: [

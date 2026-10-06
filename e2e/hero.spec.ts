@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const pictureName = /^Documents from Notion, Slack, Figma, GitHub, Google Drive, Zoom, email and spreadsheets/;
+const pictureName = /^Documents from Notion, Slack, Figma, GitHub, Google Drive, Zoom, email, and spreadsheets/;
 const picture = (page: Page) => page.getByRole("img", { name: pictureName });
 
 test("the hero says what the toolkit is and offers two ways in", async ({ page }) => {
@@ -194,7 +194,10 @@ test("resized from wide to a phone while standing alone, the board goes back to 
   await expect
     .poll(() => board.evaluate((element) => element.getBoundingClientRect().width / (element as HTMLElement).offsetWidth))
     .toBeCloseTo(1, 3);
-  expect(["none", "0px", "0px 0px"]).toContain(await board.evaluate((element) => getComputedStyle(element).translate));
+  // No drop either; a transform can settle a hair off zero, so each offset counts as at rest below half a pixel.
+  const translate = await board.evaluate((element) => getComputedStyle(element).translate);
+  const offsets = translate === "none" ? [] : translate.split(" ").map((value) => parseFloat(value));
+  for (const offset of offsets) expect(Math.abs(offset), `translate ${translate}`).toBeLessThan(0.5);
 });
 
 for (const width of [1440, 390]) {

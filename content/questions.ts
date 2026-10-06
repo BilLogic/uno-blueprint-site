@@ -25,12 +25,12 @@ export const questions = {
     },
     {
       question: "Does the agent change things on its own?",
-      answer: "No. Agents draft, check and suggest. Drafts need sign-off, and every edit can be undone.",
+      answer: "No. Agents draft, check, and suggest. Drafts need sign-off, and every edit can be undone.",
     },
     {
       question: "Which agents can use it?",
       answer:
-        "The agent built into the app, and coding agents such as Claude Code, Cursor and Codex, which run the four skills. Any agent can read a published blueprint.",
+        "The agent built into the app, and coding agents such as Claude Code, Cursor, and Codex, which run the four skills. Any agent can read a published blueprint.",
     },
   ],
 } as const;
