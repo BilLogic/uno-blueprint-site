@@ -86,14 +86,15 @@ const look = (page: Page, view: string) =>
   });
 
 /**
- * The page's clock moves its frames on 16ms at a time, so `ms` after a pick the
+ * The page's clock moves its frames on 16ms at a time, so `ms` into a phase the
  * last frame drawn fell somewhere in the frame before: each value lies between
- * the look one frame earlier and the look at `ms`.
+ * the look `frames` frames earlier and the look at `ms`. The arrival starts on
+ * the frame the leaving view is gone, itself up to a frame late, so it allows two.
  */
-async function expectMidway(page: Page, view: string, at: (ms: number) => Look, ms: number) {
+async function expectMidway(page: Page, view: string, at: (ms: number) => Look, ms: number, frames = 1) {
   const drawn = await look(page, view);
   expect(drawn.shown).toBe(true);
-  const [early, late] = [at(ms - FRAME), at(ms)];
+  const [early, late] = [at(ms - frames * FRAME), at(ms)];
   for (const key of ["opacity", "y", "blur"] as const) {
     const [low, high] = [Math.min(early[key], late[key]), Math.max(early[key], late[key])];
     expect(drawn[key], `${view}'s ${key} ${ms}ms in`).toBeGreaterThanOrEqual(low - 0.02);
@@ -159,13 +160,13 @@ test.describe("switching views", () => {
 
       // 120ms in, the view arriving is still well short of whole: any sooner and the switch reads as a cut.
       await page.clock.runFor(120 - FRAME);
-      await expectMidway(page, to, arriving, 120);
+      await expectMidway(page, to, arriving, 120, 2);
       expect((await look(page, to)).opacity).toBeLessThan(0.5);
 
       await page.clock.runFor(250 - 120);
-      await expectMidway(page, to, arriving, 250);
+      await expectMidway(page, to, arriving, 250, 2);
 
-      await page.clock.runFor(ARRIVE.ms - 250 + FRAME);
+      await page.clock.runFor(ARRIVE.ms - 250 + 2 * FRAME);
       await expectAtRest(page, to);
       expect(await page.evaluate(() => document.documentElement.dataset.view ?? "human")).toBe(to);
     });

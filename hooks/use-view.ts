@@ -108,12 +108,12 @@ function step() {
     return;
   }
   if (phase.kind === "arrive") return stop();
-  // Gone: the view picked takes its place and rises in, on from the moment this one was due to leave.
-  const due = phase.start + phase.duration;
+  // Gone: the view picked takes its place and rises in. Laying out the human
+  // page can hold up a frame; the rise starts after that, so none of it is lost.
   stop();
   if (picked && picked !== shownView()) show(picked);
   const page = pageOf(shownView());
-  if (page) play("arrive", page, [risen(), atRest], due);
+  if (page) play("arrive", page, [risen(), atRest], performance.now());
 }
 
 /**
