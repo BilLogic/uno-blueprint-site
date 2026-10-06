@@ -442,6 +442,23 @@
   --blur-case: 7px;
   --blur-caption: 4px; /* a caption word sharpens out of this as it arrives, and its caption blurs to it as it leaves */
 
+  /*
+   * Get started: a tab's new panel rises out of a slight blur, a quiet take on
+   * the walkthrough caption's arrival, and the panel it replaces goes at once.
+   * Nothing is left blurred at rest, so the code stays sharp to read and copy.
+   */
+  --spacing-panel-swap-rise: 8px;
+  --blur-panel-swap: 3px;
+  --duration-panel-swap: 250ms;
+  --animate-panel-swap: panel-swap var(--duration-panel-swap) var(--ease-out) backwards;
+  @keyframes panel-swap {
+    from {
+      opacity: 0;
+      filter: blur(var(--blur-panel-swap));
+      transform: translateY(var(--spacing-panel-swap-rise));
+    }
+  }
+
   --animate-menu-in: menu-in var(--duration-t-1) var(--ease-out);
   @keyframes menu-in {
     from {

@@ -59,7 +59,10 @@ test.describe("install", () => {
     await page.goto("/");
     const height = async (name: string) => {
       await page.getByRole("tab", { name, exact: true }).click();
-      return (await page.getByRole("tabpanel", { name, exact: true }).boundingBox())?.height;
+      const panel = page.getByRole("tabpanel", { name, exact: true });
+      // Measured at rest: mid-swap the box is still rising, which leaves its edges between pixels.
+      await atRest(panel);
+      return (await panel.boundingBox())?.height;
     };
     // On a phone the agent's sentence and the Yarn 1 note are taller than the box, which grows for them as in the design.
     for (const [width, names] of [
@@ -131,6 +134,124 @@ test.describe("skills", () => {
     expect(await copyFrom(page, cursor.getByRole("listitem").filter({ hasText: "ub:whatif" }))).toBe(
       "ub:whatif",
     );
+  });
+});
+
+/**
+ * Holds the panel's own animations at `at` of the way through, and reads how
+ * it looks there. The browser runs CSS animations on its own time, which the
+ * page's clock does not hold, so each one is paused and set to that moment.
+ */
+async function holdSwap(panel: Locator, at: number) {
+  return panel.evaluate((element, at) => {
+    const running = element.getAnimations();
+    let duration = 0;
+    for (const animation of running) {
+      duration = Number(animation.effect?.getComputedTiming().duration);
+      animation.pause();
+      animation.currentTime = duration * at;
+    }
+    const style = getComputedStyle(element);
+    const blur = /blur\(([\d.]+)px\)/.exec(style.filter)?.[1];
+    return {
+      running: running.length,
+      duration,
+      opacity: Number(style.opacity),
+      rise: new DOMMatrix(style.transform === "none" ? undefined : style.transform).m42,
+      blur: blur === undefined ? 0 : Number(blur),
+    };
+  }, at);
+}
+
+/** Lets the panel's animations run out, then reads how it looks at rest. */
+const atRest = (panel: Locator) =>
+  panel.evaluate(async (element) => {
+    for (const animation of element.getAnimations()) animation.play();
+    await Promise.allSettled(element.getAnimations().map((animation) => animation.finished));
+    const style = getComputedStyle(element);
+    return { opacity: style.opacity, transform: style.transform, filter: style.filter };
+  });
+
+const rest = { opacity: "1", transform: "none", filter: "none" };
+
+test.describe("a tab's panel swap", () => {
+  const rows = [
+    { name: "install", list: getStarted.install.tabsLabel, tabs: getStarted.install.tabs },
+    { name: "database", list: getStarted.database.tabsLabel, tabs: getStarted.database.tabs },
+    { name: "skills", list: getStarted.skills.tabsLabel, tabs: getStarted.skills.tabs },
+  ] as const;
+
+  for (const { name, list, tabs } of rows) {
+    test(`${name}: the new panel rises out of a slight blur and comes to rest sharp`, async ({ page }) => {
+      await page.goto("/");
+      const [first, second] = tabs;
+      // Before any swap the panel is still, and sharp.
+      expect(await holdSwap(page.getByRole("tabpanel", { name: first.label, exact: true }), 0)).toMatchObject({
+        running: 0,
+        opacity: 1,
+        rise: 0,
+        blur: 0,
+      });
+
+      await page.getByRole("tablist", { name: list }).getByRole("tab", { name: second.label, exact: true }).click();
+      const panel = page.getByRole("tabpanel", { name: second.label, exact: true });
+      // A fifth of the way through, on the curve's fast start: still faint, low and soft.
+      const held = await holdSwap(panel, 0.2);
+      expect(held.running).toBe(1);
+      expect(held.duration).toBeGreaterThanOrEqual(200);
+      expect(held.duration).toBeLessThanOrEqual(300);
+      expect(held.opacity).toBeLessThan(0.9);
+      expect(held.rise).toBeGreaterThan(2);
+      expect(held.rise).toBeLessThanOrEqual(8);
+      expect(held.blur).toBeGreaterThan(0.5);
+      expect(held.blur).toBeLessThanOrEqual(3);
+      expect(await atRest(panel)).toEqual(rest);
+    });
+  }
+
+  test("rapid switching ends on the last tab picked, with one panel showing", async ({ page }) => {
+    await page.goto("/");
+    const tabs = page.getByRole("tablist", { name: getStarted.install.tabsLabel });
+    const panels = page.locator('[role="tabpanel"][id^="install-panel-"]');
+    // Every tab, then back to the first, all inside one swap's time.
+    const picks = [...getStarted.install.tabs.slice(1), getStarted.install.tabs[0]].map(({ value }) => value);
+    const seen = await tabs.evaluate((list, picks) => {
+      const counts = [];
+      for (const value of picks) {
+        list.querySelector<HTMLElement>(`#install-tab-${value}`)?.click();
+        counts.push(document.querySelectorAll('[role="tabpanel"][id^="install-panel-"]').length);
+      }
+      return counts;
+    }, picks);
+    expect(seen).toEqual(picks.map(() => 1));
+    const last = page.getByRole("tabpanel", { name: getStarted.install.tabs[0].label, exact: true });
+    await expect(panels).toHaveCount(1);
+    // The last pick arrives with the swap's motion, from its start.
+    const held = await holdSwap(last, 0.2);
+    expect(held.running).toBe(1);
+    expect(held.opacity).toBeLessThan(0.9);
+    expect(await atRest(last)).toEqual(rest);
+  });
+
+  test("the copy button copies the new tab's text mid-swap", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("tab", { name: "pnpm", exact: true }).click();
+    const panel = page.getByRole("tabpanel", { name: "pnpm", exact: true });
+    expect((await holdSwap(panel, 0.2)).opacity).toBeLessThan(0.9);
+    expect(await copyFrom(page, panel)).toBe("pnpm create uno-blueprint\ncd uno-blueprint\npnpm dev");
+  });
+
+  test("with reduced motion the panel swaps at once", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+    await page.getByRole("tab", { name: "Cursor", exact: true }).click();
+    // Read straight after the click, without waiting: there is nothing to wait for.
+    expect(await holdSwap(page.getByRole("tabpanel", { name: "Cursor", exact: true }), 0.2)).toMatchObject({
+      running: 0,
+      opacity: 1,
+      rise: 0,
+      blur: 0,
+    });
   });
 });
 
