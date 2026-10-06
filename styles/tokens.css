@@ -282,9 +282,9 @@
   --container-title: 620px; /* a section headline */
   --container-caption: 70ch;
   --spacing-dots: 18px; /* the stage's dot grid */
-  /* On a phone the stage leaves 16:9 and every recording shows whole, uncropped. */
-  --aspect-stage-canvas-phone: 3 / 2; /* the canvas stage on a phone */
-  --aspect-stage-tall: 4 / 5; /* the touch-points stage on a phone, tall enough for the phone's screen to read */
+  /* On a phone the stage leaves 16:9, takes each recording's own, and every recording shows whole, uncropped. */
+  --aspect-stage-window-phone: 3 / 2; /* a window's stage on a phone, snug round it */
+  --aspect-stage-tall: 4 / 5; /* the phone recording's stage on a phone, tall enough for its screen to read */
   --spacing-phone-inset: clamp(16px, 3.5vw, 44px); /* the dots round the phone, at least */
   /* The dots above a window and beside it, at least, the same both ways; it meets the stage's foot, so it reads large. */
   --spacing-window-margin: clamp(12px, 2vw, 28px);

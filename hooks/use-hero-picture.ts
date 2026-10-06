@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, 
 import { useInView } from "./use-in-view";
 import { BELOW_MD_QUERY, REDUCED_MOTION_QUERY } from "./use-media-query";
 import { cssMs } from "@/lib/css-time";
+import { onResize } from "@/lib/viewport-resize";
 import { hero } from "@/content/hero";
 import {
   BEAM_EASING,
@@ -456,7 +457,9 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
   let live = true;
   let resizing: number | undefined;
   let resolo: number | undefined;
-  const onResize = () => {
+  // The board is laid out by the page's width; a phone's toolbar hiding changes only the height.
+  const relayout = (widthChanged: boolean) => {
+    if (!widthChanged) return;
     clearTimeout(resizing);
     clearTimeout(resolo);
     resizing = later(layout, TIMING.relayout);
@@ -469,7 +472,7 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
   };
   layout();
   void document.fonts?.ready.then(() => live && layout());
-  addEventListener("resize", onResize);
+  const stopResize = onResize(relayout);
   // The page arrives showing the finished board, so the first round starts the
   // way every later one does: the board fades and refills.
   if (!reduced) later(restart, TIMING.firstRound);
@@ -478,7 +481,7 @@ function startTimeline({ el, dispatch, toolCount, board, inView, setBeams, onRou
     live = false;
     ride++;
     if (frame !== undefined) cancelAnimationFrame(frame);
-    removeEventListener("resize", onResize);
+    stopResize();
     for (const id of timers) clearTimeout(id);
     for (const animation of animations) animation.cancel();
   };
