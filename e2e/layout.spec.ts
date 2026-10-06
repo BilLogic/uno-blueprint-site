@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { questions } from "@/content/questions";
 import { site } from "@/content/site";
 import { view } from "@/content/view";
@@ -101,26 +102,94 @@ test("the footer credits link to each author's LinkedIn profile", async ({ page 
   );
 });
 
-test("a link that is not ready yet says Coming soon on hover and on focus", async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/");
-  const caseStudy = page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Case study", exact: true });
-  await expect(caseStudy).not.toHaveAttribute("href", /.*/);
-  await expect(caseStudy).toHaveAccessibleDescription("Coming soon");
-  const tipId = await caseStudy.getAttribute("aria-describedby");
-  const tip = page.locator(`[id="${tipId}"]`);
-  await expect(tip).toHaveRole("tooltip");
-  await expect(tip).toHaveText("Coming soon");
+// Every link whose target is not ready yet: the nav's, and the case card's button.
+const notReady = [
+  { where: "in the nav", find: (page: Page) => page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Case study", exact: true }) },
+  { where: "on the case card", find: (page: Page) => page.locator("#ideas").getByRole("link", { name: "Case study coming soon" }) },
+];
 
-  // At rest no tooltip shows. Playwright counts a transparent element as visible, so this reads opacity.
-  for (const each of await page.getByRole("tooltip").all()) await expect(each).toHaveCSS("opacity", "0");
+/** The colours that would change if `link` answered the pointer. */
+const look = (link: Locator) =>
+  link.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return [style.color, style.backgroundColor, style.borderColor];
+  });
 
-  await caseStudy.hover();
-  await expect(tip).toBeVisible();
+/** Expects `tip` to show in full: inside the viewport, unclipped, and on top at its centre. */
+async function expectShownInFull(tip: Locator) {
   await expect(tip).toHaveCSS("opacity", "1");
+  await expect(tip).toBeInViewport({ ratio: 1 });
+  const onTop = await tip.evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    // The tooltip never takes the pointer, so hit-testing passes through it unless it is let in for a moment.
+    el.style.pointerEvents = "auto";
+    const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+    el.style.pointerEvents = "";
+    return el.contains(hit);
+  });
+  expect(onTop).toBe(true);
+}
 
-  await page.mouse.move(0, 600);
-  await expect(tip).toHaveCSS("opacity", "0");
-  await caseStudy.focus();
-  await expect(tip).toHaveCSS("opacity", "1");
-});
+for (const width of [1440, 390] as const) {
+  for (const { where, find } of notReady) {
+    for (const colorScheme of ["light", "dark"] as const) {
+      test(`at ${width} px in ${colorScheme}, a link that is not ready yet ${where} looks disabled, goes nowhere and says Coming soon`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
+        await page.goto("/");
+        const link = find(page);
+        await expect(link).toHaveAttribute("aria-disabled", "true");
+        await expect(link).not.toHaveAttribute("href", /.*/);
+        await expect(link).toHaveAccessibleDescription("Coming soon");
+        const tipId = await link.getAttribute("aria-describedby");
+        const tip = page.locator(`[id="${tipId}"]`);
+        await expect(tip).toHaveRole("tooltip");
+        await expect(tip).toHaveText("Coming soon");
+
+        // The disabled look: half opacity, muted text, a not-allowed cursor.
+        await expect(link).toHaveCSS("opacity", "0.5");
+        await expect(link).toHaveCSS("cursor", "not-allowed");
+        const muted = await link.evaluate((el) => {
+          const probe = document.createElement("span");
+          probe.style.color = "var(--color-muted)";
+          el.append(probe);
+          const color = getComputedStyle(probe).color;
+          probe.remove();
+          return color;
+        });
+        await expect(link).toHaveCSS("color", muted);
+
+        // At rest no tooltip shows. Playwright counts a transparent element as visible, so this reads opacity.
+        await expect(tip).toHaveCSS("opacity", "0");
+        const rest = await look(link);
+
+        // Hovering it changes nothing on it but shows the tooltip.
+        await link.hover();
+        await expectShownInFull(tip);
+        expect(await look(link)).toEqual(rest);
+
+        // Clicking it goes nowhere. Playwright will not click a disabled element unless forced.
+        const url = page.url();
+        await link.click({ force: true });
+        expect(page.url()).toBe(url);
+
+        await page.mouse.move(0, 0);
+        await link.blur();
+        await expect(tip).toHaveCSS("opacity", "0");
+
+        // Focusing it shows the tooltip, and Enter goes nowhere either.
+        await link.focus();
+        await expectShownInFull(tip);
+        await page.keyboard.press("Enter");
+        expect(page.url()).toBe(url);
+
+        // The link and its tooltip, showing, pass axe. The page as a whole is checked in a11y.spec.ts.
+        const results = await new AxeBuilder({ page })
+          .include(`[aria-describedby="${tipId}"]`)
+          .include(`[id="${tipId}"]`)
+          .analyze();
+        expect(results.violations).toEqual([]);
+      });
+    }
+  }
+}
