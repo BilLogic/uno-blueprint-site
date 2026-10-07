@@ -1,5 +1,6 @@
+import type { CSSProperties } from "react";
 import { ArrowUpRight } from "lucide-react";
-import { ideas, type Voice } from "@/content/ideas";
+import { ideas, type Person, type Voice } from "@/content/ideas";
 import { revealStates } from "@/components/reveal";
 import { anchorProps } from "@/components/ui/anchor-props";
 import { dataFlag } from "@/components/ui/data-flag";
@@ -21,23 +22,47 @@ const sides = {
 } as const;
 
 /** Only a portrait with a recorded permission is shown; everyone else gets initials. */
-function Avatar({ voice }: { voice: Voice }) {
+function Disc({ person, className = "", style }: { person: Person; className?: string; style?: CSSProperties }) {
   return (
     <span
       aria-hidden
-      className="grid size-avatar flex-none place-items-center overflow-hidden rounded-full border border-line bg-card-2 text-13 font-medium text-muted"
+      style={style}
+      className={`grid size-avatar flex-none place-items-center overflow-hidden rounded-full border border-line bg-card-2 text-13 font-medium text-muted ${className}`}
     >
-      {voice.portrait.status === "cleared" ? (
+      {person.portrait.status === "cleared" ? (
         <img
-          src={voice.portrait.src.src}
-          width={voice.portrait.src.width}
-          height={voice.portrait.src.height}
+          src={person.portrait.src.src}
+          width={person.portrait.src.width}
+          height={person.portrait.src.height}
           alt=""
           className="block size-full object-cover"
         />
       ) : (
-        initials(voice.name)
+        initials(person.name)
       )}
+    </span>
+  );
+}
+
+/**
+ * Co-authors sit behind the named voice, to its right, each overlapping the one
+ * before by a third and ringed in the card's colour. The names are in the card's
+ * text, so the discs stay hidden from screen readers.
+ */
+function Avatars({ voice }: { voice: Voice }) {
+  const people: readonly Person[] = [voice, ...(voice.coauthors ?? [])];
+  if (people.length === 1) return <Disc person={voice} />;
+  return (
+    <span data-stack className="isolate flex flex-none">
+      {people.map((person, i) => (
+        <Disc
+          key={person.name}
+          person={person}
+          className={`relative ring-2 ring-panel ${i > 0 ? "-ml-avatar-overlap" : ""}`}
+          // The named voice in front, and each co-author behind the one before.
+          style={{ zIndex: people.length - i }}
+        />
+      ))}
     </span>
   );
 }
@@ -72,7 +97,7 @@ export function VoiceCard({ voice, side, row, on }: VoiceCardProps) {
         {voice.field}
       </span>
       <span className="flex items-center gap-2">
-        <Avatar voice={voice} />
+        <Avatars voice={voice} />
         <span className="text-14 leading-4.5 font-medium">
           {voice.name}
           <small className="block text-12-5 leading-4.5 font-normal text-muted">{voice.role}</small>
