@@ -120,6 +120,25 @@ test.describe("on a wide screen", () => {
     await expectSteps(page, SPREAD);
   });
 
+  test("spreading the co-author stack moves nothing else on the card", async ({ page }) => {
+    await page.goto("/");
+    const card = voice(page, "Andy Polaine");
+    const name = card.getByText("Andy Polaine et al.");
+    // Measured from the card's edge, once the card has slid in from the line.
+    const layout = async () => {
+      const [box, text] = [(await card.boundingBox())!, (await name.boundingBox())!];
+      return { height: box.height, left: text.x - box.x };
+    };
+    await card.scrollIntoViewIfNeeded();
+    await expect(card).toHaveCSS("opacity", "1");
+    await card.evaluate((node) => Promise.all(node.getAnimations().map((animation) => animation.finished)));
+    const atRest = await layout();
+    await card.hover();
+    await finishStack(page);
+    await expectSteps(page, SPREAD);
+    expect(await layout()).toEqual(atRest);
+  });
+
   test("the co-author stack spreads when the card has keyboard focus", async ({ page }) => {
     await page.goto("/");
     await voice(page, "Andy Polaine").scrollIntoViewIfNeeded();

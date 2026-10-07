@@ -49,7 +49,8 @@ function Disc({ person, className = "", delay }: { person: Person; className?: s
  * Co-authors sit behind the named voice, each overlapping the one before by a
  * third, ringed in the card's colour. Hovering or focusing the card spreads them
  * side by side, one a beat after the other; with no hover to wait for, or with
- * reduced motion, they are spread from the start.
+ * reduced motion, they are spread from the start. The stack always takes the
+ * spread width, so the spread never moves the name beside it.
  */
 const behind =
   "relative -ml-avatar-overlap ring-2 ring-panel [transition:margin-left_var(--duration-t-2)_var(--ease-out)] group-hover:ml-1.5 group-focus-within:ml-1.5 [@media(hover:none)]:ml-1.5 motion-reduce:ml-1.5 motion-reduce:transition-none";
@@ -59,7 +60,11 @@ function Avatars({ voice }: { voice: Voice }) {
   const people: readonly Person[] = [voice, ...(voice.coauthors ?? [])];
   if (people.length === 1) return <Disc person={voice} />;
   return (
-    <span data-stack className="isolate flex flex-none">
+    <span
+      data-stack
+      style={{ width: `calc(${people.length} * var(--spacing-avatar) + ${people.length - 1} * var(--spacing) * 1.5)` }}
+      className="isolate flex flex-none"
+    >
       {people.map((person, i) => (
         <Disc
           key={person.name}
