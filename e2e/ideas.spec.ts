@@ -36,13 +36,33 @@ test.describe("on a wide screen", () => {
     await expect(page.locator("#ideas [data-end]")).toHaveCSS("opacity", "1");
   });
 
-  test("each voice links to where it was said, with initials in place of a portrait", async ({ page }) => {
+  test("each voice links to where it was said", async ({ page }) => {
     await page.goto("/");
-    const cards = section(page).locator("[data-voice]");
-    await expect(cards).toHaveCount(9);
+    await expect(section(page).locator("[data-voice]")).toHaveCount(9);
     await expect(voice(page, "Andrej Karpathy")).toHaveAttribute("href", /gist\.github\.com\/karpathy/);
+  });
+
+  test("a voice with a cleared portrait shows it, and everyone else shows initials", async ({ page }) => {
+    await page.goto("/");
+    const cleared = [
+      "Andy Polaine",
+      "Sarah Gibbons",
+      "Tobi Lütke",
+      "Philipp Schmid",
+      "Ryan Lopopolo",
+      "Mitchell Hashimoto",
+      "Andrej Karpathy",
+      "Birgitta Böckeler",
+    ];
+    await expect(section(page).locator("[data-voice] img")).toHaveCount(cleared.length);
+    for (const name of cleared) {
+      const portrait = voice(page, name).locator("img");
+      await portrait.scrollIntoViewIfNeeded();
+      // A broken file still renders an img; only a decoded one has a width.
+      await expect.poll(() => portrait.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+    }
     await expect(voice(page, "G. Lynn Shostack")).toContainText("GL");
-    await expect(cards.locator("img")).toHaveCount(0);
+    await expect(voice(page, "G. Lynn Shostack").locator("img")).toHaveCount(0);
   });
 
   test("the PLUS card shows its buttons over the screenshot on hover", async ({ page }) => {

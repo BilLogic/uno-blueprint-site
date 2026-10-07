@@ -2,6 +2,16 @@ import type { StaticImageData } from "next/image";
 import { links, type SiteLink } from "./links";
 import plusMark from "@/public/images/plus-mark.png";
 import plusBlueprint from "@/public/images/plus-blueprint.jpg";
+import andrejKarpathy from "@/public/images/voices/andrej-karpathy.jpg";
+import andyPolaine from "@/public/images/voices/andy-polaine.jpg";
+import benReason from "@/public/images/voices/ben-reason.jpg";
+import birgittaBockeler from "@/public/images/voices/birgitta-bockeler.jpg";
+import lavransLovlie from "@/public/images/voices/lavrans-lovlie.jpg";
+import mitchellHashimoto from "@/public/images/voices/mitchell-hashimoto.jpg";
+import philippSchmid from "@/public/images/voices/philipp-schmid.jpg";
+import ryanLopopolo from "@/public/images/voices/ryan-lopopolo.jpg";
+import sarahGibbons from "@/public/images/voices/sarah-gibbons.jpg";
+import tobiLutke from "@/public/images/voices/tobi-lutke.jpg";
 
 /**
  * Whether the page may show a person's portrait. Only a portrait with a
@@ -24,9 +34,14 @@ export type Voice = {
   quote: Quote;
   link: SiteLink;
   portrait: Portrait;
+  /** Anyone who said it alongside the named voice; their portraits sit behind its own. */
+  coauthors?: readonly { name: string; portrait: Portrait }[];
 };
 
 const notCleared: Portrait = { status: "not cleared" };
+
+/** A public profile photo, shown because the site owner chose to show it. */
+const publicPhoto = "Public profile photo, used at the site owner's discretion";
 
 export const ideas = {
   headline: "Ideas we build on.",
@@ -58,7 +73,11 @@ export const ideas = {
         " that nobody takes care to design them.",
       ],
       link: links.polaineSource,
-      portrait: notCleared,
+      portrait: { status: "cleared", src: andyPolaine, basis: "polaine.com headshots, publicity use" },
+      coauthors: [
+        { name: "Lavrans Løvlie", portrait: { status: "cleared", src: lavransLovlie, basis: publicPhoto } },
+        { name: "Ben Reason", portrait: { status: "cleared", src: benReason, basis: publicPhoto } },
+      ],
     },
     {
       name: "Sarah Gibbons",
@@ -68,7 +87,7 @@ export const ideas = {
       field: "Service design",
       quote: ["Blueprints are ", { mark: "treasure maps" }, " that help businesses discover weaknesses."],
       link: links.gibbonsSource,
-      portrait: notCleared,
+      portrait: { status: "cleared", src: sarahGibbons, basis: publicPhoto },
     },
     {
       name: "Tobi Lütke",
@@ -81,7 +100,12 @@ export const ideas = {
         { mark: "the art of providing all the context for the task to be plausibly solvable by the LLM." },
       ],
       link: links.lutkeSource,
-      portrait: notCleared,
+      portrait: {
+        status: "cleared",
+        src: tobiLutke,
+        // The licence asks for a credit, which the footer gives.
+        basis: "CC BY-SA 4.0, Benjamin Forrest, Wikimedia Commons",
+      },
     },
     {
       name: "Philipp Schmid",
@@ -91,7 +115,7 @@ export const ideas = {
       field: "Context engineering",
       quote: ["Most agent failures are not model failures anymore, ", { mark: "they are context failures." }],
       link: links.schmidSource,
-      portrait: notCleared,
+      portrait: { status: "cleared", src: philippSchmid, basis: publicPhoto },
     },
     {
       name: "Ryan Lopopolo",
@@ -104,7 +128,7 @@ export const ideas = {
         { mark: "give Codex a map, not a 1,000-page instruction manual." },
       ],
       link: links.lopopoloSource,
-      portrait: notCleared,
+      portrait: { status: "cleared", src: ryanLopopolo, basis: publicPhoto },
     },
     {
       name: "Mitchell Hashimoto",
@@ -119,7 +143,7 @@ export const ideas = {
         },
       ],
       link: links.hashimotoSource,
-      portrait: notCleared,
+      portrait: { status: "cleared", src: mitchellHashimoto, basis: publicPhoto },
     },
     {
       name: "Andrej Karpathy",
@@ -134,7 +158,7 @@ export const ideas = {
         " The LLM's job is everything else.",
       ],
       link: links.karpathySource,
-      portrait: notCleared,
+      portrait: { status: "cleared", src: andrejKarpathy, basis: publicPhoto },
     },
     {
       name: "Birgitta Böckeler",
@@ -148,7 +172,7 @@ export const ideas = {
         ".",
       ],
       link: links.bockelerSource,
-      portrait: notCleared,
+      portrait: { status: "cleared", src: birgittaBockeler, basis: publicPhoto },
     },
   ],
   plus: {
