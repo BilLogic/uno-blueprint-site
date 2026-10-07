@@ -9,7 +9,7 @@ import { ProofChart } from "./ProofChart";
  */
 export function ProofSection() {
   return (
-    <section id="proof" className="border-t border-line py-section max-md:pb-4">
+    <section id="proof" className="isolate border-t border-line py-section max-md:pb-4">
       <Container>
         <div className="mb-head flex items-end justify-between gap-6 max-md:flex-col max-md:items-start max-md:gap-3.5">
           <div className="grid gap-4">

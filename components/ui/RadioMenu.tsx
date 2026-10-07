@@ -114,7 +114,7 @@ export function RadioMenu<T extends string>({
           role="menu"
           aria-label={label}
           onKeyDown={onMenuKeyDown}
-          className={`absolute right-0 bottom-9 z-10 animate-menu-in rounded-10 border border-line bg-panel p-1 shadow-menu motion-reduce:animate-none ${menuClassName}`}
+          className={`absolute right-0 bottom-9 z-menu animate-menu-in rounded-10 border border-line bg-panel p-1 shadow-menu motion-reduce:animate-none ${menuClassName}`}
         >
           {options.map((option, index) => (
             <button
