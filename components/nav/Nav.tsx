@@ -14,7 +14,7 @@ const soonClass =
 
 export function Nav() {
   return (
-    <header className="sticky top-0 z-5 border-b border-line bg-bg/92 backdrop-blur-nav">
+    <header className="sticky top-0 z-nav border-b border-line bg-bg/92 backdrop-blur-nav">
       <Container className="flex h-16 items-center justify-between gap-4 max-xs:gap-2">
         <div className="flex items-center gap-3.5 max-xs:gap-2.5">
           <Logo name={nav.brand} />

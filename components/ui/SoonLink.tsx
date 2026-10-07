@@ -17,7 +17,7 @@ type SoonLinkProps = {
 const disabled = "cursor-not-allowed text-muted opacity-50";
 
 const bubble =
-  "pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 rounded-6 bg-ink px-2 py-1.5 text-12 leading-none font-medium whitespace-nowrap text-bg shadow-menu opacity-0 transition-opacity duration-t-1 ease-plain group-focus-within/soon:opacity-100 group-hover/soon:opacity-100 motion-reduce:transition-none";
+  "pointer-events-none absolute left-1/2 z-menu -translate-x-1/2 rounded-6 bg-ink px-2 py-1.5 text-12 leading-none font-medium whitespace-nowrap text-bg shadow-menu opacity-0 transition-opacity duration-t-1 ease-plain group-focus-within/soon:opacity-100 group-hover/soon:opacity-100 motion-reduce:transition-none";
 
 /**
  * A link whose target is not ready yet, wherever it sits: disabled, and it

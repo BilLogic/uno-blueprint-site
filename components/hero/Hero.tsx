@@ -6,7 +6,7 @@ import { HeroSprite } from "./HeroSprite";
 
 export function Hero() {
   return (
-    <section className="pt-32 pb-16 text-center">
+    <section className="isolate pt-32 pb-16 text-center">
       <Container>
         <div className="mx-auto grid max-w-hero justify-items-center gap-6">
           <h1 className="text-display text-balance">{hero.headline}</h1>
