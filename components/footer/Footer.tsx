@@ -37,13 +37,13 @@ function PersonLink({ person }: { person: (typeof footer.credit.people)[number] 
 
 /** On its own line under the credits, and smaller: it credits a photo, not the site. */
 function PhotoCredit() {
-  const { work, rest, licence } = footer.photoCredit;
+  const { work, byline, licence } = footer.photoCredit;
   return (
     <p className="basis-full text-12 text-muted">
       <a {...anchorProps(work.link)} className="text-ink underline underline-offset-3">
         {work.label}
       </a>{" "}
-      {rest}{" "}
+      {byline}{" "}
       <a {...anchorProps(licence.link)} className="whitespace-nowrap text-ink underline underline-offset-3">
         {licence.label}
       </a>

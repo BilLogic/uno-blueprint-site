@@ -385,7 +385,7 @@
   --text-11-5: 11.5px;
   --text-14-5: 14.5px;
   --text-lane: max(11px, 0.86em); /* a lane's name on the harness pictures' boards, in step with the board's own size */
-  --duration-stagger: 70ms; /* between one sheet, or one column, and the next */
+  --duration-stagger: 70ms; /* between one sheet, one column, or one co-author's disc, and the next */
   --duration-word-delay: 100ms; /* a word follows its bar out */
   --duration-caption-fade: 150ms; /* with reduced motion, the caption crossfades whole */
   --duration-caption-out: calc(var(--duration-t-3) * 2 / 3); /* the old caption leaves, in two thirds of the time a word takes to arrive */
@@ -478,6 +478,7 @@
   --spacing-timeline-stroke: 1.25px; /* the line */
   --spacing-avatar: 40px;
   --spacing-avatar-overlap: calc(var(--spacing-avatar) / 3); /* each disc behind another in a co-author stack */
+  --spacing-avatar-spread: 6px; /* between co-author discs once the stack spreads */
   --spacing-case: 380px; /* the PLUS card beside its screenshot */
   --spacing-case-shot: 240px; /* the screenshot under the text, narrow */
   --spacing-case-logo: 22px;
@@ -500,6 +501,7 @@
   /* A copy button's icon and its tick trade places: the one leaving blurs, fades and shrinks to these as the other sharpens out of them. */
   --duration-t-copy-swap: 200ms;
   --ease-copy-swap: cubic-bezier(0.33, 0, 0.2, 1); /* gentler than --ease-out, which is nine tenths done in a third of the time and reads as a snap */
+  --duration-avatar-spread: 400ms; /* co-author discs spreading apart, on --ease-copy-swap */
   --blur-copy-swap: 4px;
   --scale-copy-swap: 0.8;
 

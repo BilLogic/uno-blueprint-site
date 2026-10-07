@@ -21,6 +21,9 @@ export type Portrait =
   | { status: "not cleared" }
   | { status: "cleared"; src: StaticImageData; basis: string };
 
+/** Someone a card shows a disc for: the named voice, or one of its co-authors. */
+export type Person = { name: string; portrait: Portrait };
+
 /** A quote as runs of text; the marked runs are the words that carry it. */
 export type Quote = readonly (string | { mark: string })[];
 
@@ -35,7 +38,7 @@ export type Voice = {
   link: SiteLink;
   portrait: Portrait;
   /** Anyone who said it alongside the named voice; their portraits sit behind its own. */
-  coauthors?: readonly { name: string; portrait: Portrait }[];
+  coauthors?: readonly Person[];
 };
 
 const notCleared: Portrait = { status: "not cleared" };

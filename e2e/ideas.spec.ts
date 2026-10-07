@@ -5,18 +5,35 @@ const voice = (page: Page, name: string) => section(page).getByRole("link", { na
 const arrow = (page: Page, name: string) => voice(page, name).locator("[data-arrow]");
 const plus = (page: Page) => section(page).getByRole("heading", { name: "PLUS Uno Blueprint" });
 
-/** From one disc's left edge to the next's, in px: 40px discs a third overlapped at rest, 6px apart when spread. */
-const REST = 40 - 40 / 3;
-const SPREAD = 40 + 6;
-/** A fixed time into the spread, not a fraction of it: a curve that reads as instant fails it. */
-const MID_SPREAD = 100;
+/**
+ * Fixed times into the spread, not fractions of it, so a curve that reads as
+ * instant fails them however long it nominally lasts: the nearest co-author is
+ * still under three quarters of the way out at 120ms, and every disc is out by
+ * --duration-avatar-spread (400ms) plus one --duration-stagger (70ms), with a frame or so to spare.
+ */
+const EARLY = 120;
+const SETTLED = 400 + 70 + 30;
 
 const stackDiscs = (page: Page) => voice(page, "Andy Polaine").locator("[data-stack] > span");
 
-const stackSteps = (page: Page) =>
-  stackDiscs(page).evaluateAll((discs) =>
-    discs.slice(1).map((disc, i) => disc.getBoundingClientRect().left - discs[i]!.getBoundingClientRect().left),
-  );
+/**
+ * From one disc to the next, in px, as styles/tokens.css sizes them: a disc's
+ * width less a third of it at rest, and its width plus --spacing-avatar-spread
+ * once spread.
+ */
+async function stackGeometry(page: Page) {
+  const [avatar, spread] = await page.evaluate(() => {
+    const root = getComputedStyle(document.documentElement);
+    return ["--spacing-avatar", "--spacing-avatar-spread"].map((name) => parseFloat(root.getPropertyValue(name)));
+  });
+  return { rest: avatar! - avatar! / 3, spread: avatar! + spread! };
+}
+
+/** How far each co-author's disc sits from the one in front of it; the stack runs leftward from the named voice. */
+const measureSteps = (discs: Element[]) =>
+  discs.slice(1).map((disc, i) => discs[i]!.getBoundingClientRect().left - disc.getBoundingClientRect().left);
+
+const stackSteps = (page: Page) => stackDiscs(page).evaluateAll(measureSteps);
 
 /** Pauses each disc's transition the moment it starts, so a slow machine cannot run it out before it is read. */
 const holdStack = (page: Page) =>
@@ -28,21 +45,35 @@ const holdStack = (page: Page) =>
     }
   });
 
-/** Moves the held transitions to `ms` after they began, and measures the stack there. */
-const stackStepsAt = (page: Page, ms: number) =>
-  stackDiscs(page).evaluateAll((discs, ms) => {
-    const running = discs.flatMap((disc) => disc.getAnimations());
-    if (running.length !== 2) throw new Error(`expected two discs moving, found ${running.length}`);
-    for (const animation of running) {
+/** Once the held transitions have started, moves them to `ms` after they began and measures the stack there. */
+async function stackStepsAt(page: Page, ms: number) {
+  const running = () => stackDiscs(page).evaluateAll((discs) => discs.flatMap((disc) => disc.getAnimations()).length);
+  await expect.poll(running).toBe(2);
+  await stackDiscs(page).evaluateAll((discs, ms) => {
+    for (const animation of discs.flatMap((disc) => disc.getAnimations())) {
       animation.pause();
       animation.currentTime = ms;
     }
-    return discs.slice(1).map((disc, i) => disc.getBoundingClientRect().left - discs[i]!.getBoundingClientRect().left);
   }, ms);
+  return stackSteps(page);
+}
 
-/** Every disc sits `step` px from the one before. */
+/** Every disc sits `step` px from the one in front of it. */
 async function expectSteps(page: Page, step: number) {
   for (const actual of await stackSteps(page)) expect(actual).toBeCloseTo(step, 0);
+}
+
+/** Reads the spread mid-flight and once settled, after `start` sets it going. */
+async function expectSpread(page: Page, start: () => Promise<void>) {
+  const { rest, spread } = await stackGeometry(page);
+  await holdStack(page);
+  await start();
+  const [front, back] = await stackStepsAt(page, EARLY);
+  // Visibly on its way, not snapped out; the last disc a beat behind.
+  expect(front).toBeGreaterThan(rest);
+  expect((front! - rest) / (spread - rest)).toBeLessThan(0.75);
+  expect(back).toBeLessThan(front!);
+  expect(await stackStepsAt(page, SETTLED)).toEqual([expect.closeTo(spread, 0), expect.closeTo(spread, 0)]);
 }
 
 const finishStack = (page: Page) =>
@@ -107,17 +138,8 @@ test.describe("on a wide screen", () => {
   test("the co-author stack overlaps at rest and spreads on hover", async ({ page }) => {
     await page.goto("/");
     await voice(page, "Andy Polaine").scrollIntoViewIfNeeded();
-    await expectSteps(page, REST);
-    await holdStack(page);
-    await voice(page, "Andy Polaine").hover();
-    await expect.poll(() => stackDiscs(page).evaluateAll((discs) => discs.flatMap((disc) => disc.getAnimations()).length)).toBe(2);
-    const [front, back] = await stackStepsAt(page, MID_SPREAD);
-    // Most of the way out by then, the last disc a beat behind; neither there yet.
-    expect(front).toBeGreaterThan(REST + (SPREAD - REST) / 2);
-    expect(front).toBeLessThan(SPREAD);
-    expect(back).toBeLessThan(front!);
-    await finishStack(page);
-    await expectSteps(page, SPREAD);
+    await expectSteps(page, (await stackGeometry(page)).rest);
+    await expectSpread(page, () => voice(page, "Andy Polaine").hover());
   });
 
   test("spreading the co-author stack moves nothing else on the card", async ({ page }) => {
@@ -135,25 +157,14 @@ test.describe("on a wide screen", () => {
     const atRest = await layout();
     await card.hover();
     await finishStack(page);
-    await expectSteps(page, SPREAD);
+    await expectSteps(page, (await stackGeometry(page)).spread);
     expect(await layout()).toEqual(atRest);
   });
 
   test("the co-author stack spreads when the card has keyboard focus", async ({ page }) => {
     await page.goto("/");
     await voice(page, "Andy Polaine").scrollIntoViewIfNeeded();
-    const [front, back] = await voice(page, "Andy Polaine").evaluate((card: HTMLElement, ms) => {
-      card.focus();
-      const discs = [...card.querySelectorAll<HTMLElement>("[data-stack] > span")];
-      for (const disc of discs) for (const animation of disc.getAnimations()) {
-        animation.pause();
-        animation.currentTime = ms;
-      }
-      return discs.slice(1).map((disc, i) => disc.getBoundingClientRect().left - discs[i]!.getBoundingClientRect().left);
-    }, MID_SPREAD);
-    expect(front).toBeGreaterThan(REST + (SPREAD - REST) / 2);
-    expect(front).toBeLessThan(SPREAD);
-    expect(back).toBeLessThan(front!);
+    await expectSpread(page, () => voice(page, "Andy Polaine").focus());
   });
 
   test("each voice opens its source in a new tab, and says so", async ({ page }) => {
@@ -223,7 +234,7 @@ test.describe("on a touch screen", () => {
 
   test("the co-author stack is spread from the start, with nothing to hover", async ({ page }) => {
     await page.goto("/");
-    await expectSteps(page, SPREAD);
+    await expectSteps(page, (await stackGeometry(page)).spread);
   });
 
   test("every voice's outward arrow shows without a hover", async ({ page }) => {
@@ -279,7 +290,7 @@ test("with reduced motion the co-author stack is spread from the start", async (
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
-  await expectSteps(page, SPREAD);
+  await expectSteps(page, (await stackGeometry(page)).spread);
   await voice(page, "Andy Polaine").hover();
   expect(await stackDiscs(page).evaluateAll((discs) => discs.flatMap((disc) => disc.getAnimations()).length)).toBe(0);
 });

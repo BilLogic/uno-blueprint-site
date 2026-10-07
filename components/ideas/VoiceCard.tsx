@@ -1,5 +1,6 @@
+import type { CSSProperties } from "react";
 import { ArrowUpRight } from "lucide-react";
-import { ideas, type Voice } from "@/content/ideas";
+import { ideas, type Person, type Voice } from "@/content/ideas";
 import { revealStates } from "@/components/reveal";
 import { anchorProps } from "@/components/ui/anchor-props";
 import { dataFlag } from "@/components/ui/data-flag";
@@ -20,14 +21,12 @@ const sides = {
   right: "col-start-3 motion-safe:scripted:-translate-x-4.5",
 } as const;
 
-type Person = { name: string; portrait: Voice["portrait"] };
-
 /** Only a portrait with a recorded permission is shown; everyone else gets initials. */
-function Disc({ person, className = "", delay }: { person: Person; className?: string; delay?: string | undefined }) {
+function Disc({ person, className = "", style }: { person: Person; className?: string; style?: CSSProperties }) {
   return (
     <span
       aria-hidden
-      style={delay ? { transitionDelay: delay } : undefined}
+      style={style}
       className={`grid size-avatar flex-none place-items-center overflow-hidden rounded-full border border-line bg-card-2 text-13 font-medium text-muted ${className}`}
     >
       {person.portrait.status === "cleared" ? (
@@ -46,32 +45,38 @@ function Disc({ person, className = "", delay }: { person: Person; className?: s
 }
 
 /**
- * Co-authors sit behind the named voice, each overlapping the one before by a
- * third, ringed in the card's colour. Hovering or focusing the card spreads them
- * side by side, one a beat after the other; with no hover to wait for, or with
- * reduced motion, they are spread from the start. The stack always takes the
- * spread width, so the spread never moves the name beside it.
+ * Co-authors sit behind the named voice, to its left, each overlapping the one
+ * before by a third and ringed in the card's colour. The stack always takes the
+ * spread width, with the named voice's disc against the name, so the spread
+ * moves nothing else on the card. Hovering or focusing the card spreads the
+ * co-authors leftward, one a beat after the other; with no hover to wait for,
+ * or with reduced motion, they are spread from the start.
  */
 const behind =
-  "relative -ml-avatar-overlap ring-2 ring-panel [transition:margin-left_var(--duration-t-2)_var(--ease-out)] group-hover:ml-1.5 group-focus-within:ml-1.5 [@media(hover:none)]:ml-1.5 motion-reduce:ml-1.5 motion-reduce:transition-none";
+  "relative -mr-avatar-overlap ring-2 ring-panel [transition:margin-right_var(--duration-avatar-spread)_var(--ease-copy-swap)] group-hover:mr-avatar-spread group-focus-within:mr-avatar-spread [@media(hover:none)]:mr-avatar-spread motion-reduce:mr-avatar-spread motion-reduce:transition-none";
 
 /** The names are in the card's text, so the discs stay hidden from screen readers. */
 function Avatars({ voice }: { voice: Voice }) {
   const people: readonly Person[] = [voice, ...(voice.coauthors ?? [])];
   if (people.length === 1) return <Disc person={voice} />;
+  const gaps = people.length - 1;
   return (
     <span
       data-stack
-      style={{ width: `calc(${people.length} * var(--spacing-avatar) + ${people.length - 1} * var(--spacing) * 1.5)` }}
-      className="isolate flex flex-none"
+      style={{ width: `calc(${people.length} * var(--spacing-avatar) + ${gaps} * var(--spacing-avatar-spread))` }}
+      // Reversed, so the named voice comes first in the markup but sits on the right, by the name.
+      className="isolate flex flex-none flex-row-reverse"
     >
       {people.map((person, i) => (
         <Disc
           key={person.name}
           person={person}
-          // The named voice is in front, and each co-author behind the one before.
-          className={i === 0 ? "relative z-3 ring-2 ring-panel" : `${behind} ${i === 1 ? "z-2" : "z-1"}`}
-          delay={i > 1 ? `calc(${i - 1} * var(--duration-stagger))` : undefined}
+          className={i === 0 ? "relative ring-2 ring-panel" : behind}
+          style={{
+            // The named voice in front, and each co-author behind the one before.
+            zIndex: people.length - i,
+            ...(i > 1 && { transitionDelay: `calc(${i - 1} * var(--duration-stagger))` }),
+          }}
         />
       ))}
     </span>
