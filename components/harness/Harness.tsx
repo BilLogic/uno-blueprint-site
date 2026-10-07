@@ -5,7 +5,7 @@ import { HarnessShowcase } from "./HarnessShowcase";
 
 export function Harness() {
   return (
-    <section aria-label={harness.headline} className="py-section">
+    <section aria-label={harness.headline} className="isolate py-section">
       <Container>
         <SectionHead
           headline={harness.headline}

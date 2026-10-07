@@ -143,6 +143,15 @@
 
   --blur-nav: 6px;
 
+  /*
+   * The sticky nav's layer (`z-nav`). Every section whose parts are layered
+   * with z-index is its own stacking context (`isolate`), so those numbers only
+   * order things inside it and the whole section sits at the page's base layer.
+   * The nav then needs only to sit above that, and above the footer's menus.
+   * Fullscreen video is drawn in the browser's top layer, over all of it.
+   */
+  --z-index-nav: 20;
+
   --ease-*: initial;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* something arrives or is revealed */
   --ease-in: cubic-bezier(0.6, 0, 0.85, 0.25); /* something leaves */

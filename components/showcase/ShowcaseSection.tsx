@@ -20,7 +20,7 @@ type ShowcaseSectionProps<T extends string> = {
 /** A section that is a headline over a showcase: tabs, a stage with a recording, and a caption. */
 export function ShowcaseSection<T extends string>({ head, idBase, tabsLabel, tabs, icons, phone }: ShowcaseSectionProps<T>) {
   return (
-    <section className="py-section">
+    <section className="isolate py-section">
       <Container>
         <SectionHead {...head} className="mb-8" />
         <Showcase
