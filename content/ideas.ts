@@ -2,6 +2,7 @@ import type { StaticImageData } from "next/image";
 import { links, type SiteLink } from "./links";
 import plusMark from "@/public/images/plus-mark.png";
 import plusBlueprint from "@/public/images/plus-blueprint.jpg";
+import tobiLutke from "@/public/images/voices/tobi-lutke.jpg";
 
 /**
  * Whether the page may show a person's portrait. Only a portrait with a
@@ -11,11 +12,15 @@ export type Portrait =
   | { status: "not cleared" }
   | { status: "cleared"; src: StaticImageData; basis: string };
 
+/** Someone a card shows a disc for: the named voice, or one of its co-authors. */
+export type Person = { name: string; portrait: Portrait };
+
 /** A quote as runs of text; the marked runs are the words that carry it. */
 export type Quote = readonly (string | { mark: string })[];
 
 export type Voice = {
   name: string;
+  /** What the person does now; where they were when they said it belongs in `source`. */
   role: string;
   /** Where and when it was said; shown when the pointer rests on the card. */
   source: string;
@@ -24,6 +29,8 @@ export type Voice = {
   quote: Quote;
   link: SiteLink;
   portrait: Portrait;
+  /** Anyone who said it alongside the named voice; their portraits sit behind its own. */
+  coauthors?: readonly Person[];
 };
 
 const notCleared: Portrait = { status: "not cleared" };
@@ -61,11 +68,15 @@ export const ideas = {
       ],
       link: links.polaineSource,
       portrait: notCleared,
+      coauthors: [
+        { name: "Lavrans Løvlie", portrait: notCleared },
+        { name: "Ben Reason", portrait: notCleared },
+      ],
     },
     {
       name: "Sarah Gibbons",
-      role: "Nielsen Norman Group",
-      source: "Service Blueprints: Definition, Aug 2017",
+      role: "Design executive, formerly Nielsen Norman Group",
+      source: "Service Blueprints: Definition, Nielsen Norman Group, Aug 2017",
       date: "2017",
       field: "Service design",
       quote: ["Blueprints are ", { mark: "treasure maps" }, " that help businesses discover weaknesses."],
@@ -83,7 +94,12 @@ export const ideas = {
         { mark: "the art of providing all the context for the task to be plausibly solvable by the LLM." },
       ],
       link: links.lutkeSource,
-      portrait: notCleared,
+      portrait: {
+        status: "cleared",
+        src: tobiLutke,
+        // The licence asks for a credit, which the footer gives.
+        basis: "CC BY-SA 4.0, Benjamin Forrest, Wikimedia Commons",
+      },
     },
     {
       name: "Philipp Schmid",
@@ -97,8 +113,8 @@ export const ideas = {
     },
     {
       name: "Ryan Lopopolo",
-      role: "Member of the Technical Staff, OpenAI",
-      source: "Harness engineering, Feb 2026",
+      role: "Principal Engineer, Google Cloud",
+      source: "Harness engineering, OpenAI, Feb 2026",
       date: "Feb 2026",
       field: "Harness engineering",
       quote: [
@@ -140,8 +156,8 @@ export const ideas = {
     },
     {
       name: "Birgitta Böckeler",
-      role: "Distinguished Engineer, Thoughtworks",
-      source: "Harness engineering for coding agent users, Apr 2026",
+      role: "Principal Engineer, Unblocked",
+      source: "Harness engineering for coding agent users, martinfowler.com, Apr 2026",
       date: "Apr 2026",
       field: "Harness engineering",
       quote: [

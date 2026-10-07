@@ -18,6 +18,7 @@ export function Footer() {
           <ViewMenu />
           <ThemeMenu />
         </div>
+        <PhotoCredit />
       </Container>
     </footer>
   );
@@ -31,5 +32,21 @@ function PersonLink({ person }: { person: (typeof footer.credit.people)[number] 
     >
       {person.name}
     </a>
+  );
+}
+
+/** On its own line under the credits, and smaller: it credits a photo, not the site. */
+function PhotoCredit() {
+  const { work, byline, licence } = footer.photoCredit;
+  return (
+    <p className="basis-full text-12 text-muted">
+      <a {...anchorProps(work.link)} className="text-ink underline underline-offset-3">
+        {work.label}
+      </a>{" "}
+      {byline}{" "}
+      <a {...anchorProps(licence.link)} className="whitespace-nowrap text-ink underline underline-offset-3">
+        {licence.label}
+      </a>
+    </p>
   );
 }

@@ -5,6 +5,8 @@ const voice = (page: Page, name: string) => section(page).getByRole("link", { na
 const arrow = (page: Page, name: string) => voice(page, name).locator("[data-arrow]");
 const plus = (page: Page) => section(page).getByRole("heading", { name: "PLUS Uno Blueprint" });
 
+const stackDiscs = (page: Page) => voice(page, "Andy Polaine").locator("[data-stack] > span");
+
 /** Scrolls so the top of `selector` sits `fromTop` px below the top of the screen. */
 async function scrollTo(page: Page, selector: string, fromTop: number) {
   await page.evaluate(
@@ -37,13 +39,45 @@ test.describe("on a wide screen", () => {
     await expect(page.locator("#ideas [data-end]")).toHaveCSS("opacity", "1");
   });
 
-  test("each voice links to where it was said, with initials in place of a portrait", async ({ page }) => {
+  test("each voice links to where it was said", async ({ page }) => {
     await page.goto("/");
-    const cards = section(page).locator("[data-voice]");
-    await expect(cards).toHaveCount(9);
+    await expect(section(page).locator("[data-voice]")).toHaveCount(9);
     await expect(voice(page, "Andrej Karpathy")).toHaveAttribute("href", /gist\.github\.com\/karpathy/);
+  });
+
+  test("a voice with a cleared portrait shows it, and everyone else shows initials", async ({ page }) => {
+    await page.goto("/");
+    const portraits = section(page).locator("[data-voice] img");
+    await expect(portraits).toHaveCount(1);
+    const portrait = voice(page, "Tobi Lütke").locator("img");
+    await portrait.scrollIntoViewIfNeeded();
+    // A broken file still renders an img; only a decoded one has a width.
+    await expect.poll(() => portrait.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
     await expect(voice(page, "G. Lynn Shostack")).toContainText("GL");
-    await expect(cards.locator("img")).toHaveCount(0);
+    await expect(voice(page, "G. Lynn Shostack").locator("img")).toHaveCount(0);
+  });
+
+  test("the co-authors overlap behind the named voice, the leftmost disc on top", async ({ page }) => {
+    await page.goto("/");
+    await voice(page, "Andy Polaine").scrollIntoViewIfNeeded();
+    await expect(stackDiscs(page)).toHaveText(["AP", "LL", "BR"]);
+    const discs = await stackDiscs(page).evaluateAll((spans) =>
+      spans.map((span) => {
+        const box = span.getBoundingClientRect();
+        return { left: box.left, right: box.right, middle: box.top + box.height / 2 };
+      }),
+    );
+    for (const [i, disc] of discs.slice(1).entries()) {
+      const front = discs[i]!;
+      expect(disc.left).toBeGreaterThan(front.left);
+      expect(disc.left).toBeLessThan(front.right);
+      // Where the two overlap, the disc to the left is the one drawn.
+      const shown = await page.evaluate(
+        ([x, y]) => document.elementFromPoint(x, y)?.closest("[data-stack] > span")?.textContent,
+        [(disc.left + front.right) / 2, disc.middle] as const,
+      );
+      expect(shown).toBe(["AP", "LL"][i]);
+    }
   });
 
   test("each voice opens its source in a new tab, and says so", async ({ page }) => {
@@ -110,6 +144,7 @@ test.describe("on a wide screen", () => {
 
 test.describe("on a touch screen", () => {
   test.use({ viewport: { width: 1440, height: 900 }, hasTouch: true, isMobile: true });
+
 
   test("every voice's outward arrow shows without a hover", async ({ page }) => {
     await page.goto("/");
