@@ -3,6 +3,7 @@ import {
   drawHeights,
   initials,
   lengthAtHeight,
+  newTabProps,
   nodePoints,
   railPath,
   reachedCount,
@@ -82,5 +83,15 @@ describe("initials", () => {
     expect(initials("G. Lynn Shostack")).toBe("GL");
     expect(initials("Andy Polaine et al.")).toBe("AP");
     expect(initials("Ryan Lopopolo")).toBe("RL");
+  });
+});
+
+describe("newTabProps", () => {
+  it("opens a ready source in a new tab, without handing it the page", () => {
+    expect(newTabProps({})).toEqual({ target: "_blank", rel: "noopener noreferrer" });
+  });
+
+  it("leaves a link that is not ready yet alone", () => {
+    expect(newTabProps({ notReady: true })).toBeNull();
   });
 });

@@ -63,8 +63,16 @@ test.describe("on a wide screen", () => {
     await scrollTo(page, "[data-end]", 400);
     const card = voice(page, "Andrej Karpathy");
     await expect(arrow(page, "Andrej Karpathy")).toHaveCSS("opacity", "0");
-    // It eases in with the card's border.
+    // It eases in with the card's border: the same duration and the same easing.
     await expect(arrow(page, "Andrej Karpathy")).toHaveCSS("transition-duration", "0.2s");
+    const borderEasing = await card.evaluate((el) => {
+      const style = getComputedStyle(el);
+      const properties = style.transitionProperty.split(", ");
+      // Split on the commas between easings, not those inside a cubic-bezier().
+      const easings = style.transitionTimingFunction.split(/,\s*(?![^(]*\))/);
+      return easings[properties.indexOf("border-color")];
+    });
+    await expect(arrow(page, "Andrej Karpathy")).toHaveCSS("transition-timing-function", borderEasing!);
     await card.hover();
     await expect(arrow(page, "Andrej Karpathy")).toHaveCSS("opacity", "1");
     await page.mouse.move(0, 0);

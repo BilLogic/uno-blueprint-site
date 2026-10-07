@@ -1,9 +1,9 @@
 import { ArrowUpRight } from "lucide-react";
 import { ideas, type Voice } from "@/content/ideas";
-import { revealOnHover } from "@/components/reveal";
+import { revealStates } from "@/components/reveal";
 import { anchorProps } from "@/components/ui/anchor-props";
 import { dataFlag } from "@/components/ui/data-flag";
-import { initials } from "@/lib/ideas-timeline";
+import { initials, newTabProps } from "@/lib/ideas-timeline";
 
 type VoiceCardProps = {
   voice: Voice;
@@ -48,11 +48,11 @@ function Avatar({ voice }: { voice: Voice }) {
  * shows that, and screen readers hear it after the quote.
  */
 export function VoiceCard({ voice, side, row, on }: VoiceCardProps) {
+  const newTab = newTabProps(voice.link);
   return (
     <a
       {...anchorProps(voice.link)}
-      target="_blank"
-      rel="noopener noreferrer"
+      {...newTab}
       title={voice.source}
       data-voice
       data-on={dataFlag(on)}
@@ -60,12 +60,12 @@ export function VoiceCard({ voice, side, row, on }: VoiceCardProps) {
       style={{ gridRow: `${row} / span 2` }}
       className={`group relative mb-6.5 block self-start rounded-16 border border-line-2 bg-panel p-5 text-ink [transition:opacity_var(--duration-t-3)_var(--ease-out),translate_var(--duration-t-4)_var(--ease-out),border-color_var(--duration-t-rail)] hover:border-muted motion-safe:scripted:opacity-0 data-on:translate-x-0 data-on:opacity-100 motion-reduce:transition-none max-md:hidden ${sides[side]}`}
     >
-      {/* Fades in with the card's border, rather than at the quicker pace of the other revealed controls. */}
+      {/* Fades in at the card border's pace and easing, rather than the quicker fade of the other revealed controls. */}
       <ArrowUpRight
         data-arrow
         aria-hidden
         strokeWidth={1.75}
-        className={`absolute top-5 right-5 size-icon-sm text-muted ${revealOnHover} duration-t-rail motion-reduce:transition-none`}
+        className={`absolute top-5 right-5 size-icon-sm text-muted ${revealStates} transition-opacity duration-t-rail ease-plain motion-reduce:transition-none`}
       />
       <span className="mb-3 flex gap-2.5 text-12 leading-caption font-medium text-muted">
         <b className="font-medium text-ink">{voice.date}</b>
@@ -89,7 +89,7 @@ export function VoiceCard({ voice, side, row, on }: VoiceCardProps) {
           ),
         )}
       </p>
-      <span className="sr-only"> {ideas.newTab}</span>
+      {newTab && <span className="sr-only"> {ideas.newTab}</span>}
     </a>
   );
 }
