@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { hideHumanPage } from "./isolate";
 
 /*
  * The nav stays on top of the page. Each section keeps its layers to itself,
@@ -46,7 +47,7 @@ for (const width of widths) {
   });
 }
 
-test("tooltips and the footer's menus still sit on top of what is around them", async ({ page }) => {
+test("tooltips and the footer's menus still sit on top of what is around them, the nav included", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
   await page.addStyleTag({ content: "body * { pointer-events: auto !important; }" });
@@ -79,6 +80,8 @@ test("tooltips and the footer's menus still sit on top of what is around them", 
   }
   expect(checked).toBeGreaterThan(0);
 
+  // With the page above it hidden, the footer sits just under the nav, and its menus open up over it.
+  await hideHumanPage(page);
   for (const name of ["Toggle theme", "Page format"]) {
     await page.getByRole("button", { name }).click();
     const items = page.getByRole("menuitemradio");
