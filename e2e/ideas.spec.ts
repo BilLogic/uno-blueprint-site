@@ -5,81 +5,7 @@ const voice = (page: Page, name: string) => section(page).getByRole("link", { na
 const arrow = (page: Page, name: string) => voice(page, name).locator("[data-arrow]");
 const plus = (page: Page) => section(page).getByRole("heading", { name: "PLUS Uno Blueprint" });
 
-/**
- * Fixed times into the spread, not fractions of it, so a curve that reads as
- * instant fails them however long it nominally lasts: the nearest co-author is
- * still under three quarters of the way out at 120ms, and every disc is out by
- * --duration-avatar-spread (400ms) plus one --duration-stagger (70ms), with a frame or so to spare.
- */
-const EARLY = 120;
-const SETTLED = 400 + 70 + 30;
-
 const stackDiscs = (page: Page) => voice(page, "Andy Polaine").locator("[data-stack] > span");
-
-/**
- * From one disc to the next, in px, as styles/tokens.css sizes them: a disc's
- * width less a third of it at rest, and its width plus --spacing-avatar-spread
- * once spread.
- */
-async function stackGeometry(page: Page) {
-  const [avatar, spread] = await page.evaluate(() => {
-    const root = getComputedStyle(document.documentElement);
-    return ["--spacing-avatar", "--spacing-avatar-spread"].map((name) => parseFloat(root.getPropertyValue(name)));
-  });
-  return { rest: avatar! - avatar! / 3, spread: avatar! + spread! };
-}
-
-/** How far each co-author's disc sits from the one in front of it; the stack runs leftward from the named voice. */
-const measureSteps = (discs: Element[]) =>
-  discs.slice(1).map((disc, i) => discs[i]!.getBoundingClientRect().left - disc.getBoundingClientRect().left);
-
-const stackSteps = (page: Page) => stackDiscs(page).evaluateAll(measureSteps);
-
-/** Pauses each disc's transition the moment it starts, so a slow machine cannot run it out before it is read. */
-const holdStack = (page: Page) =>
-  stackDiscs(page).evaluateAll((discs) => {
-    for (const disc of discs) {
-      disc.addEventListener("transitionrun", () => {
-        for (const animation of disc.getAnimations()) animation.pause();
-      });
-    }
-  });
-
-/** Once the held transitions have started, moves them to `ms` after they began and measures the stack there. */
-async function stackStepsAt(page: Page, ms: number) {
-  const running = () => stackDiscs(page).evaluateAll((discs) => discs.flatMap((disc) => disc.getAnimations()).length);
-  await expect.poll(running).toBe(2);
-  await stackDiscs(page).evaluateAll((discs, ms) => {
-    for (const animation of discs.flatMap((disc) => disc.getAnimations())) {
-      animation.pause();
-      animation.currentTime = ms;
-    }
-  }, ms);
-  return stackSteps(page);
-}
-
-/** Every disc sits `step` px from the one in front of it. */
-async function expectSteps(page: Page, step: number) {
-  for (const actual of await stackSteps(page)) expect(actual).toBeCloseTo(step, 0);
-}
-
-/** Reads the spread mid-flight and once settled, after `start` sets it going. */
-async function expectSpread(page: Page, start: () => Promise<void>) {
-  const { rest, spread } = await stackGeometry(page);
-  await holdStack(page);
-  await start();
-  const [front, back] = await stackStepsAt(page, EARLY);
-  // Visibly on its way, not snapped out; the last disc a beat behind.
-  expect(front).toBeGreaterThan(rest);
-  expect((front! - rest) / (spread - rest)).toBeLessThan(0.75);
-  expect(back).toBeLessThan(front!);
-  expect(await stackStepsAt(page, SETTLED)).toEqual([expect.closeTo(spread, 0), expect.closeTo(spread, 0)]);
-}
-
-const finishStack = (page: Page) =>
-  stackDiscs(page).evaluateAll((discs) => {
-    for (const disc of discs) for (const animation of disc.getAnimations()) animation.finish();
-  });
 
 /** Scrolls so the top of `selector` sits `fromTop` px below the top of the screen. */
 async function scrollTo(page: Page, selector: string, fromTop: number) {
@@ -121,50 +47,37 @@ test.describe("on a wide screen", () => {
 
   test("a voice with a cleared portrait shows it, and everyone else shows initials", async ({ page }) => {
     await page.goto("/");
-    // Eight voices, and the two co-authors stacked behind Andy Polaine.
     const portraits = section(page).locator("[data-voice] img");
-    await expect(portraits).toHaveCount(10);
-    for (const portrait of await portraits.all()) {
-      await portrait.scrollIntoViewIfNeeded();
-      // A broken file still renders an img; only a decoded one has a width.
-      await expect.poll(() => portrait.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
-    }
-    await expect(voice(page, "Andy Polaine").locator("[data-stack] img")).toHaveCount(3);
-    await expect(voice(page, "Sarah Gibbons").locator("[data-stack]")).toHaveCount(0);
+    await expect(portraits).toHaveCount(1);
+    const portrait = voice(page, "Tobi Lütke").locator("img");
+    await portrait.scrollIntoViewIfNeeded();
+    // A broken file still renders an img; only a decoded one has a width.
+    await expect.poll(() => portrait.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
     await expect(voice(page, "G. Lynn Shostack")).toContainText("GL");
     await expect(voice(page, "G. Lynn Shostack").locator("img")).toHaveCount(0);
   });
 
-  test("the co-author stack overlaps at rest and spreads on hover", async ({ page }) => {
+  test("the co-authors overlap behind the named voice, the leftmost disc on top", async ({ page }) => {
     await page.goto("/");
     await voice(page, "Andy Polaine").scrollIntoViewIfNeeded();
-    await expectSteps(page, (await stackGeometry(page)).rest);
-    await expectSpread(page, () => voice(page, "Andy Polaine").hover());
-  });
-
-  test("spreading the co-author stack moves nothing else on the card", async ({ page }) => {
-    await page.goto("/");
-    const card = voice(page, "Andy Polaine");
-    const name = card.getByText("Andy Polaine et al.");
-    // Measured from the card's edge, once the card has slid in from the line.
-    const layout = async () => {
-      const [box, text] = [(await card.boundingBox())!, (await name.boundingBox())!];
-      return { height: box.height, left: text.x - box.x };
-    };
-    await card.scrollIntoViewIfNeeded();
-    await expect(card).toHaveCSS("opacity", "1");
-    await card.evaluate((node) => Promise.all(node.getAnimations().map((animation) => animation.finished)));
-    const atRest = await layout();
-    await card.hover();
-    await finishStack(page);
-    await expectSteps(page, (await stackGeometry(page)).spread);
-    expect(await layout()).toEqual(atRest);
-  });
-
-  test("the co-author stack spreads when the card has keyboard focus", async ({ page }) => {
-    await page.goto("/");
-    await voice(page, "Andy Polaine").scrollIntoViewIfNeeded();
-    await expectSpread(page, () => voice(page, "Andy Polaine").focus());
+    await expect(stackDiscs(page)).toHaveText(["AP", "LL", "BR"]);
+    const discs = await stackDiscs(page).evaluateAll((spans) =>
+      spans.map((span) => {
+        const box = span.getBoundingClientRect();
+        return { left: box.left, right: box.right, middle: box.top + box.height / 2 };
+      }),
+    );
+    for (const [i, disc] of discs.slice(1).entries()) {
+      const front = discs[i]!;
+      expect(disc.left).toBeGreaterThan(front.left);
+      expect(disc.left).toBeLessThan(front.right);
+      // Where the two overlap, the disc to the left is the one drawn.
+      const shown = await page.evaluate(
+        ([x, y]) => document.elementFromPoint(x, y)?.closest("[data-stack] > span")?.textContent,
+        [(disc.left + front.right) / 2, disc.middle] as const,
+      );
+      expect(shown).toBe(["AP", "LL"][i]);
+    }
   });
 
   test("each voice opens its source in a new tab, and says so", async ({ page }) => {
@@ -232,10 +145,6 @@ test.describe("on a wide screen", () => {
 test.describe("on a touch screen", () => {
   test.use({ viewport: { width: 1440, height: 900 }, hasTouch: true, isMobile: true });
 
-  test("the co-author stack is spread from the start, with nothing to hover", async ({ page }) => {
-    await page.goto("/");
-    await expectSteps(page, (await stackGeometry(page)).spread);
-  });
 
   test("every voice's outward arrow shows without a hover", async ({ page }) => {
     await page.goto("/");
@@ -284,13 +193,4 @@ test("with reduced motion the whole timeline is drawn from the start", async ({ 
   await expect(page.locator("#ideas [data-end]")).toHaveCSS("opacity", "1");
   // A voice's outward arrow appears without easing in.
   await expect(arrow(page, "Birgitta Böckeler")).toHaveCSS("transition-property", "none");
-});
-
-test("with reduced motion the co-author stack is spread from the start", async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/");
-  await expectSteps(page, (await stackGeometry(page)).spread);
-  await voice(page, "Andy Polaine").hover();
-  expect(await stackDiscs(page).evaluateAll((discs) => discs.flatMap((disc) => disc.getAnimations()).length)).toBe(0);
 });

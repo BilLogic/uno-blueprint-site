@@ -2,15 +2,6 @@ import type { StaticImageData } from "next/image";
 import { links, type SiteLink } from "./links";
 import plusMark from "@/public/images/plus-mark.png";
 import plusBlueprint from "@/public/images/plus-blueprint.jpg";
-import andrejKarpathy from "@/public/images/voices/andrej-karpathy.jpg";
-import andyPolaine from "@/public/images/voices/andy-polaine.jpg";
-import benReason from "@/public/images/voices/ben-reason.jpg";
-import birgittaBockeler from "@/public/images/voices/birgitta-bockeler.jpg";
-import lavransLovlie from "@/public/images/voices/lavrans-lovlie.jpg";
-import mitchellHashimoto from "@/public/images/voices/mitchell-hashimoto.jpg";
-import philippSchmid from "@/public/images/voices/philipp-schmid.jpg";
-import ryanLopopolo from "@/public/images/voices/ryan-lopopolo.jpg";
-import sarahGibbons from "@/public/images/voices/sarah-gibbons.jpg";
 import tobiLutke from "@/public/images/voices/tobi-lutke.jpg";
 
 /**
@@ -44,9 +35,6 @@ export type Voice = {
 
 const notCleared: Portrait = { status: "not cleared" };
 
-/** A public profile photo, shown because the site owner chose to show it. */
-const publicPhoto = "Public profile photo, used at the site owner's discretion";
-
 export const ideas = {
   headline: "Ideas we build on.",
   sub: "Uno Blueprint sits where service design meets context and harness engineering.",
@@ -79,10 +67,10 @@ export const ideas = {
         " that nobody takes care to design them.",
       ],
       link: links.polaineSource,
-      portrait: { status: "cleared", src: andyPolaine, basis: "polaine.com headshots, publicity use" },
+      portrait: notCleared,
       coauthors: [
-        { name: "Lavrans Løvlie", portrait: { status: "cleared", src: lavransLovlie, basis: publicPhoto } },
-        { name: "Ben Reason", portrait: { status: "cleared", src: benReason, basis: publicPhoto } },
+        { name: "Lavrans Løvlie", portrait: notCleared },
+        { name: "Ben Reason", portrait: notCleared },
       ],
     },
     {
@@ -93,7 +81,7 @@ export const ideas = {
       field: "Service design",
       quote: ["Blueprints are ", { mark: "treasure maps" }, " that help businesses discover weaknesses."],
       link: links.gibbonsSource,
-      portrait: { status: "cleared", src: sarahGibbons, basis: publicPhoto },
+      portrait: notCleared,
     },
     {
       name: "Tobi Lütke",
@@ -121,7 +109,7 @@ export const ideas = {
       field: "Context engineering",
       quote: ["Most agent failures are not model failures anymore, ", { mark: "they are context failures." }],
       link: links.schmidSource,
-      portrait: { status: "cleared", src: philippSchmid, basis: publicPhoto },
+      portrait: notCleared,
     },
     {
       name: "Ryan Lopopolo",
@@ -134,7 +122,7 @@ export const ideas = {
         { mark: "give Codex a map, not a 1,000-page instruction manual." },
       ],
       link: links.lopopoloSource,
-      portrait: { status: "cleared", src: ryanLopopolo, basis: publicPhoto },
+      portrait: notCleared,
     },
     {
       name: "Mitchell Hashimoto",
@@ -149,7 +137,7 @@ export const ideas = {
         },
       ],
       link: links.hashimotoSource,
-      portrait: { status: "cleared", src: mitchellHashimoto, basis: publicPhoto },
+      portrait: notCleared,
     },
     {
       name: "Andrej Karpathy",
@@ -164,7 +152,7 @@ export const ideas = {
         " The LLM's job is everything else.",
       ],
       link: links.karpathySource,
-      portrait: { status: "cleared", src: andrejKarpathy, basis: publicPhoto },
+      portrait: notCleared,
     },
     {
       name: "Birgitta Böckeler",
@@ -178,7 +166,7 @@ export const ideas = {
         ".",
       ],
       link: links.bockelerSource,
-      portrait: { status: "cleared", src: birgittaBockeler, basis: publicPhoto },
+      portrait: notCleared,
     },
   ],
   plus: {

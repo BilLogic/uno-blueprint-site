@@ -45,38 +45,22 @@ function Disc({ person, className = "", style }: { person: Person; className?: s
 }
 
 /**
- * Co-authors sit behind the named voice, to its left, each overlapping the one
- * before by a third and ringed in the card's colour. The stack always takes the
- * spread width, with the named voice's disc against the name, so the spread
- * moves nothing else on the card. Hovering or focusing the card spreads the
- * co-authors leftward, one a beat after the other; with no hover to wait for,
- * or with reduced motion, they are spread from the start.
+ * Co-authors sit behind the named voice, to its right, each overlapping the one
+ * before by a third and ringed in the card's colour. The names are in the card's
+ * text, so the discs stay hidden from screen readers.
  */
-const behind =
-  "relative -mr-avatar-overlap ring-2 ring-panel [transition:margin-right_var(--duration-avatar-spread)_var(--ease-copy-swap)] group-hover:mr-avatar-spread group-focus-within:mr-avatar-spread [@media(hover:none)]:mr-avatar-spread motion-reduce:mr-avatar-spread motion-reduce:transition-none";
-
-/** The names are in the card's text, so the discs stay hidden from screen readers. */
 function Avatars({ voice }: { voice: Voice }) {
   const people: readonly Person[] = [voice, ...(voice.coauthors ?? [])];
   if (people.length === 1) return <Disc person={voice} />;
-  const gaps = people.length - 1;
   return (
-    <span
-      data-stack
-      style={{ width: `calc(${people.length} * var(--spacing-avatar) + ${gaps} * var(--spacing-avatar-spread))` }}
-      // Reversed, so the named voice comes first in the markup but sits on the right, by the name.
-      className="isolate flex flex-none flex-row-reverse"
-    >
+    <span data-stack className="isolate flex flex-none">
       {people.map((person, i) => (
         <Disc
           key={person.name}
           person={person}
-          className={i === 0 ? "relative ring-2 ring-panel" : behind}
-          style={{
-            // The named voice in front, and each co-author behind the one before.
-            zIndex: people.length - i,
-            ...(i > 1 && { transitionDelay: `calc(${i - 1} * var(--duration-stagger))` }),
-          }}
+          className={`relative ring-2 ring-panel ${i > 0 ? "-ml-avatar-overlap" : ""}`}
+          // The named voice in front, and each co-author behind the one before.
+          style={{ zIndex: people.length - i }}
         />
       ))}
     </span>
