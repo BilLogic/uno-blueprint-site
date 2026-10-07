@@ -147,11 +147,13 @@
    * The sticky nav's layer (`z-nav`). Every section whose parts are layered
    * with z-index is its own stacking context (`isolate`), so those numbers only
    * order things inside it and the whole section sits at the page's base layer.
-   * The nav needs only to sit above that. The footer's menus (z-10) are meant
-   * to open over everything, the nav included, so it stays under them.
+   * The nav needs only to sit above that. The footer's menus and the "Coming
+   * soon" tooltips (`z-menu`) are meant to open over everything, the nav
+   * included, so it stays under them.
    * Fullscreen video is drawn in the browser's top layer, over all of it.
    */
   --z-index-nav: 5;
+  --z-index-menu: 10;
 
   --ease-*: initial;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* something arrives or is revealed */

@@ -25,3 +25,11 @@ export async function showOnly(target: Locator): Promise<void> {
 export async function hideHumanPage(page: Page): Promise<void> {
   await page.addStyleTag({ content: "#human { display: none !important; }" });
 }
+
+/**
+ * Lets every element answer `elementFromPoint`. A layer that lets the pointer
+ * through still paints, so a check of what is on top has to see it too.
+ */
+export async function letEveryLayerTakeTheHit(page: Page): Promise<void> {
+  await page.addStyleTag({ content: "body * { pointer-events: auto !important; }" });
+}

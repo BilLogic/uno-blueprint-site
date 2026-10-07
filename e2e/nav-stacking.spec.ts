@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { hideHumanPage } from "./isolate";
+import { hideHumanPage, letEveryLayerTakeTheHit } from "./isolate";
 
 /*
  * The nav stays on top of the page. Each section keeps its layers to itself,
@@ -8,6 +8,9 @@ import { hideHumanPage } from "./isolate";
 
 const widths = [1440, 390];
 
+/** Every tooltip on the human page and in the nav. */
+const tooltipSelector = '#human [role="tooltip"], body > header [role="tooltip"]';
+
 /** Each point across the nav, at three heights, where something else is on top, named by what is. */
 async function coveredPoints(page: Page): Promise<string[]> {
   return page.evaluate(() => {
@@ -15,9 +18,9 @@ async function coveredPoints(page: Page): Promise<string[]> {
     if (!nav) throw new Error("no sticky header on the page");
     const box = nav.getBoundingClientRect();
     const covered: string[] = [];
-    for (const fy of [0.15, 0.5, 0.85]) {
+    for (const heightFraction of [0.15, 0.5, 0.85]) {
       for (let x = box.left + 4; x < box.right; x += 12) {
-        const y = Math.round(box.top + box.height * fy);
+        const y = Math.round(box.top + box.height * heightFraction);
         const hit = document.elementFromPoint(x, y);
         if (hit && !nav.contains(hit)) {
           const name = `${hit.tagName.toLowerCase()}.${String(hit.getAttribute("class") ?? "").split(" ")[0]}`;
@@ -34,8 +37,7 @@ for (const width of widths) {
     test.setTimeout(120_000);
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/");
-    // A layer that lets the pointer through still paints, so let every element take the hit.
-    await page.addStyleTag({ content: "body * { pointer-events: auto !important; }" });
+    await letEveryLayerTakeTheHit(page);
 
     const covered: string[] = [];
     for (let y = 0; y <= (await page.evaluate(() => document.documentElement.scrollHeight)); y += 40) {
@@ -50,7 +52,7 @@ for (const width of widths) {
 test("tooltips and the footer's menus still sit on top of what is around them, the nav included", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
-  await page.addStyleTag({ content: "body * { pointer-events: auto !important; }" });
+  await letEveryLayerTakeTheHit(page);
 
   /** What the page shows at the element's centre: "itself", or what covers it. */
   const onTop = (selector: string, index: number) =>
@@ -65,7 +67,7 @@ test("tooltips and the footer's menus still sit on top of what is around them, t
       [selector, index] as const,
     );
 
-  const tooltips = page.locator('#human [role="tooltip"], body > header [role="tooltip"]');
+  const tooltips = page.locator(tooltipSelector);
   const count = await tooltips.count();
   let checked = 0;
   for (let i = 0; i < count; i++) {
@@ -76,7 +78,7 @@ test("tooltips and the footer's menus still sit on top of what is around them, t
     checked++;
     // A hidden tooltip is layered just as a shown one is, so it is checked where it sits, unhovered.
     await tip.evaluate((element) => element.scrollIntoView({ block: "center", behavior: "instant" }));
-    expect(await onTop('#human [role="tooltip"], body > header [role="tooltip"]', i), `tooltip ${i}`).toBe("itself");
+    expect(await onTop(tooltipSelector, i), `tooltip ${i}`).toBe("itself");
   }
   expect(checked).toBeGreaterThan(0);
 
