@@ -29,6 +29,7 @@ export type Quote = readonly (string | { mark: string })[];
 
 export type Voice = {
   name: string;
+  /** What the person does now; where they were when they said it belongs in `source`. */
   role: string;
   /** Where and when it was said; shown when the pointer rests on the card. */
   source: string;
@@ -86,8 +87,8 @@ export const ideas = {
     },
     {
       name: "Sarah Gibbons",
-      role: "Nielsen Norman Group",
-      source: "Service Blueprints: Definition, Aug 2017",
+      role: "Design executive, formerly Nielsen Norman Group",
+      source: "Service Blueprints: Definition, Nielsen Norman Group, Aug 2017",
       date: "2017",
       field: "Service design",
       quote: ["Blueprints are ", { mark: "treasure maps" }, " that help businesses discover weaknesses."],
@@ -124,8 +125,8 @@ export const ideas = {
     },
     {
       name: "Ryan Lopopolo",
-      role: "Member of the Technical Staff, OpenAI",
-      source: "Harness engineering, Feb 2026",
+      role: "Principal Engineer, Google Cloud",
+      source: "Harness engineering, OpenAI, Feb 2026",
       date: "Feb 2026",
       field: "Harness engineering",
       quote: [
@@ -167,8 +168,8 @@ export const ideas = {
     },
     {
       name: "Birgitta Böckeler",
-      role: "Distinguished Engineer, Thoughtworks",
-      source: "Harness engineering for coding agent users, Apr 2026",
+      role: "Principal Engineer, Unblocked",
+      source: "Harness engineering for coding agent users, martinfowler.com, Apr 2026",
       date: "Apr 2026",
       field: "Harness engineering",
       quote: [
