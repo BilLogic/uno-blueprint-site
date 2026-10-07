@@ -102,6 +102,20 @@ test("the footer credits link to each author's LinkedIn profile", async ({ page 
   );
 });
 
+test("the footer credits the licensed portrait, linking its file page and its licence", async ({ page }) => {
+  await page.goto("/");
+  const footer = page.getByRole("contentinfo");
+  await expect(footer).toContainText("Portrait of Tobi Lütke by Benjamin Forrest, cropped, CC BY-SA 4.0");
+  await expect(footer.getByRole("link", { name: "Portrait of Tobi Lütke" })).toHaveAttribute(
+    "href",
+    /commons\.wikimedia\.org\/wiki\/File:NYC-Commerce-Tobi/,
+  );
+  await expect(footer.getByRole("link", { name: "CC BY-SA 4.0" })).toHaveAttribute(
+    "href",
+    "https://creativecommons.org/licenses/by-sa/4.0/",
+  );
+});
+
 // Every link whose target is not ready yet: the nav's, and the case card's button.
 const notReady = [
   { where: "in the nav", find: (page: Page) => page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Case study", exact: true }) },

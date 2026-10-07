@@ -489,6 +489,7 @@
   --spacing-timeline-node: 11px;
   --spacing-timeline-stroke: 1.25px; /* the line */
   --spacing-avatar: 40px;
+  --spacing-avatar-overlap: calc(var(--spacing-avatar) / 3); /* each disc behind another in a co-author stack */
   --spacing-case: 380px; /* the PLUS card beside its screenshot */
   --spacing-case-shot: 240px; /* the screenshot under the text, narrow */
   --spacing-case-logo: 22px;
