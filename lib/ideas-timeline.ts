@@ -91,3 +91,12 @@ export const initials = (name: string) =>
     .slice(0, 2)
     .map((word) => word[0])
     .join("");
+
+/**
+ * A voice's source opens in a new tab, but only once it has somewhere to go: a
+ * link that is not ready yet has no href, so it gets no target and no "opens in
+ * a new tab" either.
+ */
+export function newTabProps(link: { notReady?: true }) {
+  return link.notReady ? null : ({ target: "_blank", rel: "noopener noreferrer" } as const);
+}
