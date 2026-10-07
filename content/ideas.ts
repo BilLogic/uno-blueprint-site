@@ -31,6 +31,8 @@ const notCleared: Portrait = { status: "not cleared" };
 export const ideas = {
   headline: "Ideas we build on.",
   sub: "Uno Blueprint sits where service design meets context and harness engineering.",
+  /** Read after a voice's name and quote, since its card opens the source in a new tab. */
+  newTab: "(opens in a new tab)",
   /** Oldest first, alternating left and right of the line. */
   voices: [
     {
@@ -163,4 +165,4 @@ export const ideas = {
       alt: "The PLUS blueprint open on its Discovery scenario, with one cell's detail panel showing",
     },
   },
-} as const satisfies { headline: string; sub: string; voices: readonly Voice[]; plus: unknown };
+} as const satisfies { headline: string; sub: string; newTab: string; voices: readonly Voice[]; plus: unknown };
