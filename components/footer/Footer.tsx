@@ -40,11 +40,11 @@ function PhotoCredit() {
   const { work, rest, licence } = footer.photoCredit;
   return (
     <p className="basis-full text-12 text-muted">
-      <a {...anchorProps(work.link)} className="underline underline-offset-3">
+      <a {...anchorProps(work.link)} className="text-ink underline underline-offset-3">
         {work.label}
       </a>{" "}
       {rest}{" "}
-      <a {...anchorProps(licence.link)} className="underline underline-offset-3">
+      <a {...anchorProps(licence.link)} className="whitespace-nowrap text-ink underline underline-offset-3">
         {licence.label}
       </a>
     </p>
