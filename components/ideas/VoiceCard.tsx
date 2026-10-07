@@ -20,24 +20,55 @@ const sides = {
   right: "col-start-3 motion-safe:scripted:-translate-x-4.5",
 } as const;
 
+type Person = { name: string; portrait: Voice["portrait"] };
+
 /** Only a portrait with a recorded permission is shown; everyone else gets initials. */
-function Avatar({ voice }: { voice: Voice }) {
+function Disc({ person, className = "", delay }: { person: Person; className?: string; delay?: string | undefined }) {
   return (
     <span
       aria-hidden
-      className="grid size-avatar flex-none place-items-center overflow-hidden rounded-full border border-line bg-card-2 text-13 font-medium text-muted"
+      style={delay ? { transitionDelay: delay } : undefined}
+      className={`grid size-avatar flex-none place-items-center overflow-hidden rounded-full border border-line bg-card-2 text-13 font-medium text-muted ${className}`}
     >
-      {voice.portrait.status === "cleared" ? (
+      {person.portrait.status === "cleared" ? (
         <img
-          src={voice.portrait.src.src}
-          width={voice.portrait.src.width}
-          height={voice.portrait.src.height}
+          src={person.portrait.src.src}
+          width={person.portrait.src.width}
+          height={person.portrait.src.height}
           alt=""
           className="block size-full object-cover"
         />
       ) : (
-        initials(voice.name)
+        initials(person.name)
       )}
+    </span>
+  );
+}
+
+/**
+ * Co-authors sit behind the named voice, each overlapping the one before by a
+ * third, ringed in the card's colour. Hovering or focusing the card spreads them
+ * side by side, one a beat after the other; with no hover to wait for, or with
+ * reduced motion, they are spread from the start.
+ */
+const behind =
+  "relative -ml-avatar-overlap ring-2 ring-panel [transition:margin-left_var(--duration-t-2)_var(--ease-out)] group-hover:ml-1.5 group-focus-within:ml-1.5 [@media(hover:none)]:ml-1.5 motion-reduce:ml-1.5 motion-reduce:transition-none";
+
+/** The names are in the card's text, so the discs stay hidden from screen readers. */
+function Avatars({ voice }: { voice: Voice }) {
+  const people: readonly Person[] = [voice, ...(voice.coauthors ?? [])];
+  if (people.length === 1) return <Disc person={voice} />;
+  return (
+    <span data-stack className="isolate flex flex-none">
+      {people.map((person, i) => (
+        <Disc
+          key={person.name}
+          person={person}
+          // The named voice is in front, and each co-author behind the one before.
+          className={i === 0 ? "relative z-3 ring-2 ring-panel" : `${behind} ${i === 1 ? "z-2" : "z-1"}`}
+          delay={i > 1 ? `calc(${i - 1} * var(--duration-stagger))` : undefined}
+        />
+      ))}
     </span>
   );
 }
@@ -72,7 +103,7 @@ export function VoiceCard({ voice, side, row, on }: VoiceCardProps) {
         {voice.field}
       </span>
       <span className="flex items-center gap-2">
-        <Avatar voice={voice} />
+        <Avatars voice={voice} />
         <span className="text-14 leading-4.5 font-medium">
           {voice.name}
           <small className="block text-12-5 leading-4.5 font-normal text-muted">{voice.role}</small>
