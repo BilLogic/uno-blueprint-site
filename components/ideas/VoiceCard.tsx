@@ -1,7 +1,10 @@
-import type { Voice } from "@/content/ideas";
+import type { CSSProperties } from "react";
+import { ArrowUpRight } from "lucide-react";
+import { ideas, type Person, type Voice } from "@/content/ideas";
+import { revealStates } from "@/components/reveal";
 import { anchorProps } from "@/components/ui/anchor-props";
 import { dataFlag } from "@/components/ui/data-flag";
-import { initials } from "@/lib/ideas-timeline";
+import { initials, newTabProps } from "@/lib/ideas-timeline";
 
 type VoiceCardProps = {
   voice: Voice;
@@ -19,45 +22,82 @@ const sides = {
 } as const;
 
 /** Only a portrait with a recorded permission is shown; everyone else gets initials. */
-function Avatar({ voice }: { voice: Voice }) {
+function Disc({ person, className = "", style }: { person: Person; className?: string; style?: CSSProperties }) {
   return (
     <span
       aria-hidden
-      className="grid size-avatar flex-none place-items-center overflow-hidden rounded-full border border-line bg-card-2 text-13 font-medium text-muted"
+      style={style}
+      className={`grid size-avatar flex-none place-items-center overflow-hidden rounded-full border border-line bg-card-2 text-13 font-medium text-muted ${className}`}
     >
-      {voice.portrait.status === "cleared" ? (
+      {person.portrait.status === "cleared" ? (
         <img
-          src={voice.portrait.src.src}
-          width={voice.portrait.src.width}
-          height={voice.portrait.src.height}
+          src={person.portrait.src.src}
+          width={person.portrait.src.width}
+          height={person.portrait.src.height}
           alt=""
           className="block size-full object-cover"
         />
       ) : (
-        initials(voice.name)
+        initials(person.name)
       )}
     </span>
   );
 }
 
-/** One quoted voice, linking to where it was said. */
+/**
+ * Co-authors sit behind the named voice, to its right, each overlapping the one
+ * before by a third and ringed in the card's colour. The names are in the card's
+ * text, so the discs stay hidden from screen readers.
+ */
+function Avatars({ voice }: { voice: Voice }) {
+  const people: readonly Person[] = [voice, ...(voice.coauthors ?? [])];
+  if (people.length === 1) return <Disc person={voice} />;
+  return (
+    <span data-stack className="isolate flex flex-none">
+      {people.map((person, i) => (
+        <Disc
+          key={person.name}
+          person={person}
+          className={`relative ring-2 ring-panel ${i > 0 ? "-ml-avatar-overlap" : ""}`}
+          // The named voice in front, and each co-author behind the one before.
+          style={{ zIndex: people.length - i }}
+        />
+      ))}
+    </span>
+  );
+}
+
+/**
+ * One quoted voice, linking to where it was said. The source opens in a new
+ * tab, so the reader keeps their place on the timeline; the arrow in the corner
+ * shows that, and screen readers hear it after the quote.
+ */
 export function VoiceCard({ voice, side, row, on }: VoiceCardProps) {
+  const newTab = newTabProps(voice.link);
   return (
     <a
       {...anchorProps(voice.link)}
+      {...newTab}
       title={voice.source}
       data-voice
       data-on={dataFlag(on)}
       // Each card spans two rows so the two columns interleave down the line.
       style={{ gridRow: `${row} / span 2` }}
-      className={`mb-6.5 block self-start rounded-16 border border-line-2 bg-panel p-5 text-ink [transition:opacity_var(--duration-t-3)_var(--ease-out),translate_var(--duration-t-4)_var(--ease-out),border-color_var(--duration-t-rail)] hover:border-muted motion-safe:scripted:opacity-0 data-on:translate-x-0 data-on:opacity-100 motion-reduce:transition-none max-md:hidden ${sides[side]}`}
+      className={`group relative mb-6.5 block self-start rounded-16 border border-line-2 bg-panel p-5 text-ink [transition:opacity_var(--duration-t-3)_var(--ease-out),translate_var(--duration-t-4)_var(--ease-out),border-color_var(--duration-t-rail)] hover:border-muted motion-safe:scripted:opacity-0 data-on:translate-x-0 data-on:opacity-100 motion-reduce:transition-none max-md:hidden ${sides[side]}`}
     >
+      {/* Fades in at the card border's pace and easing, rather than the quicker fade of the other revealed controls. */}
+      <ArrowUpRight
+        data-arrow
+        aria-hidden
+        strokeWidth={1.75}
+        className={`absolute top-5 right-5 size-icon-sm text-muted ${revealStates} transition-opacity duration-t-rail ease-plain motion-reduce:transition-none`}
+      />
       <span className="mb-3 flex gap-2.5 text-12 leading-caption font-medium text-muted">
         <b className="font-medium text-ink">{voice.date}</b>
         {voice.field}
       </span>
       <span className="flex items-center gap-2">
-        <Avatar voice={voice} />
+        <Avatars voice={voice} />
         <span className="text-14 leading-4.5 font-medium">
           {voice.name}
           <small className="block text-12-5 leading-4.5 font-normal text-muted">{voice.role}</small>
@@ -74,6 +114,7 @@ export function VoiceCard({ voice, side, row, on }: VoiceCardProps) {
           ),
         )}
       </p>
+      {newTab && <span className="sr-only"> {ideas.newTab}</span>}
     </a>
   );
 }

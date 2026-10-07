@@ -27,4 +27,7 @@ export const links = {
   bockelerSource: {
     href: "https://martinfowler.com/articles/exploring-gen-ai/harness-engineering.html",
   },
+  // The licensed portrait credited in the footer, and its licence.
+  lutkePortrait: { href: "https://commons.wikimedia.org/wiki/File:NYC-Commerce-Tobi-L%C3%BCtki-561.jpg" },
+  ccBySa4: { href: "https://creativecommons.org/licenses/by-sa/4.0/" },
 } as const satisfies Record<string, SiteLink>;
