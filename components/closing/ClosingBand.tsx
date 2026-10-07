@@ -5,7 +5,7 @@ import { Container } from "@/components/ui/Container";
 /** The last word before the footer: the two ways in, again. */
 export function ClosingBand() {
   return (
-    <section aria-labelledby="closing-title" className="border-t border-line pt-section pb-32 text-center">
+    <section aria-labelledby="closing-title" className="isolate border-t border-line pt-section pb-32 text-center">
       <Container>
         <div className="grid justify-items-center gap-6">
           <h2 id="closing-title" className="text-title text-balance">

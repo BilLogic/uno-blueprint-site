@@ -8,7 +8,7 @@ import { Walkthrough } from "./Walkthrough";
  */
 export function StructureSection({ children }: { children?: ReactNode }) {
   return (
-    <section className="py-section">
+    <section className="isolate py-section">
       <Container>
         <Walkthrough />
         {children}

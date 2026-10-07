@@ -10,7 +10,7 @@ import { Timeline } from "./Timeline";
  */
 export function IdeasSection() {
   return (
-    <section id="ideas" className="border-t border-line py-section max-md:border-t-0 max-md:pt-0">
+    <section id="ideas" className="isolate border-t border-line py-section max-md:border-t-0 max-md:pt-0">
       <Container>
         <div className="mb-12 grid justify-items-center gap-4 text-center max-md:hidden">
           <h2 className="text-title text-balance">{ideas.headline}</h2>
