@@ -17,7 +17,7 @@ export const links = {
   plusBlueprint: { href: "https://plus-uno.netlify.app/blueprint/" },
   // Where each voice in the ideas timeline said it.
   shostackSource: { href: "https://hbr.org/1984/01/designing-services-that-deliver" },
-  polaineSource: { href: "https://rosenfeldmedia.com/books/service-design-from-insight-to-implementation/" },
+  polaineSource: { href: "https://rosenfeldmedia.com/books/service-design-second-edition/" },
   gibbonsSource: { href: "https://www.nngroup.com/articles/service-blueprints-definition/" },
   lutkeSource: { href: "https://x.com/tobi/status/1935533422589399127" },
   schmidSource: { href: "https://www.philschmid.de/context-engineering" },

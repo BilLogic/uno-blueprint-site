@@ -5,7 +5,7 @@ const voice = (page: Page, name: string) => section(page).getByRole("link", { na
 const arrow = (page: Page, name: string) => voice(page, name).locator("[data-arrow]");
 const plus = (page: Page) => section(page).getByRole("heading", { name: "PLUS Uno Blueprint" });
 
-const stackDiscs = (page: Page) => voice(page, "Andy Polaine").locator("[data-stack] > span");
+const stackDiscs = (page: Page) => voice(page, "Lavrans Løvlie").locator("[data-stack] > span");
 
 /** Scrolls so the top of `selector` sits `fromTop` px below the top of the screen. */
 async function scrollTo(page: Page, selector: string, fromTop: number) {
@@ -59,8 +59,8 @@ test.describe("on a wide screen", () => {
 
   test("the co-authors overlap behind the named voice, the leftmost disc on top", async ({ page }) => {
     await page.goto("/");
-    await voice(page, "Andy Polaine").scrollIntoViewIfNeeded();
-    await expect(stackDiscs(page)).toHaveText(["AP", "LL", "BR"]);
+    await voice(page, "Lavrans Løvlie").scrollIntoViewIfNeeded();
+    await expect(stackDiscs(page)).toHaveText(["LL", "AP", "BR"]);
     const discs = await stackDiscs(page).evaluateAll((spans) =>
       spans.map((span) => {
         const box = span.getBoundingClientRect();
@@ -76,7 +76,7 @@ test.describe("on a wide screen", () => {
         ([x, y]) => document.elementFromPoint(x, y)?.closest("[data-stack] > span")?.textContent,
         [(disc.left + front.right) / 2, disc.middle] as const,
       );
-      expect(shown).toBe(["AP", "LL"][i]);
+      expect(shown).toBe(["LL", "AP"][i]);
     }
   });
 

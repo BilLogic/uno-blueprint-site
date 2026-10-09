@@ -81,7 +81,7 @@ describe("initials", () => {
   it("takes the first letters of the first two capitalised words", () => {
     expect(initials("Birgitta Böckeler")).toBe("BB");
     expect(initials("G. Lynn Shostack")).toBe("GL");
-    expect(initials("Andy Polaine et al.")).toBe("AP");
+    expect(initials("Lavrans Løvlie, Andy Polaine and Ben Reason")).toBe("LL");
     expect(initials("Ryan Lopopolo")).toBe("RL");
   });
 });

@@ -56,9 +56,9 @@ export const ideas = {
       portrait: notCleared,
     },
     {
-      name: "Andy Polaine et al.",
+      name: "Lavrans Løvlie, Andy Polaine and Ben Reason",
       role: "Service Design: From Insight to Implementation",
-      source: "Rosenfeld Media, 2013",
+      source: "Rosenfeld Media, 2013; 2nd edition 2025",
       date: "2013",
       field: "Service design",
       quote: [
@@ -69,7 +69,7 @@ export const ideas = {
       link: links.polaineSource,
       portrait: notCleared,
       coauthors: [
-        { name: "Lavrans Løvlie", portrait: notCleared },
+        { name: "Andy Polaine", portrait: notCleared },
         { name: "Ben Reason", portrait: notCleared },
       ],
     },
