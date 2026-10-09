@@ -60,7 +60,7 @@ test.describe("on a wide screen", () => {
   test("the co-authors overlap behind the named voice, the leftmost disc on top", async ({ page }) => {
     await page.goto("/");
     await voice(page, "Andy Polaine").scrollIntoViewIfNeeded();
-    await expect(stackDiscs(page)).toHaveText(["AP", "LL", "BR"]);
+    await expect(stackDiscs(page)).toHaveText(["LL", "AP", "BR"]);
     const discs = await stackDiscs(page).evaluateAll((spans) =>
       spans.map((span) => {
         const box = span.getBoundingClientRect();
@@ -76,7 +76,7 @@ test.describe("on a wide screen", () => {
         ([x, y]) => document.elementFromPoint(x, y)?.closest("[data-stack] > span")?.textContent,
         [(disc.left + front.right) / 2, disc.middle] as const,
       );
-      expect(shown).toBe(["AP", "LL"][i]);
+      expect(shown).toBe(["LL", "AP"][i]);
     }
   });
 
