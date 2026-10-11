@@ -34,9 +34,9 @@ export const touchPoints = {
     },
     {
       value: "chat",
-      label: "In your team Slack",
+      label: "In team chat",
       caption:
-        "Put a bot on the same blueprint, and answers arrive where the questions are asked. You build this one; the template does not ship it.",
+        "Connect a bot to the same blueprint: it answers where questions are asked, and flags gaps to whoever owns that part.",
       recording: "touch-chat",
     },
     {
