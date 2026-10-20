@@ -20,17 +20,22 @@ test.describe("harness showcase", () => {
     // The caption drawn under the stage (arrived, or waiting for the stage's entry); the sr-only copy beside it
     // describes the picture.
     const caption = harness.locator('[data-caption] > :not([data-phase="out"])');
+    // For a moment after a switch the caption leaving and the one arriving are both in; wait until one is left.
+    const settled = async () => expect(caption).toHaveCount(1);
+    await settled();
     await expect(caption).toContainText(/^Map\.Point it at your docs\./);
     await expect(harness.getByText(/^Map\. Point it at your docs\./)).toHaveClass(/sr-only/);
 
     await harness.getByRole("tab", { name: "Audit" }).click();
     await expect(harness.getByRole("tabpanel")).toContainText("/ub:audit");
+    await settled();
     await expect(caption).toContainText(/^Audit\.Check that the blueprint still holds\./);
 
     await page.keyboard.press("ArrowRight");
     const whatIf = harness.getByRole("tab", { name: "What-if" });
     await expect(whatIf).toBeFocused();
     await expect(whatIf).toHaveAttribute("aria-selected", "true");
+    await settled();
     await expect(caption).toContainText(/Nothing is applied until you sign off\.$/);
   });
 
