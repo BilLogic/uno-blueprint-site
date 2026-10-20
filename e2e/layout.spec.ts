@@ -59,6 +59,14 @@ test("answer engines find the whole agent guide in llms-full.txt, linked from ll
   expect(await (await request.get("/llms.txt")).text()).toContain(`${site.url}/llms-full.txt`);
 });
 
+test("answer engines find the comparison as markdown, linked from llms.txt", async ({ request }) => {
+  const compare = await request.get("/compare.md");
+  expect(compare.ok()).toBe(true);
+  expect(compare.headers()["content-type"]).toContain("text/markdown");
+  expect((await compare.text()).startsWith("# Uno Blueprint and journey management tools\n")).toBe(true);
+  expect(await (await request.get("/llms.txt")).text()).toContain(`${site.url}/compare.md`);
+});
+
 test("crawlers find a robots file that allows them and a sitemap", async ({ request }) => {
   const robots = await request.get("/robots.txt");
   expect(robots.ok()).toBe(true);

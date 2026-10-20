@@ -1,6 +1,6 @@
 # Uno Blueprint
 
-> Uno Blueprint is an open-source toolkit for context engineering: a canvas for your team, a harness for your agents. It maps how a service works as one service blueprint, which people edit on a canvas and agents read as structured data.
+> Uno Blueprint is an open-source context-engineering toolkit: it turns a team's scattered context into service blueprints that people and AI agents work from. A canvas for your team, a harness for your agents: people edit each blueprint on a canvas, and agents read it as structured data.
 
 Who it is for: product teams whose context is spread across docs, designs, code, dashboards, and threads, and the AI agents that work beside them.
 
@@ -29,5 +29,6 @@ How to start: run `npm create uno-blueprint@latest` for a workspace with the can
 ## Optional
 
 - [Full text](https://uno-blueprint.netlify.app/llms-full.txt): the agent guide in full, in this one file
+- [Compared with journey management tools](https://uno-blueprint.netlify.app/compare.md): how Uno Blueprint differs from TheyDo, Smaply, Cemantica, and JourneyTrack, and how they fit together
 - [Demo blueprint](https://uno-blueprint.netlify.app/demo/): a sample blueprint on the canvas
 - [Website](https://uno-blueprint.netlify.app/): the page this file describes
