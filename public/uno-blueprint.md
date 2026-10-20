@@ -1,6 +1,6 @@
 # Uno Blueprint
 
-> An open-source toolkit for context engineering. A canvas for your team, a harness for your agents.
+> An open-source context-engineering toolkit: it turns a team's scattered context into service blueprints that people and AI agents work from. A canvas for your team, a harness for your agents.
 
 For product teams whose context is spread across docs, designs, code, dashboards, and threads, and for the AI agents that work beside them. People edit the blueprint on a canvas, a web app; agents read it through four skills that run in Claude Code, Cursor, Codex, or any agent that reads markdown. It works on top of MCP, not instead of it.
 
