@@ -30,10 +30,15 @@
   [headers.values]
     Cache-Control = "public, max-age=86400"
 
-# The agent guide is read as markdown, by agents and by browsers alike.
+# The agent guide and the comparison are read as markdown, by agents and by browsers alike.
 # scripts/serve.mjs sends the same type by extension, so the end-to-end tests see it too.
 [[headers]]
   for = "/uno-blueprint.md"
+  [headers.values]
+    Content-Type = "text/markdown; charset=utf-8"
+
+[[headers]]
+  for = "/compare.md"
   [headers.values]
     Content-Type = "text/markdown; charset=utf-8"
 

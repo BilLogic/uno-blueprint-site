@@ -9,7 +9,7 @@ export const site = {
   title: "Uno Blueprint: open-source toolkit for context engineering",
   /** The search result's snippet; it says nothing the page does not. */
   description:
-    "Open-source toolkit for context engineering. Map how your service works as a blueprint your team edits and your agents read, with four skills, on top of MCP.",
+    "Open-source toolkit for context engineering. Turn your team's scattered context into service blueprints that people and AI agents work from, with four skills, on top of MCP.",
   /** What a shared link shows. Its picture's alt text is app/opengraph-image.alt.txt. */
   share: {
     title: "Uno Blueprint: get your human and AI teammates on the same page",

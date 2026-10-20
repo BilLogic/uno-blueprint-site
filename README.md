@@ -23,7 +23,7 @@ Every word and link the page shows lives in `content/`, one file per section; co
 | Path | What |
 | --- | --- |
 | `content/links.ts` | Every link. One not ready yet carries `notReady: true` and renders disabled in every build, `npm run dev` included (no `href`, `aria-disabled`); a button with a `soonLabel` says so in its own label ("Case study coming soon"), a nav item takes focus and shows "Coming soon" as a tooltip on hover or focus, and any other link is simply disabled. List them with `grep -rn "notReady: true" content` |
-| `public/uno-blueprint.md`, `public/llms.txt` | The page as markdown for agents, and the index they read first |
+| `public/uno-blueprint.md`, `public/llms.txt`, `public/compare.md` | The page as markdown for agents, the index they read first, and how Uno Blueprint compares with journey management tools |
 | `app/` | The page, its metadata, icons and preview image |
 | `components/`, `hooks/`, `lib/` | One folder per part of the page; small typed hooks and the pure logic they use |
 | `styles/tokens.css` | Design tokens, declared once, exposed to Tailwind |
